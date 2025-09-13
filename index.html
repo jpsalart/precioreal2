@@ -81,7 +81,6 @@
   (function(){
     'use strict';
 
-    // ------------ Helpers UI ------------
     function $(id){ return document.getElementById(id); }
     function showError(msg) {
       var cont = $('scanner');
@@ -96,6 +95,7 @@
       cont.style.fontSize = '14px';
       cont.textContent = msg;
     }
+
     function renderResult(ok, p, ean) {
       p = p || {}; ean = ean || '';
       var box = $('resultado');
@@ -121,6 +121,7 @@
       box.style.display = 'block';
       box.scrollIntoView({ behavior:'smooth', block:'start' });
     }
+
     async function lookupAndRender(ean) {
       try {
         var res = await fetch('/api/lookup?ean=' + encodeURIComponent(ean));
@@ -132,7 +133,6 @@
       }
     }
 
-    // ------------ Escáner: BarcodeDetector nativo ------------
     var currentStream = null;
     var stopRequested = false;
 
@@ -146,16 +146,14 @@
     async function startScanner() {
       showInfo('Preparando cámara…');
 
-      // 1) ¿Hay API nativa?
       var NativeBD = ('BarcodeDetector' in window) ? window.BarcodeDetector : null;
 
-      // 2) Si NO hay API nativa y NO tienes ZXing local, avisamos y salimos
       if (!NativeBD) {
-        // Intento cargar ZXing autoalojado, por si lo subiste en /vendor/zxing/index.min.js
+        // Cargar ZXing desde TU dominio (archivo generado en build)
         try {
           await new Promise(function(resolve, reject){
             var s = document.createElement('script');
-            s.src = '/vendor/zxing/index.min.js'; // súbelo tú (ver instrucciones debajo)
+            s.src = '/vendor/zxing/index.min.js';
             s.async = true;
             s.onload = resolve;
             s.onerror = reject;
@@ -164,16 +162,14 @@
         } catch(_){}
       }
 
-      // Revisa de nuevo: ¿se cargó ZXing?
       var ZX = window.ZXingBrowser || window.ZXing || null;
       var ZXReader = ZX ? ZX.BrowserMultiFormatReader : null;
 
       if (!NativeBD && !ZXReader) {
-        showError('Tu navegador no soporta escaneo nativo y no se encontró ZXing local. Usa la búsqueda manual o sube /vendor/zxing/index.min.js');
+        showError('Tu navegador no soporta escaneo nativo y no se encontró ZXing local. Usa la búsqueda manual.');
         return;
       }
 
-      // 3) Prepara <video> compatible iOS
       var cont = $('scanner');
       var video = document.createElement('video');
       video.setAttribute('playsinline','');
@@ -186,11 +182,9 @@
       stopRequested = false;
 
       try {
-        // Pedimos permiso sin deviceId (iOS etiqueta cámaras)
         var prov = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio:false });
         prov.getTracks().forEach(function(t){ t.stop(); });
 
-        // Elegimos cámara trasera si se puede
         var devs = await navigator.mediaDevices.enumerateDevices();
         var cams = devs.filter(function(d){ return d.kind === 'videoinput'; });
         var deviceId = null;
@@ -199,7 +193,6 @@
           deviceId = back && back.deviceId;
         }
 
-        // Abrimos stream
         try {
           currentStream = deviceId
             ? await navigator.mediaDevices.getUserMedia({ video:{ deviceId:{ exact: deviceId } }, audio:false })
@@ -210,7 +203,6 @@
         video.srcObject = currentStream;
         await video.play();
 
-        // 4) Camino A: BarcodeDetector nativo
         if (NativeBD) {
           showInfo('Escaneando (motor nativo)…');
           var detector = new NativeBD({
@@ -220,14 +212,12 @@
 
           async function tick(ts){
             if (stopRequested || !currentStream) return;
-            // Limita a ~5 detecciones/segundo
             if (ts - lastTs >= 180) {
               lastTs = ts;
               try {
                 const trackSettings = (currentStream.getVideoTracks()[0] || {}).getSettings?.() || {};
                 const w = trackSettings.width || video.videoWidth || 640;
                 const h = trackSettings.height || video.videoHeight || 480;
-                // Usa un frame actual mediante ImageBitmap (más rápido que canvas en muchos móviles)
                 const bitmap = await createImageBitmap(video, 0, 0, w, h);
                 const codes = await detector.detect(bitmap);
                 bitmap.close?.();
@@ -242,13 +232,12 @@
                 }
               } catch(_){}
             }
-            video.requestVideoFrameCallback ? video.requestVideoFrameCallback(tick) : requestAnimationFrame(tick);
+            (video.requestVideoFrameCallback || requestAnimationFrame)(tick);
           }
-          video.requestVideoFrameCallback ? video.requestVideoFrameCallback(tick) : requestAnimationFrame(tick);
+          (video.requestVideoFrameCallback || requestAnimationFrame)(tick);
           return;
         }
 
-        // 5) Camino B: ZXing autoalojado
         if (ZXReader) {
           showInfo('Escaneando (ZXing)…');
           var reader = new ZXReader();
@@ -279,7 +268,6 @@
       }
     }
 
-    // ------------ Test cámara ------------
     async function testCamera() {
       var cont = $('scanner');
       try {
@@ -304,9 +292,7 @@
         var devs = await navigator.mediaDevices.enumerateDevices();
         var cams = devs.filter(function(d){ return d.kind==='videoinput'; });
         txt += 'Cámaras detectadas: ' + cams.length + '\n';
-        cams.forEach(function(d,i){ txt += '- ['+i+'] ' + (d.label || '(sin etiqueta)') + '\n';
-
-        });
+        cams.forEach(function(d,i){ txt += '- ['+i+'] ' + (d.label || '(sin etiqueta)') + '\n'; });
         cont.textContent = txt;
         cont.style.whiteSpace = 'pre-wrap';
         cont.style.color = '#cfe7ff';
@@ -315,15 +301,13 @@
       }
     }
 
-    // ------------ Eventos UI ------------
-    $('btnScan').addEventListener('click', startScanner);
-    $('btnStop').addEventListener('click', stopScanner);
-    $('btnTest').addEventListener('click', testCamera);
-    $('btnBuscar').addEventListener('click', async function(){
-      var code = $('eanInput').value.trim();
+    document.getElementById('btnScan').addEventListener('click', startScanner);
+    document.getElementById('btnStop').addEventListener('click', stopScanner);
+    document.getElementById('btnTest').addEventListener('click', testCamera);
+    document.getElementById('btnBuscar').addEventListener('click', async function(){
+      var code = document.getElementById('eanInput').value.trim();
       if (code) await lookupAndRender(code);
     });
-
   })();
   </script>
 </body>
