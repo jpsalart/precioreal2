@@ -18,7 +18,9 @@
     .btn.secondary{background:#182339;color:var(--text);border:1px solid #223352}
     .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
     .row input{flex:1;min-width:180px;padding:12px;border-radius:12px;border:1px solid #223352;background:#0c1322;color:var(--text)}
-    #scanner{aspect-ratio:3/2;background:#0d1423;border:1px dashed #223352;border-radius:12px;display:grid;place-items:center;overflow:hidden;margin-top:12px;padding:10px;text-align:center}
+    #scanner{position:relative;aspect-ratio:3/2;background:#0d1423;border:1px dashed #223352;border-radius:12px;display:grid;place-items:center;overflow:hidden;margin-top:12px;padding:10px;text-align:center}
+    #scanner video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+    #overlayMsg{position:absolute;bottom:8px;left:8px;right:8px;background:rgba(0,0,0,.45);border:1px solid #223352;border-radius:8px;padding:6px 8px;font-size:12px;color:#cfe7ff}
     .card{display:grid;grid-template-columns:88px 1fr;gap:12px;align-items:center;background:#0d1423;border:1px solid var(--bd);border-radius:12px;padding:12px}
     .thumb{width:88px;height:88px;border-radius:10px;overflow:hidden;background:#101a2c;display:grid;place-items:center}
     .thumb img{width:100%;height:100%;object-fit:cover}
@@ -39,10 +41,13 @@
 
     <section class="panel">
       <b>Escanear con la cámara</b>
-      <div id="scanner">Pulsa “Iniciar escáner” y permite el uso de la cámara</div>
+      <div id="scanner">
+        <div id="overlayMsg">Pulsa “Iniciar escáner” y permite la cámara</div>
+      </div>
       <div class="row">
         <button class="btn" id="btnScan">Iniciar escáner</button>
         <button class="btn secondary" id="btnStop">Parar</button>
+        <button class="btn secondary" id="btnForceZX">Forzar ZXing</button>
         <button class="btn secondary" id="btnTest">Test cámara</button>
       </div>
     </section>
@@ -73,14 +78,16 @@
   (function(){
     'use strict';
 
-    // --------- Helpers UI ---------
+    // ---------- Helpers UI ----------
     function $(id){ return document.getElementById(id); }
-    function showError(msg){ var c=$('scanner'); c.style.color='#ffb3b3'; c.style.fontSize='14px'; c.textContent='⚠️ '+msg; console.error(msg); }
-    function showInfo(msg){ var c=$('scanner'); c.style.color='#cfe7ff'; c.style.fontSize='14px'; c.textContent=msg; }
-
+    function note(msg) {
+      const o = $('overlayMsg'); if (!o) return;
+      o.textContent = msg; o.style.display = 'block';
+    }
+    function hideNote() { const o = $('overlayMsg'); if (o) o.style.display = 'none'; }
     function renderResult(ok, p, ean){
       p=p||{}; ean=ean||'';
-      var box=$('resultado'), thumb=$('thumb'), title=$('title'), cat=$('category'), price=$('price'), link=$('amazonLink');
+      const box=$('resultado'), thumb=$('thumb'), title=$('title'), cat=$('category'), price=$('price'), link=$('amazonLink');
       if(!ok){ box.style.display='block'; thumb.textContent='—'; title.textContent='No encontrado para '+ean; cat.textContent='—'; price.textContent='—'; link.href='#'; return; }
       thumb.innerHTML = p.image ? '<img alt="Imagen" src="'+p.image+'">' : '—';
       title.textContent = p.title || ('Código '+ean);
@@ -90,136 +97,165 @@
       box.style.display='block'; box.scrollIntoView({behavior:'smooth', block:'start'});
     }
     async function lookupAndRender(ean){
-      try{ var r=await fetch('/api/lookup?ean='+encodeURIComponent(ean)); var d=await r.json(); renderResult(d&&d.success, d&&d.product, ean); }
-      catch(e){ showError('No se pudo consultar el backend (/api/lookup).'); renderResult(false,{},ean); }
+      try{ const r=await fetch('/api/lookup?ean='+encodeURIComponent(ean)); const d=await r.json(); renderResult(d&&d.success, d&&d.product, ean); }
+      catch(e){ note('No se pudo consultar el backend.'); renderResult(false,{},ean); }
     }
 
-    // --------- Carga ZXing local (proxy) si no hay BarcodeDetector ---------
-    async function ensureScannerEngine(){
-      if ('BarcodeDetector' in window) return { type:'native' };
-      return new Promise(function(resolve){
-        var s=document.createElement('script');
-        s.src='/api/zxing.js'; // servido desde TU dominio, con Content-Type correcto
-        s.async=true;
-        s.onload=function(){ resolve({ type: (window.ZXingBrowser||window.ZXing) ? 'zxing' : 'none' }); };
-        s.onerror=function(){ resolve({ type:'none' }); };
+    // ---------- Cámara ----------
+    let currentStream=null, stopRequested=false;
+    function stopScanner(){
+      stopRequested = true;
+      try{ if(currentStream) currentStream.getTracks().forEach(t=>t.stop()); }catch(_){}
+      currentStream=null; note('Escáner detenido');
+    }
+    async function getBestDeviceId(){
+      const devs = await navigator.mediaDevices.enumerateDevices();
+      const cams = devs.filter(d => d.kind==='videoinput');
+      if (!cams.length) return null;
+      const back = cams.find(d => /back|rear|environment|atrás|trás/i.test(d.label||'')) || cams[cams.length-1];
+      return back.deviceId || null;
+    }
+    async function openStream(deviceId){
+      try {
+        return deviceId
+          ? await navigator.mediaDevices.getUserMedia({ video:{ deviceId:{ exact: deviceId } }, audio:false })
+          : await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'environment' } }, audio:false });
+      } catch(_){
+        return await navigator.mediaDevices.getUserMedia({ video:true, audio:false });
+      }
+    }
+
+    // ---------- Motores ----------
+    async function loadZXing(){
+      if (window.ZXingBrowser || window.ZXing) return true;
+      return new Promise(resolve=>{
+        const s=document.createElement('script'); s.src='/api/zxing.js'; s.async=true;
+        s.onload=()=>resolve(!!(window.ZXingBrowser||window.ZXing));
+        s.onerror=()=>resolve(false);
         document.head.appendChild(s);
       });
     }
 
-    // --------- Escáner ---------
-    var currentStream=null, stopRequested=false;
+    async function startNativeLoop(video){
+      note('Escaneando (motor nativo)…');
+      const NativeBD = window.BarcodeDetector;
+      const detector = new NativeBD({ formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39','qr_code'] });
+      let last=0, frames=0, found=false;
 
-    function stopScanner(){
-      stopRequested=true;
-      try{ if(currentStream) currentStream.getTracks().forEach(function(t){t.stop();}); }catch(_){}
-      currentStream=null; $('scanner').textContent='Escáner detenido';
+      async function tick(ts){
+        if (stopRequested || !currentStream) return;
+        if (ts - last >= 150) {
+          last = ts; frames++;
+          try {
+            // Más fiable que pasar el <video> directamente en muchos móviles
+            const settings = (currentStream.getVideoTracks()[0]||{}).getSettings?.() || {};
+            const w = settings.width || video.videoWidth || 640;
+            const h = settings.height || video.videoHeight || 480;
+            const bmp = await createImageBitmap(video, 0, 0, w, h);
+            const codes = await detector.detect(bmp);
+            bmp.close && bmp.close();
+            if (codes && codes.length) {
+              const raw = codes[0].rawValue || '';
+              const code = String(raw).replace(/[^0-9Xx]/g,'');
+              if (code) {
+                found = true;
+                stopScanner();
+                await lookupAndRender(code);
+                return;
+              }
+            }
+          } catch(_){}
+        }
+        (video.requestVideoFrameCallback || requestAnimationFrame)(tick);
+      }
+
+      // Fallback a ZXing si en 4s no hay frames/detección
+      setTimeout(async ()=>{
+        if (!found) {
+          note('Cambiando a ZXing…');
+          await startZXingLoop(video);
+        }
+      }, 4000);
+
+      (video.requestVideoFrameCallback || requestAnimationFrame)(tick);
     }
 
-    async function startScanner(){
-      showInfo('Preparando motor…');
-      var engine = await ensureScannerEngine();
-      if (engine.type==='none'){ showError('No hay motor de escaneo disponible. Usa la búsqueda manual.'); return; }
+    async function startZXingLoop(video){
+      const ok = await loadZXing();
+      const ZX = window.ZXingBrowser || window.ZXing || null;
+      const Reader = ZX && ZX.BrowserMultiFormatReader ? ZX.BrowserMultiFormatReader : null;
+      if (!ok || !Reader) { note('ZXing no disponible. Usa el modo manual.'); return; }
+      note('Escaneando (ZXing)…');
+      const reader = new Reader();
+      const deviceId = await getBestDeviceId();
+      await reader.decodeFromVideoDevice(deviceId || null, video, async (result, err)=>{
+        if (stopRequested || !currentStream) return;
+        if (result && result.getText) {
+          const code = (result.getText()||'').replace(/[^0-9Xx]/g,'');
+          if (code) { stopScanner(); await lookupAndRender(code); }
+        }
+      });
+    }
 
-      showInfo('Preparando cámara…');
-      var cont=$('scanner');
-      var video=document.createElement('video');
-      video.setAttribute('playsinline',''); video.setAttribute('autoplay',''); video.setAttribute('muted',''); video.muted=true; video.style.width='100%';
-      cont.replaceChildren(video);
-      stopRequested=false;
+    // ---------- Flujo principal ----------
+    async function startScanner(forceZX){
+      note('Preparando cámara…');
+      const cont = document.getElementById('scanner');
+      const video = document.createElement('video');
+      video.setAttribute('playsinline',''); video.setAttribute('autoplay',''); video.setAttribute('muted','');
+      video.muted = true; video.playsInline = true;
+      cont.replaceChildren(video, (function(){ const m=document.createElement('div'); m.id='overlayMsg'; return m;})());
 
       try{
-        // Pedir permiso sin deviceId (etiquetas iOS)
-        var prov=await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'environment' } }, audio:false });
-        prov.getTracks().forEach(function(t){t.stop();});
+        // Pide permiso “ciego” primero (etiquetas en iOS)
+        const prov = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'environment' } }, audio:false });
+        prov.getTracks().forEach(t=>t.stop());
 
-        // Elegir trasera si hay
-        var devs=await navigator.mediaDevices.enumerateDevices();
-        var cams=devs.filter(function(d){return d.kind==='videoinput';});
-        var deviceId=null;
-        if(cams.length){
-          var back=cams.find(function(d){return /back|rear|environment|atrás|trás/i.test(d.label||'');})||cams[cams.length-1];
-          deviceId=back&&back.deviceId;
+        // Abre stream real
+        const deviceId = await getBestDeviceId();
+        currentStream = await openStream(deviceId);
+        video.srcObject = currentStream;
+        await video.play();
+        hideNote(); // ya debería verse el vídeo
+
+        if (forceZX) {
+          await startZXingLoop(video);
+        } else if ('BarcodeDetector' in window) {
+          await startNativeLoop(video);
+        } else {
+          await startZXingLoop(video);
         }
 
-        try{
-          currentStream = deviceId
-            ? await navigator.mediaDevices.getUserMedia({ video:{ deviceId:{ exact:deviceId } }, audio:false })
-            : await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'environment' } }, audio:false });
-        }catch(_){
-          currentStream = await navigator.mediaDevices.getUserMedia({ video:true, audio:false });
-        }
-        video.srcObject=currentStream; await video.play();
-
-        if (engine.type==='native'){
-          showInfo('Escaneando (motor nativo)…');
-          var BD = new window.BarcodeDetector({ formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39','qr_code'] });
-          var last=0;
-          function loop(ts){
-            if(stopRequested||!currentStream) return;
-            if(ts-last>=180){
-              last=ts;
-              BD.detect(video).then(function(codes){
-                if(codes&&codes.length){
-                  var raw=codes[0].rawValue||''; var code=String(raw).replace(/[^0-9Xx]/g,'');
-                  if(code){ stopScanner(); lookupAndRender(code); }
-                }
-              }).catch(function(){});
-            }
-            (video.requestVideoFrameCallback||requestAnimationFrame)(loop);
-          }
-          (video.requestVideoFrameCallback||requestAnimationFrame)(loop);
-          return;
-        }
-
-        // ZXing desde /api/zxing.js
-        var ZX = window.ZXingBrowser||window.ZXing||null;
-        var ZXReader = ZX && ZX.BrowserMultiFormatReader ? new ZX.BrowserMultiFormatReader() : null;
-        if(!ZXReader){ showError('ZXing no cargó correctamente. Usa la búsqueda manual.'); return; }
-
-        showInfo('Escaneando (ZXing)…');
-        await ZXReader.decodeFromVideoDevice(deviceId||null, video, function(result, err){
-          if(stopRequested||!currentStream) return;
-          if(result&&result.getText){
-            var code=(result.getText()||'').replace(/[^0-9Xx]/g,'');
-            if(code){ stopScanner(); lookupAndRender(code); }
-          }
-        });
-
-      }catch(e){
-        if(e && (e.name==='NotAllowedError'||e.name==='PermissionDeniedError')){
-          showError('Permiso de cámara denegado. Actívalo en los ajustes del navegador.');
-        }else if(e && (e.name==='NotFoundError'||e.name==='DevicesNotFoundError')){
-          showError('No hay cámara disponible en este dispositivo.');
-        }else if(e && e.message && e.message.indexOf('Only secure origins')>=0){
-          showError('La cámara solo funciona en sitios HTTPS (candado en la URL).');
-        }else{
-          showError('No se pudo iniciar la cámara. Usa la búsqueda manual.');
-          console.error(e);
-        }
+      } catch(e){
+        if (e && (e.name==='NotAllowedError'||e.name==='PermissionDeniedError')) note('Permiso de cámara denegado. Actívalo en los ajustes del navegador.');
+        else if (e && (e.name==='NotFoundError'||e.name==='DevicesNotFoundError')) note('No hay cámara disponible en este dispositivo.');
+        else if (e && e.message && e.message.indexOf('Only secure origins')>=0) note('La cámara solo funciona en sitios HTTPS (candado en la URL).');
+        else { note('No se pudo iniciar la cámara. Usa la búsqueda manual.'); console.error(e); }
       }
     }
 
+    // ---------- Test ----------
     async function testCamera(){
-      var cont=$('scanner'), txt='';
-      txt+='BarcodeDetector: '+(('BarcodeDetector'in window)?'✅':'❌')+'\n';
-      if(navigator.permissions&&navigator.permissions.query){
-        try{ var p=await navigator.permissions.query({name:'camera'}); txt+='Permiso cámara: '+p.state+'\n'; }catch(_){}
+      let txt = 'BarcodeDetector: ' + (('BarcodeDetector' in window) ? '✅' : '❌') + '\n';
+      if (navigator.permissions && navigator.permissions.query) {
+        try { const p = await navigator.permissions.query({ name:'camera' }); txt += 'Permiso cámara: ' + p.state + '\n'; } catch(_){}
       }
-      try{ var s=await navigator.mediaDevices.getUserMedia({video:true,audio:false}); s.getTracks().forEach(function(t){t.stop();}); txt+='getUserMedia: ✅ OK\n'; }
-      catch(e){ txt+='getUserMedia: ❌ '+(e.name||e.message)+'\n'; }
-      var devs=await navigator.mediaDevices.enumerateDevices(); var cams=devs.filter(function(d){return d.kind==='videoinput';});
-      txt+='Cámaras detectadas: '+cams.length+'\n'; cams.forEach(function(d,i){ txt+='- ['+i+'] '+(d.label||'(sin etiqueta)')+'\n'; });
-      cont.textContent=txt; cont.style.whiteSpace='pre-wrap'; cont.style.color='#cfe7ff';
+      try { const s = await navigator.mediaDevices.getUserMedia({ video:true, audio:false }); s.getTracks().forEach(t=>t.stop()); txt += 'getUserMedia: ✅ OK\n'; } catch(e){ txt += 'getUserMedia: ❌ ' + (e.name||e.message) + '\n'; }
+      const devs = await navigator.mediaDevices.enumerateDevices();
+      const cams = devs.filter(d=>d.kind==='videoinput');
+      txt += 'Cámaras detectadas: ' + cams.length + '\n';
+      cams.forEach((d,i)=> txt += '- ['+i+'] ' + (d.label || '(sin etiqueta)') + '\n');
+      note(txt);
     }
 
-    // Eventos UI
-    document.getElementById('btnScan').addEventListener('click', startScanner);
+    // Eventos
+    document.getElementById('btnScan').addEventListener('click', ()=>startScanner(false));
+    document.getElementById('btnForceZX').addEventListener('click', ()=>startScanner(true));
     document.getElementById('btnStop').addEventListener('click', stopScanner);
     document.getElementById('btnTest').addEventListener('click', testCamera);
-    document.getElementById('btnBuscar').addEventListener('click', function(){
-      var code=document.getElementById('eanInput').value.trim();
-      if(code) lookupAndRender(code);
+    document.getElementById('btnBuscar').addEventListener('click', async ()=>{
+      const code = document.getElementById('eanInput').value.trim();
+      if (code) await lookupAndRender(code);
     });
   })();
   </script>
