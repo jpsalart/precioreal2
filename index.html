@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>PrecioReal · Escanea y ve el precio en Amazon</title>
-  <meta name="description" content="Escanea códigos de barras (EAN/ISBN/UPC) y consulta el precio en Amazon.">
+  <meta name="description" content="Escanea códigos de barras (EAN/ISBN/UPC) y consulta la ficha en Amazon con tu enlace de afiliado.">
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#0b0f14">
   <style>
@@ -31,8 +31,9 @@
     .cta{margin-top:8px}
     .link{display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;background:#182339;border:1px solid #223352;color:#e7edf7;text-decoration:none}
     .link.disabled{opacity:.5;pointer-events:none}
-    .disclaimer{font-size:12px;color:#a8b3c7;margin-top:8px}
+    .microNote{font-size:12px;color:#a8b3c7;margin-left:6px}
     .hint{font-size:12px;color:#9bb4d9;margin-top:6px}
+    footer{margin:18px 0 8px;border-top:1px solid var(--bd);padding-top:12px;color:#a8b3c7;font-size:0.9rem;line-height:1.35}
   </style>
 </head>
 <body>
@@ -41,7 +42,7 @@
       <div class="logo">PR</div>
       <div>
         <h1>PrecioReal</h1>
-        <div class="muted">Escanea un producto y mira su precio en Amazon</div>
+        <div class="muted">Escanea un producto y abre su ficha en Amazon</div>
       </div>
     </header>
 
@@ -79,12 +80,19 @@
           <div class="muted" id="category">—</div>
           <div class="price" id="price">—</div>
           <div class="cta">
-            <a class="link disabled" id="amazonLink" target="_self" rel="noopener">🛒 Ver en Amazon</a>
+            <a class="link disabled" id="amazonLink" target="_self" rel="nofollow sponsored noopener">
+              🛒 Ver en Amazon
+              <span class="microNote" aria-label="enlace de afiliado">(enlace de afiliado)</span>
+            </a>
           </div>
         </div>
       </div>
-      <div class="disclaimer">Como Asociado de Amazon, obtengo ingresos por las compras adscritas que cumplen los requisitos aplicables.</div>
     </section>
+
+    <!-- Footer con la divulgación obligatoria (clara y visible en todo el sitio) -->
+    <footer>
+      En calidad de Afiliado de Amazon, obtengo ingresos por las compras adscritas que cumplen los requisitos aplicables.
+    </footer>
   </div>
 
   <script>
@@ -98,39 +106,29 @@
     const ttlSec = 1800; // 30 min cache local
 
     function beep(){
-      try{ const ctx=new (window.AudioContext||window.webkitAudioContext)(); const o=ctx.createOscillator(); const g=ctx.createGain(); o.frequency.value=880; g.gain.value=0.1; o.connect(g).connect(ctx.destination); o.start(); setTimeout(()=>{o.stop();ctx.close();},120);}catch(_){}
+      try{ const ctx=new (window.AudioContext||window.webkitAudioContext)(); const o=ctx.createOscillator(); const g=ctx.createGain();
+        o.frequency.value=880; g.gain.value=0.1; o.connect(g).connect(ctx.destination); o.start(); setTimeout(()=>{o.stop();ctx.close();},120);}catch(_){}
       try{ navigator.vibrate && navigator.vibrate(80); }catch(_){}
     }
 
-    // EAN/UPC checksum correcto
+    // --------- Validación correcta EAN/UPC ----------
     function ean13Valid(s){
       s = String(s).replace(/[^0-9]/g,'');
       if (s.length !== 13) return false;
-      const digits = s.split('').map(n=>+n);
-      const check = digits[12];
-      let sum = 0;
-      for (let i=0;i<12;i++){
-        sum += digits[i] * (i % 2 === 0 ? 1 : 3); // posiciones desde la izquierda: 1,3,5,... x1 ; 2,4,6,... x3
-      }
-      const calc = (10 - (sum % 10)) % 10;
-      return calc === check;
+      const d = s.split('').map(n=>+n); const check=d[12];
+      let sum=0; for(let i=0;i<12;i++) sum += d[i] * (i%2===0?1:3);
+      return ((10 - (sum % 10)) % 10) === check;
     }
     function ean8Valid(s){
       s = String(s).replace(/[^0-9]/g,'');
       if (s.length !== 8) return false;
-      const d = s.split('').map(n=>+n);
-      const check = d[7];
-      let sum = 0;
-      for (let i=0;i<7;i++){
-        sum += d[i] * (i % 2 === 0 ? 3 : 1); // EAN-8 pesa al revés
-      }
-      const calc = (10 - (sum % 10)) % 10;
-      return calc === check;
+      const d = s.split('').map(n=>+n); const check=d[7];
+      let sum=0; for(let i=0;i<7;i++) sum += d[i]*(i%2===0?3:1);
+      return ((10 - (sum % 10)) % 10) === check;
     }
     function upcAValid(s){
       s = String(s).replace(/[^0-9]/g,'');
       if (s.length !== 12) return false;
-      // UPC-A: equivalente a EAN-13 con un 0 delante
       return ean13Valid('0'+s);
     }
     function validCode(code){
@@ -140,14 +138,12 @@
       if (s.length === 12) return { ok: upcAValid(s),  type:'UPC-A'  };
       return { ok:false, type:'unknown' };
     }
-
     function setEanHint(msg, ok){
-      const el = $('eanHint');
-      el.textContent = msg || '';
+      const el = $('eanHint'); el.textContent = msg || '';
       el.style.color = ok ? '#9fe29f' : '#ffb3b3';
     }
 
-    // Cache local mínima
+    // --------- Cache local mínima ----------
     function cacheGet(ean){
       try{
         const raw = localStorage.getItem('pr-cache-'+ean);
@@ -162,7 +158,7 @@
       try{ localStorage.setItem('pr-cache-'+ean, JSON.stringify({ t: Date.now(), d: data })); }catch(_){}
     }
 
-    // Logs muy simples
+    // --------- Logging simple ----------
     async function log(evt, data){
       try {
         await fetch('/api/log', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ evt, data, t: Date.now() }) });
@@ -171,13 +167,8 @@
 
     function setAmazonLink(href){
       const a = $('amazonLink');
-      if (href){
-        a.href = href;
-        a.classList.remove('disabled');
-      } else {
-        a.href = '#';
-        a.classList.add('disabled');
-      }
+      if (href){ a.href = href; a.classList.remove('disabled'); }
+      else { a.href = '#'; a.classList.add('disabled'); }
     }
 
     function renderResult(ok, p, ean){
@@ -217,13 +208,13 @@
       }
     }
 
-    // ---------- ZXing + cámara (igual que tu versión estable) ----------
-    let reader=null, currentStream=null, cams=[], camIndex=0, torchOn=false, justScanned=false;
+    // ---------- ZXing + cámara ----------
+    let reader=null, currentStream=null, cams=[], camIndex=0, torchOn=false;
 
     function stopScanner(){
       try{ reader&&reader.reset&&reader.reset(); }catch(_){}
       try{ currentStream&&currentStream.getTracks().forEach(t=>t.stop()); }catch(_){}
-      currentStream=null; note('Escáner detenido'); torchOn=false; justScanned=false;
+      currentStream=null; note('Escáner detenido'); torchOn=false;
     }
 
     async function listCams(){
@@ -261,10 +252,11 @@
       const track = currentStream?.getVideoTracks?.()[0];
       const caps = track?.getCapabilities?.();
       if (!track || !caps || !caps.torch) { note('Este dispositivo no soporta linterna.'); return; }
-      torchOn = !torchOn;
       try {
-        await track.applyConstraints({ advanced: [{ torch: torchOn }] });
-        note(torchOn ? 'Linterna: ON' : 'Linterna: OFF');
+        const newState = !(window.__torchOn||false);
+        await track.applyConstraints({ advanced: [{ torch: newState }] });
+        window.__torchOn = newState;
+        note(newState ? 'Linterna: ON' : 'Linterna: OFF');
         setTimeout(hideNote, 800);
       } catch(e) {
         note('No se pudo cambiar la linterna.');
@@ -314,23 +306,20 @@
       }
 
       note('Escaneando…');
-      reader = new Reader();
+      const reader = new Reader();
       let justScanned=false;
-      await reader.decodeFromVideoDevice(deviceId || null, video, async (result, err)=>{
+      await reader.decodeFromVideoDevice(deviceId || null, video, async (result)=>{
         if (result && result.getText && !justScanned) {
           const raw = result.getText() || '';
           const code = raw.replace(/[^0-9Xx]/g,'');
-          if (code) {
-            justScanned = true;
-            beep();
-            stopScanner();
-            await lookupAndRender(code);
-          }
+          if (code) { justScanned=true; beep(); stopScanner(); await lookupAndRender(code); }
         }
       });
     }
 
     async function swapCamera(){
+      const devs = await navigator.mediaDevices.enumerateDevices();
+      cams = devs.filter(d=>d.kind==='videoinput');
       if (!cams.length) return;
       camIndex = (camIndex + 1) % cams.length;
       stopScanner();
@@ -355,7 +344,7 @@
         const rdr = new Reader();
         let justScanned=false;
         note('Escaneando…');
-        await rdr.decodeFromVideoDevice(deviceId || null, video, async (result, err)=>{
+        await rdr.decodeFromVideoDevice(deviceId || null, video, async (result)=>{
           if (result && result.getText && !justScanned) {
             const raw = result.getText()||'';
             const code = raw.replace(/[^0-9Xx]/g,'');
@@ -367,7 +356,7 @@
       }
     }
 
-    // Subir imagen para leer código
+    // Subir imagen para leer código (si el navegador soporta BarcodeDetector)
     $('btnUpload').addEventListener('click', ()=> $('imgInput').click());
     $('imgInput').addEventListener('change', async (ev)=>{
       const f = ev.target.files && ev.target.files[0];
@@ -402,11 +391,8 @@
       const s = $('eanInput').value.replace(/[^0-9]/g,'');
       if (!s) { setEanHint('', true); return; }
       const v = validCode(s);
-      if (!v.ok) {
-        setEanHint('Código no válido (longitud o checksum).', false);
-      } else {
-        setEanHint(`Código válido (${v.type}).`, true);
-      }
+      if (!v.ok) setEanHint('Código no válido (longitud o checksum).', false);
+      else setEanHint(`Código válido (${v.type}).`, true);
     });
 
     // Botones
