@@ -41,11 +41,12 @@
 
     <section class="panel">
       <b>Escanear con la cámara</b>
-      <div id="scanner"><div id="overlay">Pulsa “Iniciar escáner” y permite la cámara</div></div>
+      <div id="scanner"><div id="overlay">Pulsa “Iniciar escáner (ZXing)” y permite la cámara</div></div>
       <div class="row">
         <button class="btn" id="btnScan">Iniciar escáner (ZXing)</button>
         <button class="btn secondary" id="btnStop">Parar</button>
         <button class="btn secondary" id="btnSwap">Cambiar cámara</button>
+        <button class="btn secondary" id="btnTorch">Linterna</button>
         <button class="btn secondary" id="btnTest">Test cámara</button>
       </div>
     </section>
@@ -76,7 +77,7 @@
   (function(){
     'use strict';
 
-    // ---- helpers UI ----
+    // ---------- helpers ----------
     const $ = id => document.getElementById(id);
     const setNote = (m)=>{ const o=$('overlay'); if(o){o.textContent=m;o.style.display='block';} };
     const hideNote = ()=>{ const o=$('overlay'); if(o) o.style.display='none'; };
@@ -98,13 +99,13 @@
       catch(e){ setNote('No se pudo consultar el backend.'); renderResult(false,{},ean); }
     }
 
-    // ---- estado cámara/Zxing ----
-    let reader=null, currentStream=null, cams=[], camIndex=0;
+    // ---------- estado ----------
+    let reader=null, currentStream=null, cams=[], camIndex=0, torchOn=false, justScanned=false;
 
     function stopScanner(){
       try{ reader&&reader.reset&&reader.reset(); }catch(_){}
       try{ currentStream&&currentStream.getTracks().forEach(t=>t.stop()); }catch(_){}
-      currentStream=null; setNote('Escáner detenido');
+      currentStream=null; setNote('Escáner detenido'); torchOn=false; justScanned=false;
     }
 
     async function listCams(){
@@ -130,12 +131,39 @@
       if (window.ZXingBrowser || window.ZXing) return Promise.resolve(true);
       return new Promise(resolve=>{
         const s=document.createElement('script');
-        s.src='/api/zxing.js'; // servido desde TU dominio
+        s.src='/api/zxing.js';
         s.async=true;
         s.onload=()=>resolve(!!(window.ZXingBrowser||window.ZXing));
         s.onerror=()=>resolve(false);
         document.head.appendChild(s);
       });
+    }
+
+    // Beep corto + vibración
+    function feedback(){
+      try{
+        const ctx = new (window.AudioContext||window.webkitAudioContext)();
+        const o = ctx.createOscillator(); o.frequency.value = 880;
+        const g = ctx.createGain(); g.gain.value = 0.1;
+        o.connect(g).connect(ctx.destination); o.start();
+        setTimeout(()=>{ o.stop(); ctx.close(); }, 120);
+      }catch(_){}
+      try{ navigator.vibrate && navigator.vibrate(80); }catch(_){}
+    }
+
+    // Torch (linterna) si el dispositivo lo soporta
+    async function toggleTorch(){
+      const track = currentStream?.getVideoTracks?.()[0];
+      const caps = track?.getCapabilities?.();
+      if (!track || !caps || !caps.torch) { setNote('Este dispositivo no soporta linterna.'); return; }
+      torchOn = !torchOn;
+      try {
+        await track.applyConstraints({ advanced: [{ torch: torchOn }] });
+        setNote(torchOn ? 'Linterna: ON' : 'Linterna: OFF');
+        setTimeout(hideNote, 800);
+      } catch(e) {
+        setNote('No se pudo cambiar la linterna.');
+      }
     }
 
     async function startScanner(){
@@ -166,8 +194,7 @@
 
       try {
         currentStream = await openStream(deviceId);
-        video.srcObject = currentStream;
-        await video.play();
+        video.srcObject = currentStream; await video.play();
         hideNote();
       } catch(e) {
         if (e && (e.name==='NotReadableError'||e.name==='TrackStartError')) setNote('Otra app está usando la cámara. Ciérrala y reintenta.');
@@ -177,10 +204,17 @@
 
       setNote('Escaneando…');
       reader = new Reader();
+      justScanned = false;
       await reader.decodeFromVideoDevice(deviceId || null, video, async (result, err)=>{
-        if (result && result.getText) {
-          const code = (result.getText()||'').replace(/[^0-9Xx]/g,'');
-          if (code) { stopScanner(); await lookupAndRender(code); }
+        if (result && result.getText && !justScanned) {
+          const raw = result.getText() || '';
+          const code = raw.replace(/[^0-9Xx]/g,'');
+          if (code) {
+            justScanned = true;
+            feedback();
+            stopScanner();
+            await lookupAndRender(code);
+          }
         }
       });
     }
@@ -208,11 +242,13 @@
         if (!Reader) { setNote('ZXing no disponible.'); return; }
 
         const rdr = new Reader();
+        justScanned = false;
         setNote('Escaneando…');
         await rdr.decodeFromVideoDevice(deviceId || null, video, async (result, err)=>{
-          if (result && result.getText) {
-            const code = (result.getText()||'').replace(/[^0-9Xx]/g,'');
-            if (code) { stopScanner(); await lookupAndRender(code); }
+          if (result && result.getText && !justScanned) {
+            const raw = result.getText()||'';
+            const code = raw.replace(/[^0-9Xx]/g,'');
+            if (code) { justScanned=true; feedback(); stopScanner(); await lookupAndRender(code); }
           }
         });
       } catch(e){
@@ -228,6 +264,11 @@
       try { const s=await navigator.mediaDevices.getUserMedia({video:true,audio:false}); s.getTracks().forEach(t=>t.stop()); txt+='getUserMedia: ✅ OK\n'; } catch(e){ txt+='getUserMedia: ❌ '+(e.name||e.message)+'\n'; }
       const devs=await navigator.mediaDevices.enumerateDevices(); const list=devs.filter(d=>d.kind==='videoinput');
       txt+='Cámaras detectadas: '+list.length+'\n'; list.forEach((d,i)=> txt+='- ['+i+'] '+(d.label||'(sin etiqueta)')+'\n');
+      const track=currentStream?.getVideoTracks?.()[0]; const caps=track?.getCapabilities?.()||{};
+      if (caps && Object.keys(caps).length) {
+        txt+='Capacidades: '+Object.keys(caps).join(', ')+'\n';
+        txt+='Torch soportado: '+(caps.torch?'sí':'no')+'\n';
+      }
       setNote(txt||'Test hecho');
     }
 
@@ -235,6 +276,7 @@
     $('btnScan').addEventListener('click', startScanner);
     $('btnStop').addEventListener('click', stopScanner);
     $('btnSwap').addEventListener('click', swapCamera);
+    $('btnTorch').addEventListener('click', toggleTorch);
     $('btnTest').addEventListener('click', testCamera);
     $('btnBuscar').addEventListener('click', async ()=>{ const code=$('eanInput').value.trim(); if(code) await lookupAndRender(code); });
   })();
