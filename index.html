@@ -30,7 +30,7 @@
     .thumb{width:88px;height:88px;border-radius:10px;overflow:hidden;background:#101a2c;display:grid;place-items:center}
     .thumb img{width:100%;height:100%;object-fit:cover}
     .title{font-weight:700;line-height:1.25}.price{font-weight:900;font-size:18px;margin-top:4px}
-    .cta{margin-top:8px}
+    .cta{margin-top:8px;display:flex;flex-wrap:wrap;gap:8px}
     .link{display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;background:#182339;border:1px solid #223352;color:#e7edf7;text-decoration:none}
     .link.disabled{opacity:.5;pointer-events:none}
     .microNote{font-size:12px;color:#a8b3c7;margin-left:6px}
@@ -52,6 +52,7 @@
     .bar{display:flex;justify-content:space-between;align-items:center;margin:8px 0 4px 0}
     .bar .title{font-size:14px;font-weight:800}
     .ok{color:var(--ok)} .bad{color:var(--bad)}
+    .notePvp{font-size:12px;color:#b9c9e6;margin-top:6px}
   </style>
 </head>
 <body>
@@ -102,8 +103,11 @@
               🛒 Ver en Amazon
               <span class="microNote" aria-label="enlace de afiliado">(enlace de afiliado)</span>
             </a>
+            <button class="btn secondary" id="btnPvp">💾 Guardar tu precio</button>
+            <button class="btn secondary" id="btnPvpDel">🗑 Borrar precio</button>
           </div>
-          <div class="hint">Tip: si te interesa, añádelo a tu carrito en Amazon para guardarlo (ayuda a no perderlo).</div>
+          <div class="notePvp" id="userPvpLine" aria-live="polite"></div>
+          <div class="hint">Tip: si te interesa, añádelo a tu carrito en Amazon para guardarlo (no es precio de Amazon). </div>
         </div>
       </div>
     </section>
@@ -152,6 +156,7 @@
         o.frequency.value=880; g.gain.value=0.1; o.connect(g).connect(ctx.destination); o.start(); setTimeout(()=>{o.stop();ctx.close();},120);}catch(_){}
       try{ navigator.vibrate && navigator.vibrate(80); }catch(_){}
     }
+    const fmtMoney = (n)=> (isFinite(n)? (Number(n).toFixed(2).replace('.',',')) : '');
 
     // --------- Validación EAN/UPC ----------
     function ean13Valid(s){
@@ -208,14 +213,24 @@
       const p = resp?.product||{};
       const m = resp?.meta||{};
       const id = m.asin || ean || p.asin || p.id || (p.affiliateLink||'').split('/api/go/')[1]?.split('?')[0] || null;
+      // traer PVP previo si existe
+      const prev = getFromAnyList(id) || {};
       return {
         id, ean: ean||null, asin: m.asin||null, domain: m.domain||null,
         title: p.title||('Código '+(ean||'desconocido')),
         image: p.image||null,
         category: p.category||'',
         affiliateLink: p.affiliateLink||null,
+        userPrice: prev.userPrice||null,
+        userPriceAt: prev.userPriceAt||null,
         ts: Date.now()
       };
+    }
+
+    function getFromAnyList(id){
+      const a = loadList(K_RECENTS).find(x=>x.id===id);
+      if (a) return a;
+      return loadList(K_FAVS).find(x=>x.id===id) || null;
     }
 
     function addRecent(item){
@@ -230,45 +245,51 @@
       renderRecents();
     }
 
+    function updateItemPvp(id, pvp){
+      const apply = (key)=>{
+        const arr = loadList(key);
+        const i = arr.findIndex(x=>x.id===id);
+        if (i>=0){ arr[i].userPrice = pvp; arr[i].userPriceAt = (pvp!=null)? Date.now(): null; saveList(key, arr); }
+      };
+      apply(K_RECENTS); apply(K_FAVS);
+      renderRecents(); renderFavs();
+    }
+
     function removeRecent(id){
       const arr = loadList(K_RECENTS).filter(x=>x.id!==id);
       saveList(K_RECENTS, arr);
       log('recent-remove', { id });
       renderRecents();
     }
-
-    function clearRecents(){
-      saveList(K_RECENTS, []);
-      log('recent-clear', {});
-      renderRecents();
-    }
+    function clearRecents(){ saveList(K_RECENTS, []); log('recent-clear', {}); renderRecents(); }
 
     function isFav(id){ return loadList(K_FAVS).some(x=>x.id===id); }
     function toggleFav(item){
       if (!item || !item.id) return;
       const arr = loadList(K_FAVS);
       const idx = arr.findIndex(x=>x.id===item.id);
-      if (idx>=0){
-        arr.splice(idx,1);
-        log('fav-remove', { id:item.id });
-      } else {
-        arr.unshift(item);
-        log('fav-add', { id:item.id });
-      }
-      saveList(K_FAVS, arr);
-      renderFavs(); renderRecents(); // refrescar estrellas en ambas listas
+      if (idx>=0){ arr.splice(idx,1); log('fav-remove', { id:item.id }); }
+      else { arr.unshift(item); log('fav-add', { id:item.id }); }
+      saveList(K_FAVS, arr); renderFavs(); renderRecents();
     }
-
-    function clearFavs(){
-      saveList(K_FAVS, []);
-      log('fav-clear', {});
-      renderFavs(); renderRecents();
-    }
+    function clearFavs(){ saveList(K_FAVS, []); log('fav-clear', {}); renderFavs(); renderRecents(); }
 
     function openAmazon(href, source, id){
       if (!href) return;
       log(source+'-click', { id });
-      location.href = href; // target _self para evitar bloqueos
+      location.href = href; // _self para evitar bloqueos
+    }
+
+    function tsToText(ts){
+      try{
+        if(!ts) return '';
+        const d = new Date(ts);
+        const dd = String(d.getDate()).padStart(2,'0');
+        const mm = String(d.getMonth()+1).padStart(2,'0');
+        const hh = String(d.getHours()).padStart(2,'0');
+        const min = String(d.getMinutes()).padStart(2,'0');
+        return `${dd}/${mm} ${hh}:${min}`;
+      }catch(_){ return ''; }
     }
 
     function renderList(containerId, emptyId, arr, source){
@@ -280,6 +301,7 @@
         const img = item.image ? `<img alt="Imagen" src="${item.image}">` : '—';
         const starOn = isFav(item.id);
         const disabled = item.affiliateLink ? '' : 'disabled';
+        const chipPvp = (item.userPrice!=null) ? `<span class="chip" title="Precio anotado por ti">💡 ${fmtMoney(item.userPrice)} €</span>` : '';
         return `
           <div class="mini" data-id="${item.id}">
             <div class="icon-btn" title="Quitar" data-action="remove">✕</div>
@@ -290,7 +312,8 @@
               <div class="muted">${item.category||'—'}</div>
               <div class="actions">
                 <a class="chip ${disabled}" href="${item.affiliateLink||'#'}" data-action="open">🛒 Ver en Amazon</a>
-                <span class="chip" data-action="star">${starOn?'Quitar ⭐':'Guardar ⭐'}</span>
+                <span class="chip" data-action="price">💾 Precio</span>
+                ${chipPvp}
               </div>
             </div>
           </div>
@@ -306,10 +329,12 @@
           if (!act) return;
           ev.preventDefault(); ev.stopPropagation();
           if (act==='remove'){ 
-            source==='recents' ? removeRecent(id) : (saveList(K_FAVS, loadList(K_FAVS).filter(x=>x.id!==id)), log('fav-remove',{id}), renderFavs(), renderRecents());
+            source==='recents' ? removeRecent(id)
+              : (saveList(K_FAVS, loadList(K_FAVS).filter(x=>x.id!==id)), log('fav-remove',{id}), renderFavs(), renderRecents());
           }
           if (act==='star'){ toggleFav(item); }
           if (act==='open'){ openAmazon(item.affiliateLink, source, id); }
+          if (act==='price'){ askAndSavePvp(id); }
         }, { passive:false });
       });
     }
@@ -330,6 +355,16 @@
       else { a.href = '#'; a.classList.add('disabled'); }
     }
 
+    function renderUserPvpLine(item){
+      const line = $('userPvpLine');
+      if (!line) return;
+      if (item?.userPrice!=null){
+        line.textContent = `Tu PVP guardado: ${fmtMoney(item.userPrice)} € (anotado ${tsToText(item.userPriceAt)}) — Solo se guarda en tu dispositivo.`;
+      } else {
+        line.textContent = '';
+      }
+    }
+
     function renderResult(ok, p, ean, meta){
       p=p||{}; ean=ean||'';
       const box=$('resultado'), thumb=$('thumb'), title=$('title'), cat=$('category'), price=$('price');
@@ -340,6 +375,7 @@
         cat.textContent = '—';
         price.textContent = '—';
         setAmazonLink(null);
+        renderUserPvpLine(null);
         return;
       }
       thumb.innerHTML = p.image ? '<img alt="Imagen" src="'+p.image+'">' : '—';
@@ -353,6 +389,23 @@
       // Añadir a "Últimos"
       const item = normalizeItem(ean, { product:p, meta:meta||{} });
       addRecent(item);
+      renderUserPvpLine(item);
+      // vincular botones PVP al item actual
+      $('btnPvp').onclick = ()=> askAndSavePvp(item.id);
+      $('btnPvpDel').onclick = ()=> { updateItemPvp(item.id, null); renderUserPvpLine({}); };
+    }
+
+    function askAndSavePvp(id){
+      const old = getFromAnyList(id);
+      const pre = (old && old.userPrice!=null) ? String(old.userPrice).replace('.',',') : '';
+      const v = prompt('Introduce tu precio (ej. 12,99):', pre);
+      if (v===null) return;
+      const num = Number(String(v).replace(',','.').replace(/[^\d.]/g,''));
+      if (!isFinite(num)){ alert('Precio no válido'); return; }
+      updateItemPvp(id, Math.max(0, num));
+      const nowItem = getFromAnyList(id);
+      if (nowItem) renderUserPvpLine(nowItem);
+      log('user-price-save', { id, price:num });
     }
 
     async function lookupAndRender(ean){
