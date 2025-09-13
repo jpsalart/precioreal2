@@ -42,10 +42,12 @@
     <section class="panel">
       <b>Escanear con la cámara</b>
       <div id="scanner">Pulsa “Iniciar escáner” y permite el uso de la cámara</div>
-      <div class="row">
-        <button class="btn" id="btnScan">Iniciar escáner</button>
-        <button class="btn secondary" id="btnStop">Parar</button>
-      </div>
+<div class="row">
+  <button class="btn" id="btnScan">Iniciar escáner</button>
+  <button class="btn secondary" id="btnStop">Parar</button>
+  <button class="btn secondary" id="btnTest">Test cámara</button>
+</div>
+
     </section>
 
     <section class="panel">
@@ -74,6 +76,7 @@
   const { BrowserMultiFormatReader } = ZXingBrowser;
   let reader, currentStream;
 
+  // Muestra errores visibles en el recuadro
   function showError(msg) {
     const cont = document.getElementById('scanner');
     cont.style.color = '#ffb3b3';
@@ -82,6 +85,7 @@
     console.error(msg);
   }
 
+  // Pinta el resultado
   function renderResult(ok, p = {}, ean = '') {
     const box = document.getElementById('resultado');
     const thumb = document.getElementById('thumb');
@@ -108,6 +112,7 @@
     box.scrollIntoView({ behavior:'smooth', block:'start' });
   }
 
+  // Llamada al backend
   async function lookupAndRender(ean) {
     try {
       const res = await fetch(`/api/lookup?ean=${encodeURIComponent(ean)}`);
@@ -119,6 +124,7 @@
     }
   }
 
+  // Detener escáner
   function stopScanner() {
     try { reader?.reset(); } catch {}
     try { currentStream?.getTracks()?.forEach(t => t.stop()); } catch {}
@@ -126,10 +132,26 @@
     document.getElementById('scanner').textContent = 'Escáner detenido';
   }
 
+  // Fallback en cadena para abrir la cámara:
+  async function openStreamWithFallback(deviceId) {
+    // 1) Intento con deviceId concreto (trasera elegida)
+    if (deviceId) {
+      try {
+        return await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId } }, audio: false });
+      } catch {}
+    }
+    // 2) Intento con facingMode environment
+    try {
+      return await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+    } catch {}
+    // 3) Último recurso: cualquier cámara
+    return await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+  }
+
   async function startScanner() {
     const cont = document.getElementById('scanner');
 
-    // <video> compatible con iOS
+    // <video> compatible con iOS (muted + playsinline + autoplay)
     const video = document.createElement('video');
     video.setAttribute('playsinline','');
     video.setAttribute('autoplay','');
@@ -139,29 +161,27 @@
     cont.replaceChildren(video);
 
     try {
-      // 1) Pide permiso primero, sin deviceId (iOS necesita esto)
-      const provisional = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' } },
-        audio: false
-      });
+      // Pedimos permiso primero (sin deviceId) para que iOS/Android etiqueten cámaras
+      const provisional = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
       provisional.getTracks().forEach(t => t.stop());
 
-      // 2) Enumera cámaras ya con permiso concedido
-      const all = (await navigator.mediaDevices.enumerateDevices())
-        .filter(d => d.kind === 'videoinput');
+      // Enumeramos cámaras ahora que ya hay permiso
+      const all = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
       if (!all.length) { showError('No se encontró ninguna cámara.'); return; }
 
-      // 3) Heurística para trasera
+      // Heurística de “trasera”
       const back = all.find(d => /back|rear|environment|trás|atrás/i.test(d.label)) || all[all.length - 1];
-      const deviceId = back.deviceId;
+      const deviceId = back?.deviceId;
 
-      // 4) Abre esa cámara y arranca lector
-      currentStream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId } }, audio: false });
+      // Abrimos con fallback
+      currentStream = await openStreamWithFallback(deviceId);
       video.srcObject = currentStream;
       await video.play();
 
+      // ZXing
       reader = new BrowserMultiFormatReader();
-      await reader.decodeFromVideoDevice(deviceId, video, async (result, err) => {
+      // Si tenemos deviceId úsalo; si no, null para que use la default
+      await reader.decodeFromVideoDevice(deviceId ?? null, video, async (result, err) => {
         if (result) {
           stopScanner();
           const code = (result.getText() || '').replace(/[^0-9Xx]/g,'');
@@ -183,14 +203,46 @@
     }
   }
 
+  // Botón de test rápido: te dice si hay permisos, cámaras y por qué falla
+  async function testCamera() {
+    const cont = document.getElementById('scanner');
+    try {
+      let txt = '';
+      // Estado de permiso si está disponible
+      const p = navigator.permissions && navigator.permissions.query ? await navigator.permissions.query({ name: 'camera' }) : null;
+      if (p) txt += `Permiso cámara: ${p.state}\n`;
+      // Prueba getUserMedia simple
+      try {
+        const s = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        s.getTracks().forEach(t=>t.stop());
+        txt += 'getUserMedia: ✅ OK\n';
+      } catch (e) {
+        txt += `getUserMedia: ❌ ${e.name}\n`;
+      }
+      // Enumerar dispositivos
+      const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
+      txt += `Cámaras detectadas: ${devs.length}\n`;
+      devs.forEach((d,i)=> txt += `- [${i}] ${d.label || '(sin etiqueta)'}\n`);
+      cont.textContent = txt;
+      cont.style.whiteSpace = 'pre-wrap';
+      cont.style.color = '#cfe7ff';
+    } catch (e) {
+      showError(`Test falló: ${e.name || ''} ${e.message || e}`);
+    }
+  }
+
+  // Eventos
   document.getElementById('btnScan').onclick = startScanner;
   document.getElementById('btnStop').onclick = stopScanner;
+  document.getElementById('btnTest').onclick = testCamera;
   document.getElementById('btnBuscar').onclick = async () => {
     const code = document.getElementById('eanInput').value.trim();
     if (code) await lookupAndRender(code);
   };
 </script>
 
+
 </body>
 </html>
+
 
