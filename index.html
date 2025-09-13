@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>PrecioReal · Escanea y ve el precio en Amazon</title>
   <meta name="description" content="Escanea códigos de barras (EAN/ISBN/UPC) y consulta el precio en Amazon.">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#0b0f14">
   <style>
     :root{ --bg:#0b0f14; --panel:#121824; --text:#e7edf7; --muted:#a8b3c7; --brand:#3aa1ff; --brand2:#1e78d5; --bd:#1a2434; }
     *{box-sizing:border-box}
@@ -27,6 +29,7 @@
     .title{font-weight:700;line-height:1.25}.price{font-weight:900;font-size:18px;margin-top:4px}
     .cta{margin-top:8px}.link{display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;background:#182339;border:1px solid #223352;color:#e7edf7;text-decoration:none}
     .disclaimer{font-size:12px;color:#a8b3c7;margin-top:8px}
+    .hint{font-size:12px;color:#9bb4d9;margin-top:6px}
   </style>
 </head>
 <body>
@@ -49,6 +52,11 @@
         <button class="btn secondary" id="btnTorch">Linterna</button>
         <button class="btn secondary" id="btnTest">Test cámara</button>
       </div>
+      <div class="row">
+        <input id="imgInput" type="file" accept="image/*" style="display:none">
+        <button class="btn secondary" id="btnUpload">Subir foto (leer código)</button>
+      </div>
+      <div class="hint">Si la cámara no abre, puedes subir una foto del código o introducir el EAN manualmente.</div>
     </section>
 
     <section class="panel">
@@ -57,6 +65,7 @@
         <input id="eanInput" inputmode="numeric" pattern="[0-9]*" placeholder="Ej.: 9788408306863" />
         <button class="btn secondary" id="btnBuscar">Buscar</button>
       </div>
+      <div class="hint" id="eanHint"></div>
     </section>
 
     <section class="panel" id="resultado" style="display:none">
@@ -79,33 +88,108 @@
 
     // ---------- helpers ----------
     const $ = id => document.getElementById(id);
-    const setNote = (m)=>{ const o=$('overlay'); if(o){o.textContent=m;o.style.display='block';} };
+    const note = (m)=>{ const o=$('overlay'); if(o){o.textContent=m;o.style.display='block';} };
     const hideNote = ()=>{ const o=$('overlay'); if(o) o.style.display='none'; };
+    const ttlSec = 1800; // 30 min cache local
+
+    function beep(){
+      try{ const ctx=new (window.AudioContext||window.webkitAudioContext)(); const o=ctx.createOscillator(); const g=ctx.createGain(); o.frequency.value=880; g.gain.value=0.1; o.connect(g).connect(ctx.destination); o.start(); setTimeout(()=>{o.stop();ctx.close();},120);}catch(_){}
+      try{ navigator.vibrate && navigator.vibrate(80); }catch(_){}
+    }
+
+    // EAN/UPC checksum básico
+    function validCode(code){
+      const s = String(code).replace(/[^0-9]/g,'');
+      if (![8,12,13].includes(s.length)) return { ok:false, reason:'longitud' };
+      if (s.length === 8 || s.length === 13){
+        // EAN-8/13 checksum
+        const digits = s.split('').map(n=>+n);
+        const check = digits.pop();
+        const sum = digits.reverse().reduce((acc,d,i)=> acc + d*(i%2?3:1), 0);
+        const calc = (10 - (sum % 10)) % 10;
+        return { ok: calc === check, reason: calc === check ? '' : 'checksum' };
+      }
+      // UPC-A (12): convertir a EAN-13 con 0 delante para validar
+      const e13 = ('0'+s).split('').map(n=>+n);
+      const check = e13.pop();
+      const sum = e13.reverse().reduce((acc,d,i)=> acc + d*(i%2?3:1), 0);
+      const calc = (10 - (sum % 10)) % 10;
+      return { ok: calc === check, reason: calc === check ? '' : 'checksum' };
+    }
+
+    function setEanHint(msg, ok){
+      const el = $('eanHint');
+      el.textContent = msg || '';
+      el.style.color = ok ? '#9fe29f' : '#ffb3b3';
+    }
+
+    // Cache local mínima
+    function cacheGet(ean){
+      try{
+        const raw = localStorage.getItem('pr-cache-'+ean);
+        if(!raw) return null;
+        const o = JSON.parse(raw);
+        if (!o || !o.t || !o.d) return null;
+        if ((Date.now()-o.t)/1000 > ttlSec) return null;
+        return o.d;
+      }catch(_){ return null; }
+    }
+    function cacheSet(ean, data){
+      try{ localStorage.setItem('pr-cache-'+ean, JSON.stringify({ t: Date.now(), d: data })); }catch(_){}
+    }
+
+    // Logs muy simples (a Vercel Logs)
+    async function log(evt, data){
+      try {
+        await fetch('/api/log', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ evt, data, t: Date.now() }) });
+      } catch(_){}
+    }
 
     function renderResult(ok, p, ean){
       p=p||{}; ean=ean||'';
       const box=$('resultado'), thumb=$('thumb'), title=$('title'), cat=$('category'), price=$('price'), link=$('amazonLink');
-      if(!ok){ box.style.display='block'; thumb.textContent='—'; title.textContent='No encontrado para '+ean; cat.textContent='—'; price.textContent='—'; link.href='#'; return; }
+      if(!ok){
+        box.style.display='block';
+        thumb.textContent='—';
+        title.textContent = 'Sin precio para ' + ean;
+        cat.textContent = 'Puede no estar en Amazon o no tener precio público.';
+        price.textContent = '—';
+        link.href = '#';
+        return;
+      }
       thumb.innerHTML = p.image ? '<img alt="Imagen" src="'+p.image+'">' : '—';
       title.textContent = p.title || ('Código '+ean);
       cat.textContent = p.category || '—';
-      price.textContent = p.price ? (p.price+' €') : '—';
+      price.textContent = (p.price != null) ? (p.price.toFixed ? p.price.toFixed(2) : p.price) + ' €' : '—';
       link.href = p.affiliateLink || '#';
-      box.style.display='block'; box.scrollIntoView({behavior:'smooth', block:'start'});
+      box.style.display='block';
+      box.scrollIntoView({behavior:'smooth', block:'start'});
     }
 
     async function lookupAndRender(ean){
-      try{ const r=await fetch('/api/lookup?ean='+encodeURIComponent(ean)); const d=await r.json(); renderResult(d&&d.success, d&&d.product, ean); }
-      catch(e){ setNote('No se pudo consultar el backend.'); renderResult(false,{},ean); }
+      const cached = cacheGet(ean);
+      if (cached){ renderResult(cached.success, cached.product, ean); log('cache-hit', { ean }); return; }
+
+      try{
+        const r = await fetch('/api/lookup?ean='+encodeURIComponent(ean));
+        const d = await r.json();
+        cacheSet(ean, d);
+        renderResult(d && d.success, d && d.product, ean);
+        log('lookup', { ean, success: !!(d && d.success) });
+      } catch(e){
+        note('No se pudo consultar el backend.');
+        renderResult(false, {}, ean);
+        log('lookup-error', { ean, err: String(e) });
+      }
     }
 
-    // ---------- estado ----------
+    // ---------- ZXing + cámara ----------
     let reader=null, currentStream=null, cams=[], camIndex=0, torchOn=false, justScanned=false;
 
     function stopScanner(){
       try{ reader&&reader.reset&&reader.reset(); }catch(_){}
       try{ currentStream&&currentStream.getTracks().forEach(t=>t.stop()); }catch(_){}
-      currentStream=null; setNote('Escáner detenido'); torchOn=false; justScanned=false;
+      currentStream=null; note('Escáner detenido'); torchOn=false; justScanned=false;
     }
 
     async function listCams(){
@@ -139,47 +223,40 @@
       });
     }
 
-    // Beep corto + vibración
-    function feedback(){
-      try{
-        const ctx = new (window.AudioContext||window.webkitAudioContext)();
-        const o = ctx.createOscillator(); o.frequency.value = 880;
-        const g = ctx.createGain(); g.gain.value = 0.1;
-        o.connect(g).connect(ctx.destination); o.start();
-        setTimeout(()=>{ o.stop(); ctx.close(); }, 120);
-      }catch(_){}
-      try{ navigator.vibrate && navigator.vibrate(80); }catch(_){}
-    }
-
-    // Torch (linterna) si el dispositivo lo soporta
     async function toggleTorch(){
       const track = currentStream?.getVideoTracks?.()[0];
       const caps = track?.getCapabilities?.();
-      if (!track || !caps || !caps.torch) { setNote('Este dispositivo no soporta linterna.'); return; }
+      if (!track || !caps || !caps.torch) { note('Este dispositivo no soporta linterna.'); return; }
       torchOn = !torchOn;
       try {
         await track.applyConstraints({ advanced: [{ torch: torchOn }] });
-        setNote(torchOn ? 'Linterna: ON' : 'Linterna: OFF');
+        note(torchOn ? 'Linterna: ON' : 'Linterna: OFF');
         setTimeout(hideNote, 800);
       } catch(e) {
-        setNote('No se pudo cambiar la linterna.');
+        note('No se pudo cambiar la linterna.');
       }
     }
 
     async function startScanner(){
-      setNote('Cargando ZXing…');
+      note('Cargando ZXing…');
       const ok = await loadZXing();
       const ZX = window.ZXingBrowser || window.ZXing || null;
       const Reader = ZX && ZX.BrowserMultiFormatReader ? ZX.BrowserMultiFormatReader : null;
-      if (!ok || !Reader) { setNote('ZXing no disponible. Usa la búsqueda manual.'); return; }
+      if (!ok || !Reader) { note('ZXing no disponible. Usa la búsqueda manual.'); return; }
 
-      setNote('Pidiendo permiso de cámara…');
+      // Log motor (local-file / mirror / stub)
+      try{
+        const r = await fetch('/api/zxing.js', { cache:'no-store' });
+        log('engine', { header:r.headers.get('X-Precioreal-ZXing') });
+      }catch(_){}
+
+      note('Pidiendo permiso de cámara…');
       try {
         const prov = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'environment' } }, audio:false });
         prov.getTracks().forEach(t=>t.stop());
       } catch(e) {
-        if (e && (e.name==='NotAllowedError'||e.name==='PermissionDeniedError')) { setNote('Permiso denegado. Actívalo en los ajustes del navegador.'); return; }
-        if (e && (e.name==='NotFoundError'||e.name==='DevicesNotFoundError')) { setNote('No hay cámara disponible.'); return; }
+        if (e && (e.name==='NotAllowedError'||e.name==='PermissionDeniedError')) { note('Permiso denegado. Actívalo en los ajustes del navegador.'); log('perm-denied',{}); return; }
+        if (e && (e.name==='NotFoundError'||e.name==='DevicesNotFoundError')) { note('No hay cámara disponible.'); log('no-camera',{}); return; }
       }
 
       const cont = $('scanner');
@@ -190,19 +267,20 @@
       cont.replaceChildren(video, (function(){ const m=document.createElement('div'); m.id='overlay'; return m;})());
 
       const deviceId = await listCams();
-      setNote('Abriendo cámara…');
+      note('Abriendo cámara…');
 
       try {
         currentStream = await openStream(deviceId);
         video.srcObject = currentStream; await video.play();
         hideNote();
       } catch(e) {
-        if (e && (e.name==='NotReadableError'||e.name==='TrackStartError')) setNote('Otra app está usando la cámara. Ciérrala y reintenta.');
-        else setNote('No se pudo abrir la cámara. Prueba el modo manual.');
+        if (e && (e.name==='NotReadableError'||e.name==='TrackStartError')) note('Otra app está usando la cámara. Ciérrala y reintenta.');
+        else note('No se pudo abrir la cámara. Prueba el modo manual.');
+        log('open-fail', { err: e && (e.name||e.message) });
         return;
       }
 
-      setNote('Escaneando…');
+      note('Escaneando…');
       reader = new Reader();
       justScanned = false;
       await reader.decodeFromVideoDevice(deviceId || null, video, async (result, err)=>{
@@ -211,7 +289,7 @@
           const code = raw.replace(/[^0-9Xx]/g,'');
           if (code) {
             justScanned = true;
-            feedback();
+            beep();
             stopScanner();
             await lookupAndRender(code);
           }
@@ -230,7 +308,7 @@
       video.muted=true; video.playsInline=true;
       video.style.width='100%'; video.style.height='100%'; video.style.objectFit='cover';
       cont.replaceChildren(video, (function(){ const m=document.createElement('div'); m.id='overlay'; return m;})());
-      setNote('Cambiando de cámara…');
+      note('Cambiando de cámara…');
 
       try {
         const deviceId = cams[camIndex]?.deviceId || null;
@@ -239,23 +317,66 @@
 
         const ZX = window.ZXingBrowser || window.ZXing || null;
         const Reader = ZX && ZX.BrowserMultiFormatReader ? ZX.BrowserMultiFormatReader : null;
-        if (!Reader) { setNote('ZXing no disponible.'); return; }
+        if (!Reader) { note('ZXing no disponible.'); return; }
 
         const rdr = new Reader();
         justScanned = false;
-        setNote('Escaneando…');
+        note('Escaneando…');
         await rdr.decodeFromVideoDevice(deviceId || null, video, async (result, err)=>{
           if (result && result.getText && !justScanned) {
             const raw = result.getText()||'';
             const code = raw.replace(/[^0-9Xx]/g,'');
-            if (code) { justScanned=true; feedback(); stopScanner(); await lookupAndRender(code); }
+            if (code) { justScanned=true; beep(); stopScanner(); await lookupAndRender(code); }
           }
         });
       } catch(e){
-        setNote('No se pudo abrir la cámara seleccionada.');
+        note('No se pudo abrir la cámara seleccionada.');
       }
     }
 
+    // Leer desde imagen (BarcodeDetector; si no hay, informamos)
+    $('btnUpload').addEventListener('click', ()=> $('imgInput').click());
+    $('imgInput').addEventListener('change', async (ev)=>{
+      const f = ev.target.files && ev.target.files[0];
+      if (!f) return;
+      try{
+        const imgURL = URL.createObjectURL(f);
+        const img = new Image();
+        img.onload = async ()=>{
+          try{
+            if ('BarcodeDetector' in window) {
+              const bmp = await createImageBitmap(img);
+              const det = new BarcodeDetector({ formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39','qr_code'] });
+              const codes = await det.detect(bmp);
+              bmp.close && bmp.close();
+              if (codes && codes.length) {
+                const code = String(codes[0].rawValue||'').replace(/[^0-9Xx]/g,'');
+                if (code){ beep(); await lookupAndRender(code); return; }
+              }
+              note('No se detectó código en la imagen.');
+            } else {
+              note('Este navegador no soporta lectura desde imagen.');
+            }
+          }catch(e){ note('Fallo al procesar la imagen.'); }
+          URL.revokeObjectURL(imgURL);
+        };
+        img.src = imgURL;
+      }catch(_){ note('No se pudo abrir la imagen.'); }
+    });
+
+    // Validación al escribir EAN
+    $('eanInput').addEventListener('input', ()=>{
+      const s = $('eanInput').value.replace(/[^0-9]/g,'');
+      if (!s) { setEanHint('', true); return; }
+      const v = validCode(s);
+      if (!v.ok) {
+        setEanHint(v.reason==='longitud' ? 'El código debe tener 8, 12 o 13 dígitos.' : 'El dígito de control no cuadra.', false);
+      } else {
+        setEanHint('Código válido.', true);
+      }
+    });
+
+    // Test rápida
     async function testCamera(){
       let txt='';
       if (navigator.permissions && navigator.permissions.query) {
@@ -269,7 +390,7 @@
         txt+='Capacidades: '+Object.keys(caps).join(', ')+'\n';
         txt+='Torch soportado: '+(caps.torch?'sí':'no')+'\n';
       }
-      setNote(txt||'Test hecho');
+      note(txt||'Test hecho');
     }
 
     // eventos
@@ -278,7 +399,12 @@
     $('btnSwap').addEventListener('click', swapCamera);
     $('btnTorch').addEventListener('click', toggleTorch);
     $('btnTest').addEventListener('click', testCamera);
-    $('btnBuscar').addEventListener('click', async ()=>{ const code=$('eanInput').value.trim(); if(code) await lookupAndRender(code); });
+    $('btnBuscar').addEventListener('click', async ()=>{
+      const code = $('eanInput').value.replace(/[^0-9]/g,'');
+      const v = validCode(code);
+      if (!v.ok){ setEanHint('Código no válido.', false); return; }
+      await lookupAndRender(code);
+    });
   })();
   </script>
 </body>
