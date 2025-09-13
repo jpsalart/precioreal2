@@ -1,12 +1,27 @@
-// api/lookup.js — Precio por EAN usando Keepa (mínimo viable)
+// api/lookup.js — Mínimo viable con Keepa → ASIN → enlace afiliado propio
 export const config = { runtime: 'nodejs' };
 
 const KEEPAA_ENDPOINT = 'https://api.keepa.com/product';
-
-// España por defecto (ES = 9 en Keepa). Cambia con KEEPAA_DOMAIN si quieres otro marketplace.
-const DOMAIN = String(process.env.KEEPAA_DOMAIN || '9');
+const DOMAIN = String(process.env.KEEPAA_DOMAIN || '9'); // ES por defecto
 
 const centsToCurrency = n => (typeof n === 'number' && isFinite(n)) ? (n / 100) : null;
+
+function isbn13to10(isbn13) {
+  const s = String(isbn13).replace(/[^0-9]/g,'');
+  if (s.length !== 13 || !s.startsWith('978')) return null;
+  const core = s.slice(3, 12); // 9 dígitos centrales
+  let sum = 0;
+  for (let i = 0; i < 9; i++) sum += (10 - i) * parseInt(core[i], 10);
+  const check = (11 - (sum % 11)) % 11;
+  const cd = check === 10 ? 'X' : String(check);
+  return core + cd;
+}
+
+function buildAffiliateShort(asin, domainId) {
+  const d = String(domainId || DOMAIN);
+  // usamos nuestro redireccionador
+  return `/api/go/${encodeURIComponent(asin)}?d=${encodeURIComponent(d)}`;
+}
 
 export default async function handler(req, res) {
   const ean = String(req.query.ean || '').trim();
@@ -15,7 +30,7 @@ export default async function handler(req, res) {
   const key = (process.env.KEEPAA_API_KEY || '').trim();
   if (!key) { res.status(500).json({ success:false, error:'Missing KEEPAA_API_KEY' }); return; }
 
-  // Incluimos "stats" para obtener precios agregados; sin el histórico para reducir payload.
+  // Keepa por "code" (mapea EAN/UPC/ISBN → ASIN)
   const qs = new URLSearchParams({ key, domain: DOMAIN, code: ean, stats: '180', history: '0' });
 
   try {
@@ -24,12 +39,26 @@ export default async function handler(req, res) {
 
     const p = data && Array.isArray(data.products) ? data.products[0] : null;
     if (!p) {
+      // Intento de libro: ISBN-13 (978) → ISBN-10
+      const isbn10 = isbn13to10(ean);
+      if (isbn10) {
+        const affiliateLink = buildAffiliateShort(isbn10, DOMAIN);
+        res.setHeader('Cache-Control','public, max-age=600, s-maxage=600');
+        res.status(200).json({
+          success: true,
+          product: { title: `ISBN ${isbn10}`, image: null, price: null, category: 'Libro', affiliateLink },
+          meta: { asinGuessFromIsbn10: true }
+        });
+        return;
+      }
       res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=60');
       res.status(404).json({ success:false, error:'Not found' });
       return;
     }
 
-    // Título / imagen
+    // Datos básicos
+    const asin = p.asin;
+    const domainId = (p.domainId || DOMAIN); // si Keepa devuelve domainId, úsalo
     const title = p.title || `Código ${ean}`;
     let image = null;
     if (p.imagesCSV) {
@@ -37,7 +66,7 @@ export default async function handler(req, res) {
       if (first) image = `https://images-na.ssl-images-amazon.com/images/I/${first}`;
     }
 
-    // Precio (céntimos → €). Intentamos buybox; si no, precio "new".
+    // Precio aproximado (si viene en stats/current, en céntimos)
     let price = null;
     if (p.stats) {
       const s = p.stats;
@@ -49,22 +78,13 @@ export default async function handler(req, res) {
       price = centsToCurrency(cand);
     }
 
-    // Enlace afiliado
-    const asin = p.asin;
-    const tag  = (process.env.AMAZON_ASSOCIATE_TAG || '').trim();
-    const affiliateLink = asin ? `https://www.amazon.es/dp/${asin}${tag ? `?tag=${encodeURIComponent(tag)}` : ''}` : null;
+    const affiliateLink = asin ? buildAffiliateShort(asin, domainId) : null;
 
-    res.setHeader('Cache-Control','public, max-age=1800, s-maxage=1800'); // 30 min cache
+    res.setHeader('Cache-Control','public, max-age=1800, s-maxage=1800');
     res.status(200).json({
       success: true,
-      product: {
-        title,
-        image,
-        price,
-        category: p.productGroup || '',
-        affiliateLink
-      },
-      meta: { asin, domain: DOMAIN }
+      product: { title, image, price, category: p.productGroup || '', affiliateLink },
+      meta: { asin, domain: String(domainId) }
     });
   } catch (e) {
     res.status(500).json({ success:false, error:'Keepa request failed', detail: String(e) });
