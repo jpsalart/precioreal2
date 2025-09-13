@@ -85,7 +85,8 @@ Descripción:
 - Redirección afiliado /api/go/[asin].js con ?tag=
 - Sin precios (cumplimiento política Amazon)
 - Validación EAN/UPC corregida
-
+--------------------------------------------------------------
+Resumen:
 
 Escáner EAN/UPC/ISBN → ASIN y botón “Ver en Amazon” con afiliado.
 Estado actual: escáner estable (móvil/PC) con ZXing local, Keepa para EAN→ASIN, sin precios (cumplimiento de política).
