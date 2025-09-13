@@ -70,87 +70,127 @@
     </section>
   </div>
 
-  <script>
-    const { BrowserMultiFormatReader } = ZXingBrowser;
-    let reader, stream;
+<script>
+  const { BrowserMultiFormatReader } = ZXingBrowser;
+  let reader, currentStream;
 
-    function renderResult(ok, p = {}, ean = '') {
-      const box = document.getElementById('resultado');
-      const thumb = document.getElementById('thumb');
-      const title = document.getElementById('title');
-      const cat = document.getElementById('category');
-      const price = document.getElementById('price');
-      const link = document.getElementById('amazonLink');
+  function showError(msg) {
+    const cont = document.getElementById('scanner');
+    cont.style.color = '#ffb3b3';
+    cont.style.fontSize = '14px';
+    cont.textContent = `⚠️ ${msg}`;
+    console.error(msg);
+  }
 
-      if (!ok) {
-        box.style.display = 'block';
-        thumb.textContent = '—';
-        title.textContent = `No encontrado para ${ean}`;
-        cat.textContent = '—';
-        price.textContent = '—';
-        link.href = '#';
-        return;
-      }
-      thumb.innerHTML = p.image ? `<img alt="Imagen" src="${p.image}">` : '—';
-      title.textContent = p.title || `Código ${ean}`;
-      cat.textContent = p.category || '—';
-      price.textContent = p.price ? `${p.price} €` : '—';
-      link.href = p.affiliateLink || '#';
+  function renderResult(ok, p = {}, ean = '') {
+    const box = document.getElementById('resultado');
+    const thumb = document.getElementById('thumb');
+    const title = document.getElementById('title');
+    const cat = document.getElementById('category');
+    const price = document.getElementById('price');
+    const link = document.getElementById('amazonLink');
+
+    if (!ok) {
       box.style.display = 'block';
-      box.scrollIntoView({ behavior:'smooth', block:'start' });
+      thumb.textContent = '—';
+      title.textContent = `No encontrado para ${ean}`;
+      cat.textContent = '—';
+      price.textContent = '—';
+      link.href = '#';
+      return;
     }
+    thumb.innerHTML = p.image ? `<img alt="Imagen" src="${p.image}">` : '—';
+    title.textContent = p.title || `Código ${ean}`;
+    cat.textContent = p.category || '—';
+    price.textContent = p.price ? `${p.price} €` : '—';
+    link.href = p.affiliateLink || '#';
+    box.style.display = 'block';
+    box.scrollIntoView({ behavior:'smooth', block:'start' });
+  }
 
-    async function lookupAndRender(ean) {
-      try {
-        const res = await fetch(`/api/lookup?ean=${encodeURIComponent(ean)}`);
-        const data = await res.json();
-        renderResult(data.success, data.product, ean);
-      } catch (e) {
+  async function lookupAndRender(ean) {
+    try {
+      const res = await fetch(`/api/lookup?ean=${encodeURIComponent(ean)}`);
+      const data = await res.json();
+      renderResult(data.success, data.product, ean);
+    } catch (e) {
+      showError('No se pudo consultar el backend (/api/lookup).');
+      renderResult(false, {}, ean);
+    }
+  }
+
+  function stopScanner() {
+    try { reader?.reset(); } catch {}
+    try { currentStream?.getTracks()?.forEach(t => t.stop()); } catch {}
+    currentStream = null;
+    document.getElementById('scanner').textContent = 'Escáner detenido';
+  }
+
+  async function startScanner() {
+    const cont = document.getElementById('scanner');
+
+    // <video> compatible con iOS
+    const video = document.createElement('video');
+    video.setAttribute('playsinline','');
+    video.setAttribute('autoplay','');
+    video.setAttribute('muted','');
+    video.muted = true;
+    video.style.width = '100%';
+    cont.replaceChildren(video);
+
+    try {
+      // 1) Pide permiso primero, sin deviceId (iOS necesita esto)
+      const provisional = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } },
+        audio: false
+      });
+      provisional.getTracks().forEach(t => t.stop());
+
+      // 2) Enumera cámaras ya con permiso concedido
+      const all = (await navigator.mediaDevices.enumerateDevices())
+        .filter(d => d.kind === 'videoinput');
+      if (!all.length) { showError('No se encontró ninguna cámara.'); return; }
+
+      // 3) Heurística para trasera
+      const back = all.find(d => /back|rear|environment|trás|atrás/i.test(d.label)) || all[all.length - 1];
+      const deviceId = back.deviceId;
+
+      // 4) Abre esa cámara y arranca lector
+      currentStream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId } }, audio: false });
+      video.srcObject = currentStream;
+      await video.play();
+
+      reader = new BrowserMultiFormatReader();
+      await reader.decodeFromVideoDevice(deviceId, video, async (result, err) => {
+        if (result) {
+          stopScanner();
+          const code = (result.getText() || '').replace(/[^0-9Xx]/g,'');
+          if (code) await lookupAndRender(code);
+        }
+      });
+
+    } catch (e) {
+      if (e && (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError')) {
+        showError('Permiso de cámara denegado. Actívalo en los ajustes del navegador.');
+      } else if (e && (e.name === 'NotFoundError' || e.name === 'DevicesNotFoundError')) {
+        showError('No hay cámara disponible en este dispositivo.');
+      } else if (e && e.message?.includes('Only secure origins')) {
+        showError('La cámara solo funciona en sitios HTTPS (candado).');
+      } else {
+        showError('No se pudo iniciar la cámara. Usa el campo manual.');
         console.error(e);
-        renderResult(false, {}, ean);
       }
     }
+  }
 
-    async function startScanner() {
-      try {
-        reader = new BrowserMultiFormatReader();
-        const videoEl = document.createElement('video');
-        videoEl.setAttribute('playsinline','');
-        videoEl.style.width = '100%';
-        const cont = document.getElementById('scanner');
-        cont.replaceChildren(videoEl);
+  document.getElementById('btnScan').onclick = startScanner;
+  document.getElementById('btnStop').onclick = stopScanner;
+  document.getElementById('btnBuscar').onclick = async () => {
+    const code = document.getElementById('eanInput').value.trim();
+    if (code) await lookupAndRender(code);
+  };
+</script>
 
-        const devices = await BrowserMultiFormatReader.listVideoInputDevices();
-        const backCam = devices.find(d => /back|rear|environment/i.test(d.label))?.deviceId || devices[0]?.deviceId;
-
-        stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: backCam ? { exact: backCam } : undefined, facingMode: 'environment' } });
-        videoEl.srcObject = stream; await videoEl.play();
-
-        await reader.decodeFromVideoDevice(backCam ?? null, videoEl, async (result, err) => {
-          if (result) {
-            stopScanner();
-            const code = (result.getText() || '').replace(/[^0-9Xx]/g,'');
-            if (code) await lookupAndRender(code);
-          }
-        });
-      } catch (e) {
-        console.error(e);
-        alert('No se pudo iniciar la cámara. Usa el campo manual.');
-      }
-    }
-    function stopScanner() {
-      try { reader?.reset(); } catch {}
-      try { stream?.getTracks()?.forEach(t=>t.stop()); } catch {}
-      document.getElementById('scanner').textContent = 'Escáner detenido';
-    }
-
-    // Botones
-    document.getElementById('btnScan').onclick = startScanner;
-    document.getElementById('btnStop').onclick = stopScanner;
-    document.getElementById('btnBuscar').onclick = async () => {
-      const code = document.getElementById('eanInput').value.trim();
-      if (code) await lookupAndRender(code);
-    };
-  </script>
 </body>
 </html>
+
