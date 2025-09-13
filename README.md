@@ -181,7 +181,13 @@ Crear.
 (Opcional) Settings → Branches → Add rule para proteger snapshot-* o esa rama concreta (evitar borrado/ediciones accidentales).
 
 ✅ Resultado: tienes una rama-clon del estado actual. Si algo se rompe en main, puedes abrir un PR desde snapshot-2025-09-13 para “devolver” main al estado seguro.
+PASOS:
+stando en la página del código en la tag (como en los pasos de arriba), abre el selector de Branch/Tag (arriba a la izquierda, donde suele poner “main”).
 
+En el buscador de ese menú, escribe un nombre de rama, por ejemplo:
+restore-2025-09-13
+
+Te saldrá la opción: Create branch restore-2025-09-13 from TO snapshot-2025-09-13.
 
 Vercel:
 A) “Staged + Promote”: congelar producción y promocionar a mano (recomendado)
