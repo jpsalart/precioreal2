@@ -1,1 +1,12 @@
+{
+  "name": "precioreal",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "prepare:zxing": "node scripts/prepare-zxing.js"
+  },
+  "dependencies": {
+    "@zxing/browser": "0.1.5"
+  }
+}
 
