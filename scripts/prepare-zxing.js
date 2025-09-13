@@ -1,5 +1,5 @@
 // scripts/prepare-zxing.js
-// Copia el UMD de @zxing/browser a /vendor/zxing/index.min.js para servirlo desde tu dominio
+// Copia el UMD de @zxing/browser a /vendor/zxing/index.min.js para servirlo desde TU dominio.
 
 const fs = require('fs');
 const path = require('path');
