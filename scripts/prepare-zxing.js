@@ -1,5 +1,6 @@
 // scripts/prepare-zxing.js
 // Copia el UMD de @zxing/browser a /vendor/zxing/index.min.js para servirlo desde tu dominio
+
 const fs = require('fs');
 const path = require('path');
 
@@ -16,4 +17,3 @@ if (!fs.existsSync(src)) {
 
 fs.copyFileSync(src, dest);
 console.log('✅ ZXing copiado a', dest);
-
