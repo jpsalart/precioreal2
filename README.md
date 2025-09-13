@@ -172,7 +172,7 @@ Mejor opcion punto restauracion Github:
 
 Crea una branch snapshot adicional
 
-En la portada del repo, desplegable de branches → New branch.
+En el desplegable (main) escribir nombre: snapshot-2025-09-13 from main.
 
 Nombre: snapshot-2025-09-13 (base: main).
 
