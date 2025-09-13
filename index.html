@@ -6,7 +6,6 @@
   <title>PrecioReal · Escanea y ve el precio en Amazon</title>
   <meta name="description" content="Escanea códigos de barras (EAN/ISBN/UPC) y consulta el precio en Amazon.">
   <style>
-    /* UI básica, mobile-first */
     :root{
       --bg:#0b0f14; --panel:#121824; --panel2:#0f1520;
       --text:#e7edf7; --muted:#a8b3c7;
@@ -35,12 +34,6 @@
     .link{display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;background:#182339;border:1px solid #223352;color:var(--text);text-decoration:none}
     .disclaimer{font-size:12px;color:var(--muted);margin-top:8px}
   </style>
-
-  <!-- ZXing: principal (jsDelivr) con fallback a unpkg -->
-  <script
-    src="https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.7/umd/index.min.js"
-    onerror="(function(){var s=document.createElement('script');s.src='https://unpkg.com/@zxing/browser@0.1.7/umd/index.min.js';document.head.appendChild(s);}())">
-  </script>
 </head>
 <body>
   <div class="wrap">
@@ -84,18 +77,52 @@
     </section>
   </div>
 
-  <!-- SCRIPT PRINCIPAL (robusto y con diagnósticos) -->
+  <!-- SCRIPT PRINCIPAL -->
   <script>
   (function(){
     'use strict';
 
-    // ---- Referencias y helpers ----
-    var ZX = window.ZXingBrowser || window.ZXing || null; // global UMD posible
-    var BrowserMultiFormatReader = ZX ? ZX.BrowserMultiFormatReader : null;
+    // ---------- Loader de ZXing (con reintentos) ----------
+    var ZX = null;
+    var BrowserMultiFormatReader = null;
 
-    var reader = null;
-    var currentStream = null;
+    function loadScript(src){
+      return new Promise(function(resolve, reject){
+        var s = document.createElement('script');
+        s.src = src;
+        s.async = true;
+        s.onload = function(){ resolve(); };
+        s.onerror = function(){ reject(new Error('No se pudo cargar: ' + src)); };
+        document.head.appendChild(s);
+      });
+    }
 
+    async function ensureZXing(){
+      if (window.ZXingBrowser || window.ZXing) {
+        ZX = window.ZXingBrowser || window.ZXing;
+        BrowserMultiFormatReader = ZX.BrowserMultiFormatReader;
+        return true;
+      }
+      var urls = [
+        'https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.7/umd/index.min.js',
+        'https://unpkg.com/@zxing/browser@0.1.7/umd/index.min.js',
+        // Opcional: si más adelante subes el archivo local, esto será el 3er intento:
+        '/vendor/zxing/index.min.js'
+      ];
+      for (var i=0;i<urls.length;i++){
+        try {
+          await loadScript(urls[i]);
+          if (window.ZXingBrowser || window.ZXing) {
+            ZX = window.ZXingBrowser || window.ZXing;
+            BrowserMultiFormatReader = ZX.BrowserMultiFormatReader;
+            return true;
+          }
+        } catch(e){ /* intenta el siguiente */ }
+      }
+      return false;
+    }
+
+    // ---------- UI Helpers ----------
     function $(id){ return document.getElementById(id); }
 
     function showError(msg) {
@@ -104,6 +131,13 @@
       cont.style.fontSize = '14px';
       cont.textContent = '⚠️ ' + msg;
       console.error(msg);
+    }
+
+    function showInfo(msg) {
+      var cont = $('scanner');
+      cont.style.color = '#cfe7ff';
+      cont.style.fontSize = '14px';
+      cont.textContent = msg;
     }
 
     function renderResult(ok, p, ean) {
@@ -145,6 +179,10 @@
       }
     }
 
+    // ---------- Escáner ----------
+    var reader = null;
+    var currentStream = null;
+
     function stopScanner() {
       try { if (reader && reader.reset) reader.reset(); } catch(_){}
       try { if (currentStream) currentStream.getTracks().forEach(function(t){ t.stop(); }); } catch(_){}
@@ -153,30 +191,27 @@
     }
 
     async function openStreamWithFallback(deviceId) {
-      // 1) Intento exacto con deviceId
       if (deviceId) {
         try {
           return await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId } }, audio:false });
         } catch(_){}
       }
-      // 2) Intento con facingMode environment
       try {
         return await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio:false });
       } catch(_){}
-      // 3) Último recurso: cualquier cámara disponible
       return await navigator.mediaDevices.getUserMedia({ video: true, audio:false });
     }
 
     async function startScanner() {
-      // Verifica ZXing cargado
-      if (!BrowserMultiFormatReader) {
+      showInfo('Cargando motor de escaneo…');
+      var ok = await ensureZXing();
+      if (!ok || !BrowserMultiFormatReader) {
         showError('No se pudo cargar el motor de escaneo (ZXing). Usa la búsqueda manual.');
         return;
       }
 
       var cont = $('scanner');
 
-      // <video> compatible con iOS
       var video = document.createElement('video');
       video.setAttribute('playsinline','');
       video.setAttribute('autoplay','');
@@ -186,26 +221,21 @@
       cont.replaceChildren(video);
 
       try {
-        // Pedir permiso primero (sin deviceId) → para etiquetar cámaras en iOS
+        // Pide permiso sin deviceId para que iOS etiquete cámaras
         var prov = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio:false });
         prov.getTracks().forEach(function(t){ t.stop(); });
 
-        // Enumerar cámaras con permiso ya concedido
-        var devicesAll = await navigator.mediaDevices.enumerateDevices();
-        var cams = devicesAll.filter(function(d){ return d.kind === 'videoinput'; });
-
+        var devs = await navigator.mediaDevices.enumerateDevices();
+        var cams = devs.filter(function(d){ return d.kind === 'videoinput'; });
         if (!cams.length) { showError('No se encontró ninguna cámara.'); return; }
 
-        // Heurística de “trasera”
         var back = cams.find(function(d){ return /back|rear|environment|atrás|trás/i.test(d.label||''); }) || cams[cams.length - 1];
         var deviceId = back && back.deviceId;
 
-        // Abrir stream con fallback
         currentStream = await openStreamWithFallback(deviceId);
         video.srcObject = currentStream;
         await video.play();
 
-        // Iniciar ZXing
         reader = new BrowserMultiFormatReader();
         await reader.decodeFromVideoDevice(deviceId || null, video, async function(result, err){
           if (result && result.getText) {
@@ -213,7 +243,6 @@
             var code = (result.getText() || '').replace(/[^0-9Xx]/g,'');
             if (code) await lookupAndRender(code);
           }
-          // err: frames sin decodificar son normales; ignorar
         });
 
       } catch (e) {
@@ -235,7 +264,6 @@
       try {
         var txt = '';
 
-        // Estado de permiso (si está expuesto por el navegador)
         if (navigator.permissions && navigator.permissions.query) {
           try {
             var p = await navigator.permissions.query({ name:'camera' });
@@ -243,7 +271,6 @@
           } catch(_){}
         }
 
-        // Prueba simple de getUserMedia
         try {
           var s = await navigator.mediaDevices.getUserMedia({ video:true, audio:false });
           s.getTracks().forEach(function(t){ t.stop(); });
@@ -252,7 +279,6 @@
           txt += 'getUserMedia: ❌ ' + (e.name || e.message) + '\n';
         }
 
-        // Enumerar cámaras
         var devs = await navigator.mediaDevices.enumerateDevices();
         var cams = devs.filter(function(d){ return d.kind==='videoinput'; });
         txt += 'Cámaras detectadas: ' + cams.length + '\n';
@@ -266,12 +292,12 @@
       }
     }
 
-    // ---- Eventos UI ----
-    $('btnScan').addEventListener('click', startScanner);
-    $('btnStop').addEventListener('click', stopScanner);
-    $('btnTest').addEventListener('click', testCamera);
-    $('btnBuscar').addEventListener('click', async function(){
-      var code = $('eanInput').value.trim();
+    // Eventos UI
+    document.getElementById('btnScan').addEventListener('click', startScanner);
+    document.getElementById('btnStop').addEventListener('click', stopScanner);
+    document.getElementById('btnTest').addEventListener('click', testCamera);
+    document.getElementById('btnBuscar').addEventListener('click', async function(){
+      var code = document.getElementById('eanInput').value.trim();
       if (code) await lookupAndRender(code);
     });
   })();
