@@ -1,1 +1,4 @@
+User-agent: *
+Allow: /
+Sitemap: https://precioreal2.vercel.app/sitemap.xml
 
