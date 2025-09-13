@@ -77,54 +77,12 @@
     </section>
   </div>
 
-  <!-- SCRIPT PRINCIPAL -->
   <script>
   (function(){
     'use strict';
 
-    // ---------- Loader de ZXing (con reintentos) ----------
-    var ZX = null;
-    var BrowserMultiFormatReader = null;
-
-    function loadScript(src){
-      return new Promise(function(resolve, reject){
-        var s = document.createElement('script');
-        s.src = src;
-        s.async = true;
-        s.onload = function(){ resolve(); };
-        s.onerror = function(){ reject(new Error('No se pudo cargar: ' + src)); };
-        document.head.appendChild(s);
-      });
-    }
-
-    async function ensureZXing(){
-      if (window.ZXingBrowser || window.ZXing) {
-        ZX = window.ZXingBrowser || window.ZXing;
-        BrowserMultiFormatReader = ZX.BrowserMultiFormatReader;
-        return true;
-      }
-      var urls = [
-        'https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.7/umd/index.min.js',
-        'https://unpkg.com/@zxing/browser@0.1.7/umd/index.min.js',
-        // Opcional: si más adelante subes el archivo local, esto será el 3er intento:
-        '/vendor/zxing/index.min.js'
-      ];
-      for (var i=0;i<urls.length;i++){
-        try {
-          await loadScript(urls[i]);
-          if (window.ZXingBrowser || window.ZXing) {
-            ZX = window.ZXingBrowser || window.ZXing;
-            BrowserMultiFormatReader = ZX.BrowserMultiFormatReader;
-            return true;
-          }
-        } catch(e){ /* intenta el siguiente */ }
-      }
-      return false;
-    }
-
-    // ---------- UI Helpers ----------
+    // ------------ Helpers UI ------------
     function $(id){ return document.getElementById(id); }
-
     function showError(msg) {
       var cont = $('scanner');
       cont.style.color = '#ffb3b3';
@@ -132,24 +90,20 @@
       cont.textContent = '⚠️ ' + msg;
       console.error(msg);
     }
-
     function showInfo(msg) {
       var cont = $('scanner');
       cont.style.color = '#cfe7ff';
       cont.style.fontSize = '14px';
       cont.textContent = msg;
     }
-
     function renderResult(ok, p, ean) {
-      p = p || {};
-      ean = ean || '';
+      p = p || {}; ean = ean || '';
       var box = $('resultado');
       var thumb = $('thumb');
       var title = $('title');
       var cat = $('category');
       var price = $('price');
       var link = $('amazonLink');
-
       if (!ok) {
         box.style.display = 'block';
         thumb.textContent = '—';
@@ -167,7 +121,6 @@
       box.style.display = 'block';
       box.scrollIntoView({ behavior:'smooth', block:'start' });
     }
-
     async function lookupAndRender(ean) {
       try {
         var res = await fetch('/api/lookup?ean=' + encodeURIComponent(ean));
@@ -179,39 +132,49 @@
       }
     }
 
-    // ---------- Escáner ----------
-    var reader = null;
+    // ------------ Escáner: BarcodeDetector nativo ------------
     var currentStream = null;
+    var stopRequested = false;
 
     function stopScanner() {
-      try { if (reader && reader.reset) reader.reset(); } catch(_){}
+      stopRequested = true;
       try { if (currentStream) currentStream.getTracks().forEach(function(t){ t.stop(); }); } catch(_){}
       currentStream = null;
       $('scanner').textContent = 'Escáner detenido';
     }
 
-    async function openStreamWithFallback(deviceId) {
-      if (deviceId) {
+    async function startScanner() {
+      showInfo('Preparando cámara…');
+
+      // 1) ¿Hay API nativa?
+      var NativeBD = ('BarcodeDetector' in window) ? window.BarcodeDetector : null;
+
+      // 2) Si NO hay API nativa y NO tienes ZXing local, avisamos y salimos
+      if (!NativeBD) {
+        // Intento cargar ZXing autoalojado, por si lo subiste en /vendor/zxing/index.min.js
         try {
-          return await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId } }, audio:false });
+          await new Promise(function(resolve, reject){
+            var s = document.createElement('script');
+            s.src = '/vendor/zxing/index.min.js'; // súbelo tú (ver instrucciones debajo)
+            s.async = true;
+            s.onload = resolve;
+            s.onerror = reject;
+            document.head.appendChild(s);
+          });
         } catch(_){}
       }
-      try {
-        return await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio:false });
-      } catch(_){}
-      return await navigator.mediaDevices.getUserMedia({ video: true, audio:false });
-    }
 
-    async function startScanner() {
-      showInfo('Cargando motor de escaneo…');
-      var ok = await ensureZXing();
-      if (!ok || !BrowserMultiFormatReader) {
-        showError('No se pudo cargar el motor de escaneo (ZXing). Usa la búsqueda manual.');
+      // Revisa de nuevo: ¿se cargó ZXing?
+      var ZX = window.ZXingBrowser || window.ZXing || null;
+      var ZXReader = ZX ? ZX.BrowserMultiFormatReader : null;
+
+      if (!NativeBD && !ZXReader) {
+        showError('Tu navegador no soporta escaneo nativo y no se encontró ZXing local. Usa la búsqueda manual o sube /vendor/zxing/index.min.js');
         return;
       }
 
+      // 3) Prepara <video> compatible iOS
       var cont = $('scanner');
-
       var video = document.createElement('video');
       video.setAttribute('playsinline','');
       video.setAttribute('autoplay','');
@@ -220,30 +183,87 @@
       video.style.width = '100%';
       cont.replaceChildren(video);
 
+      stopRequested = false;
+
       try {
-        // Pide permiso sin deviceId para que iOS etiquete cámaras
+        // Pedimos permiso sin deviceId (iOS etiqueta cámaras)
         var prov = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio:false });
         prov.getTracks().forEach(function(t){ t.stop(); });
 
+        // Elegimos cámara trasera si se puede
         var devs = await navigator.mediaDevices.enumerateDevices();
         var cams = devs.filter(function(d){ return d.kind === 'videoinput'; });
-        if (!cams.length) { showError('No se encontró ninguna cámara.'); return; }
+        var deviceId = null;
+        if (cams.length) {
+          var back = cams.find(function(d){ return /back|rear|environment|atrás|trás/i.test(d.label||''); }) || cams[cams.length - 1];
+          deviceId = back && back.deviceId;
+        }
 
-        var back = cams.find(function(d){ return /back|rear|environment|atrás|trás/i.test(d.label||''); }) || cams[cams.length - 1];
-        var deviceId = back && back.deviceId;
-
-        currentStream = await openStreamWithFallback(deviceId);
+        // Abrimos stream
+        try {
+          currentStream = deviceId
+            ? await navigator.mediaDevices.getUserMedia({ video:{ deviceId:{ exact: deviceId } }, audio:false })
+            : await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'environment' } }, audio:false });
+        } catch(_){
+          currentStream = await navigator.mediaDevices.getUserMedia({ video:true, audio:false });
+        }
         video.srcObject = currentStream;
         await video.play();
 
-        reader = new BrowserMultiFormatReader();
-        await reader.decodeFromVideoDevice(deviceId || null, video, async function(result, err){
-          if (result && result.getText) {
-            stopScanner();
-            var code = (result.getText() || '').replace(/[^0-9Xx]/g,'');
-            if (code) await lookupAndRender(code);
+        // 4) Camino A: BarcodeDetector nativo
+        if (NativeBD) {
+          showInfo('Escaneando (motor nativo)…');
+          var detector = new NativeBD({
+            formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39','qr_code']
+          });
+          var lastTs = 0;
+
+          async function tick(ts){
+            if (stopRequested || !currentStream) return;
+            // Limita a ~5 detecciones/segundo
+            if (ts - lastTs >= 180) {
+              lastTs = ts;
+              try {
+                const trackSettings = (currentStream.getVideoTracks()[0] || {}).getSettings?.() || {};
+                const w = trackSettings.width || video.videoWidth || 640;
+                const h = trackSettings.height || video.videoHeight || 480;
+                // Usa un frame actual mediante ImageBitmap (más rápido que canvas en muchos móviles)
+                const bitmap = await createImageBitmap(video, 0, 0, w, h);
+                const codes = await detector.detect(bitmap);
+                bitmap.close?.();
+                if (codes && codes.length) {
+                  const raw = codes[0].rawValue || '';
+                  const code = String(raw).replace(/[^0-9Xx]/g,'');
+                  if (code) {
+                    stopScanner();
+                    await lookupAndRender(code);
+                    return;
+                  }
+                }
+              } catch(_){}
+            }
+            video.requestVideoFrameCallback ? video.requestVideoFrameCallback(tick) : requestAnimationFrame(tick);
           }
-        });
+          video.requestVideoFrameCallback ? video.requestVideoFrameCallback(tick) : requestAnimationFrame(tick);
+          return;
+        }
+
+        // 5) Camino B: ZXing autoalojado
+        if (ZXReader) {
+          showInfo('Escaneando (ZXing)…');
+          var reader = new ZXReader();
+          await reader.decodeFromVideoDevice(deviceId || null, video, async function(result, err){
+            if (stopRequested || !currentStream) return;
+            if (result && result.getText) {
+              const code = (result.getText() || '').replace(/[^0-9Xx]/g,'');
+              if (code) {
+                stopScanner();
+                await lookupAndRender(code);
+              }
+            }
+          });
+          return;
+        }
 
       } catch (e) {
         if (e && (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError')) {
@@ -259,10 +279,12 @@
       }
     }
 
+    // ------------ Test cámara ------------
     async function testCamera() {
       var cont = $('scanner');
       try {
         var txt = '';
+        txt += 'BarcodeDetector: ' + (('BarcodeDetector' in window) ? '✅ disponible' : '❌ NO disponible') + '\n';
 
         if (navigator.permissions && navigator.permissions.query) {
           try {
@@ -282,8 +304,9 @@
         var devs = await navigator.mediaDevices.enumerateDevices();
         var cams = devs.filter(function(d){ return d.kind==='videoinput'; });
         txt += 'Cámaras detectadas: ' + cams.length + '\n';
-        cams.forEach(function(d,i){ txt += '- ['+i+'] ' + (d.label || '(sin etiqueta)') + '\n'; });
+        cams.forEach(function(d,i){ txt += '- ['+i+'] ' + (d.label || '(sin etiqueta)') + '\n';
 
+        });
         cont.textContent = txt;
         cont.style.whiteSpace = 'pre-wrap';
         cont.style.color = '#cfe7ff';
@@ -292,14 +315,15 @@
       }
     }
 
-    // Eventos UI
-    document.getElementById('btnScan').addEventListener('click', startScanner);
-    document.getElementById('btnStop').addEventListener('click', stopScanner);
-    document.getElementById('btnTest').addEventListener('click', testCamera);
-    document.getElementById('btnBuscar').addEventListener('click', async function(){
-      var code = document.getElementById('eanInput').value.trim();
+    // ------------ Eventos UI ------------
+    $('btnScan').addEventListener('click', startScanner);
+    $('btnStop').addEventListener('click', stopScanner);
+    $('btnTest').addEventListener('click', testCamera);
+    $('btnBuscar').addEventListener('click', async function(){
+      var code = $('eanInput').value.trim();
       if (code) await lookupAndRender(code);
     });
+
   })();
   </script>
 </body>
