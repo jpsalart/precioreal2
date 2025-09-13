@@ -168,6 +168,22 @@ docs/HANDOFF.md
 docs/ANEXO-PAAPI-DECISION.md
 
 --------------------------------------
+Mejor opcion punto restauracion Github:
+
+Crea una branch snapshot adicional
+
+En la portada del repo, desplegable de branches → New branch.
+
+Nombre: snapshot-2025-09-13 (base: main).
+
+Crear.
+
+(Opcional) Settings → Branches → Add rule para proteger snapshot-* o esa rama concreta (evitar borrado/ediciones accidentales).
+
+✅ Resultado: tienes una rama-clon del estado actual. Si algo se rompe en main, puedes abrir un PR desde snapshot-2025-09-13 para “devolver” main al estado seguro.
+
+
+Vercel:
 A) “Staged + Promote”: congelar producción y promocionar a mano (recomendado)
 B) “Instant Rollback”: volver al estado bueno en segundos
 
