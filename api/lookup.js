@@ -1,155 +1,72 @@
-// api/lookup.js — Vercel Serverless Function (Node 18+)
-// ✅ Integra Keepa (si hay KEEPA_KEY) y hace fallback a búsqueda Amazon con tu tag.
-// ✅ Devuelve: { success, product: { title, category, image, price, affiliateLink } }
+// api/lookup.js — Precio por EAN usando Keepa (mínimo viable)
+export const config = { runtime: 'nodejs' };
 
-const AMAZON_DOMAIN = 3; // 3 = Amazon.es (España)
+const KEEPAA_ENDPOINT = 'https://api.keepa.com/product';
 
-function euroFromCents(x) {
-  if (typeof x !== 'number' || x <= 0) return null;
-  return (x / 100).toFixed(2);
-}
+// España por defecto (ES = 9 en Keepa). Cambia con KEEPAA_DOMAIN si quieres otro marketplace.
+const DOMAIN = String(process.env.KEEPAA_DOMAIN || '9');
 
-function pickPrice(stats) {
-  if (!stats || typeof stats !== 'object') return null;
-  // Intentamos varios campos típicos que Keepa expone en cents:
-  const cands = [];
-  // Algunas integraciones exponen 'current' como número; otras usan claves por condición.
-  if (typeof stats.current === 'number') cands.push(stats.current);
-  // Campos alternativos que a veces se encuentran:
-  for (const k of [
-    'current_New', 'currentNew', 'currentUsed', 'current_Used',
-    'currentAmazon', 'current_Amazon', 'buyBoxPrice', 'buyBox'
-  ]) {
-    if (typeof stats[k] === 'number') cands.push(stats[k]);
-  }
-  // Si nada, probamos medias/últimos 90 días (aprox)
-  for (const k of ['avg90', 'avg30', 'avg180']) {
-    if (typeof stats[k] === 'number') cands.push(stats[k]);
-  }
-  const cents = cands.find(v => typeof v === 'number' && v > 0);
-  return euroFromCents(cents);
-}
-
-function buildImageUrlFromKeepa(imagesCSV) {
-  if (typeof imagesCSV !== 'string' || !imagesCSV.trim()) return null;
-  const first = imagesCSV.split(',')[0].trim();
-  if (!first) return null;
-  // Keepa devuelve IDs/paths de imagen de Amazon; este prefijo suele funcionar bien.
-  return `https://m.media-amazon.com/images/I/${first}`;
-}
-
-function normalizeProduct(p, associateTag) {
-  const asin = p.asin || null;
-  const title = p.title || 'Producto en Amazon';
-  const image = buildImageUrlFromKeepa(p.imagesCSV) || 'https://via.placeholder.com/300x300/232F3E/FFFFFF?text=Amazon';
-  const price = pickPrice(p.stats);
-  const category = (Array.isArray(p.categories) && p.categories.length) ? 'General' : 'General'; // placeholder
-  const affiliateLink = asin
-    ? `https://www.amazon.es/dp/${asin}/?tag=${associateTag}`
-    : `https://www.amazon.es/s?k=${encodeURIComponent(p.ean || asin || '')}&tag=${associateTag}`;
-
-  return { title, category, image, price, affiliateLink };
-}
+const centsToCurrency = n => (typeof n === 'number' && isFinite(n)) ? (n / 100) : null;
 
 export default async function handler(req, res) {
+  const ean = String(req.query.ean || '').trim();
+  if (!ean) { res.status(400).json({ success:false, error:'Missing ean' }); return; }
+
+  const key = (process.env.KEEPAA_API_KEY || '').trim();
+  if (!key) { res.status(500).json({ success:false, error:'Missing KEEPAA_API_KEY' }); return; }
+
+  // Incluimos "stats" para obtener precios agregados; sin el histórico para reducir payload.
+  const qs = new URLSearchParams({ key, domain: DOMAIN, code: ean, stats: '180', history: '0' });
+
   try {
-    const { ean = '' } = req.query;
-    const cleanEan = String(ean).replace(/[^0-9Xx]/g, '');
-
-    const ASSOCIATE_TAG = process.env.AMAZON_ASSOCIATE_TAG || 'tu-id-21';
-    const KEEPA_KEY = process.env.KEEPA_KEY || '';
-
-    // Si no hay EAN, devolvemos error amigable.
-    if (!cleanEan) {
-      return res.status(400).json({ success: false, error: 'Missing EAN/ISBN/UPC' });
-    }
-
-    // Si no hay KEEPA_KEY configurada, devolvemos fallback a búsqueda Amazon (sin romper el flujo).
-    if (!KEEPA_KEY) {
-      const searchUrl = `https://www.amazon.es/s?k=${encodeURIComponent(cleanEan)}&tag=${ASSOCIATE_TAG}`;
-      return res.status(200).json({
-        success: true,
-        product: {
-          title: 'Búsqueda en Amazon',
-          category: 'General',
-          image: 'https://via.placeholder.com/300x300/232F3E/FFFFFF?text=Amazon',
-          price: null,
-          affiliateLink: searchUrl
-        }
-      });
-    }
-
-    // Llamada a Keepa por EAN/ISBN (no ASIN), con stats para conseguir precio aproximado.
-    const url = new URL('https://api.keepa.com/product');
-    url.searchParams.set('key', KEEPA_KEY);
-    url.searchParams.set('domain', String(AMAZON_DOMAIN));       // 3 = ES
-    url.searchParams.set('product', cleanEan);
-    url.searchParams.set('productCodeIsAsin', 'false');          // importante: buscamos por EAN/ISBN/UPC
-    url.searchParams.set('stats', '1');                          // incluir stats para precio
-    // Opcionales (puedes ajustar si quieres ahorrar tokens, normalmente 1 token por producto):
-    // url.searchParams.set('history', '0');
-    // url.searchParams.set('offers', '0');
-
-    // Hacemos fetch con timeout básico
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 8000);
-    const r = await fetch(url.toString(), { signal: ctrl.signal });
-    clearTimeout(timer);
-
-    if (!r.ok) {
-      // Fallback a búsqueda si Keepa responde con error HTTP
-      const fallbackUrl = `https://www.amazon.es/s?k=${encodeURIComponent(cleanEan)}&tag=${ASSOCIATE_TAG}`;
-      return res.status(200).json({
-        success: true,
-        product: {
-          title: 'Búsqueda en Amazon',
-          category: 'General',
-          image: 'https://via.placeholder.com/300x300/232F3E/FFFFFF?text=Amazon',
-          price: null,
-          affiliateLink: fallbackUrl
-        }
-      });
-    }
-
+    const r = await fetch(`${KEEPAA_ENDPOINT}?${qs.toString()}`);
     const data = await r.json();
-    // Keepa suele devolver { products: [ ... ] } si encuentra algo
-    const prod = Array.isArray(data.products) && data.products.length ? data.products[0] : null;
 
-    if (!prod) {
-      // Si no hay producto, devolvemos búsqueda con el tag de afiliado
-      const searchUrl = `https://www.amazon.es/s?k=${encodeURIComponent(cleanEan)}&tag=${ASSOCIATE_TAG}`;
-      return res.status(200).json({
-        success: true,
-        product: {
-          title: 'Búsqueda en Amazon',
-          category: 'General',
-          image: 'https://via.placeholder.com/300x300/232F3E/FFFFFF?text=Amazon',
-          price: null,
-          affiliateLink: searchUrl
-        }
-      });
+    const p = data && Array.isArray(data.products) ? data.products[0] : null;
+    if (!p) {
+      res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=60');
+      res.status(404).json({ success:false, error:'Not found' });
+      return;
     }
 
-    // Normalizamos la respuesta
-    const product = normalizeProduct(prod, ASSOCIATE_TAG);
-    return res.status(200).json({ success: true, product });
+    // Título / imagen
+    const title = p.title || `Código ${ean}`;
+    let image = null;
+    if (p.imagesCSV) {
+      const first = p.imagesCSV.split(',')[0];
+      if (first) image = `https://images-na.ssl-images-amazon.com/images/I/${first}`;
+    }
 
-  } catch (err) {
-    console.error('lookup error:', err?.name, err?.message);
-    // Fallback final en caso de error inesperado:
-    const ASSOCIATE_TAG = process.env.AMAZON_ASSOCIATE_TAG || 'tu-id-21';
-    const { ean = '' } = req.query || {};
-    const cleanEan = String(ean || '').replace(/[^0-9Xx]/g, '');
-    const searchUrl = `https://www.amazon.es/s?k=${encodeURIComponent(cleanEan)}&tag=${ASSOCIATE_TAG}`;
-    return res.status(200).json({
+    // Precio (céntimos → €). Intentamos buybox; si no, precio "new".
+    let price = null;
+    if (p.stats) {
+      const s = p.stats;
+      const cand =
+        s.buyBoxPrice ??
+        (s.current && (s.current.buyBoxPrice ?? s.current.new)) ??
+        p.newPrice ??
+        null;
+      price = centsToCurrency(cand);
+    }
+
+    // Enlace afiliado
+    const asin = p.asin;
+    const tag  = (process.env.AMAZON_ASSOCIATE_TAG || '').trim();
+    const affiliateLink = asin ? `https://www.amazon.es/dp/${asin}${tag ? `?tag=${encodeURIComponent(tag)}` : ''}` : null;
+
+    res.setHeader('Cache-Control','public, max-age=1800, s-maxage=1800'); // 30 min cache
+    res.status(200).json({
       success: true,
       product: {
-        title: 'Búsqueda en Amazon',
-        category: 'General',
-        image: 'https://via.placeholder.com/300x300/232F3E/FFFFFF?text=Amazon',
-        price: null,
-        affiliateLink: searchUrl
-      }
+        title,
+        image,
+        price,
+        category: p.productGroup || '',
+        affiliateLink
+      },
+      meta: { asin, domain: DOMAIN }
     });
+  } catch (e) {
+    res.status(500).json({ success:false, error:'Keepa request failed', detail: String(e) });
   }
 }
