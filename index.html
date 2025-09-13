@@ -33,4 +33,248 @@
     .price{font-weight:900;font-size:18px;margin-top:4px}
     .cta{margin-top:8px}
     .link{display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;background:#182339;border:1px solid #223352;color:var(--text);text-decoration:none}
-    .disclaimer{font-size:12px;color
+    .disclaimer{font-size:12px;color:var(--muted);margin-top:8px}
+  </style>
+
+  <!-- ZXing: principal (jsDelivr) con fallback a unpkg -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.7/umd/index.min.js"
+    onerror="(function(){var s=document.createElement('script');s.src='https://unpkg.com/@zxing/browser@0.1.7/umd/index.min.js';document.head.appendChild(s);}())">
+  </script>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo">PR</div>
+      <div>
+        <h1>PrecioReal</h1>
+        <div class="muted">Escanea un producto y mira su precio en Amazon</div>
+      </div>
+    </header>
+
+    <section class="panel">
+      <b>Escanear con la cámara</b>
+      <div id="scanner">Pulsa “Iniciar escáner” y permite el uso de la cámara</div>
+      <div class="row">
+        <button class="btn" id="btnScan">Iniciar escáner</button>
+        <button class="btn secondary" id="btnStop">Parar</button>
+        <button class="btn secondary" id="btnTest">Test cámara</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <b>O introduce el código (EAN/ISBN/UPC)</b>
+      <div class="row">
+        <input id="eanInput" inputmode="numeric" pattern="[0-9]*" placeholder="Ej.: 9788408306863" />
+        <button class="btn secondary" id="btnBuscar">Buscar</button>
+      </div>
+    </section>
+
+    <section class="panel" id="resultado" style="display:none">
+      <div class="card">
+        <div class="thumb" id="thumb">—</div>
+        <div>
+          <div class="title" id="title">—</div>
+          <div class="muted" id="category">—</div>
+          <div class="price" id="price">—</div>
+          <div class="cta"><a class="link" id="amazonLink" target="_blank" rel="noopener">🛒 Ver en Amazon</a></div>
+        </div>
+      </div>
+      <div class="disclaimer">Como Asociado de Amazon, gano por compras calificadas.</div>
+    </section>
+  </div>
+
+  <!-- SCRIPT PRINCIPAL (robusto y con diagnósticos) -->
+  <script>
+  (function(){
+    'use strict';
+
+    // ---- Referencias y helpers ----
+    var ZX = window.ZXingBrowser || window.ZXing || null; // global UMD posible
+    var BrowserMultiFormatReader = ZX ? ZX.BrowserMultiFormatReader : null;
+
+    var reader = null;
+    var currentStream = null;
+
+    function $(id){ return document.getElementById(id); }
+
+    function showError(msg) {
+      var cont = $('scanner');
+      cont.style.color = '#ffb3b3';
+      cont.style.fontSize = '14px';
+      cont.textContent = '⚠️ ' + msg;
+      console.error(msg);
+    }
+
+    function renderResult(ok, p, ean) {
+      p = p || {};
+      ean = ean || '';
+      var box = $('resultado');
+      var thumb = $('thumb');
+      var title = $('title');
+      var cat = $('category');
+      var price = $('price');
+      var link = $('amazonLink');
+
+      if (!ok) {
+        box.style.display = 'block';
+        thumb.textContent = '—';
+        title.textContent = 'No encontrado para ' + ean;
+        cat.textContent = '—';
+        price.textContent = '—';
+        link.href = '#';
+        return;
+      }
+      thumb.innerHTML = p.image ? '<img alt="Imagen" src="'+p.image+'">' : '—';
+      title.textContent = p.title || ('Código ' + ean);
+      cat.textContent = p.category || '—';
+      price.textContent = p.price ? (p.price + ' €') : '—';
+      link.href = p.affiliateLink || '#';
+      box.style.display = 'block';
+      box.scrollIntoView({ behavior:'smooth', block:'start' });
+    }
+
+    async function lookupAndRender(ean) {
+      try {
+        var res = await fetch('/api/lookup?ean=' + encodeURIComponent(ean));
+        var data = await res.json();
+        renderResult(data && data.success, data && data.product, ean);
+      } catch (e) {
+        showError('No se pudo consultar el backend (/api/lookup).');
+        renderResult(false, {}, ean);
+      }
+    }
+
+    function stopScanner() {
+      try { if (reader && reader.reset) reader.reset(); } catch(_){}
+      try { if (currentStream) currentStream.getTracks().forEach(function(t){ t.stop(); }); } catch(_){}
+      currentStream = null;
+      $('scanner').textContent = 'Escáner detenido';
+    }
+
+    async function openStreamWithFallback(deviceId) {
+      // 1) Intento exacto con deviceId
+      if (deviceId) {
+        try {
+          return await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId } }, audio:false });
+        } catch(_){}
+      }
+      // 2) Intento con facingMode environment
+      try {
+        return await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio:false });
+      } catch(_){}
+      // 3) Último recurso: cualquier cámara disponible
+      return await navigator.mediaDevices.getUserMedia({ video: true, audio:false });
+    }
+
+    async function startScanner() {
+      // Verifica ZXing cargado
+      if (!BrowserMultiFormatReader) {
+        showError('No se pudo cargar el motor de escaneo (ZXing). Usa la búsqueda manual.');
+        return;
+      }
+
+      var cont = $('scanner');
+
+      // <video> compatible con iOS
+      var video = document.createElement('video');
+      video.setAttribute('playsinline','');
+      video.setAttribute('autoplay','');
+      video.setAttribute('muted','');
+      video.muted = true;
+      video.style.width = '100%';
+      cont.replaceChildren(video);
+
+      try {
+        // Pedir permiso primero (sin deviceId) → para etiquetar cámaras en iOS
+        var prov = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio:false });
+        prov.getTracks().forEach(function(t){ t.stop(); });
+
+        // Enumerar cámaras con permiso ya concedido
+        var devicesAll = await navigator.mediaDevices.enumerateDevices();
+        var cams = devicesAll.filter(function(d){ return d.kind === 'videoinput'; });
+
+        if (!cams.length) { showError('No se encontró ninguna cámara.'); return; }
+
+        // Heurística de “trasera”
+        var back = cams.find(function(d){ return /back|rear|environment|atrás|trás/i.test(d.label||''); }) || cams[cams.length - 1];
+        var deviceId = back && back.deviceId;
+
+        // Abrir stream con fallback
+        currentStream = await openStreamWithFallback(deviceId);
+        video.srcObject = currentStream;
+        await video.play();
+
+        // Iniciar ZXing
+        reader = new BrowserMultiFormatReader();
+        await reader.decodeFromVideoDevice(deviceId || null, video, async function(result, err){
+          if (result && result.getText) {
+            stopScanner();
+            var code = (result.getText() || '').replace(/[^0-9Xx]/g,'');
+            if (code) await lookupAndRender(code);
+          }
+          // err: frames sin decodificar son normales; ignorar
+        });
+
+      } catch (e) {
+        if (e && (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError')) {
+          showError('Permiso de cámara denegado. Actívalo en los ajustes del navegador.');
+        } else if (e && (e.name === 'NotFoundError' || e.name === 'DevicesNotFoundError')) {
+          showError('No hay cámara disponible en este dispositivo.');
+        } else if (e && e.message && e.message.indexOf('Only secure origins') >= 0) {
+          showError('La cámara solo funciona en sitios HTTPS (candado en la URL).');
+        } else {
+          showError('No se pudo iniciar la cámara. Usa el campo manual.');
+          console.error(e);
+        }
+      }
+    }
+
+    async function testCamera() {
+      var cont = $('scanner');
+      try {
+        var txt = '';
+
+        // Estado de permiso (si está expuesto por el navegador)
+        if (navigator.permissions && navigator.permissions.query) {
+          try {
+            var p = await navigator.permissions.query({ name:'camera' });
+            txt += 'Permiso cámara: ' + p.state + '\n';
+          } catch(_){}
+        }
+
+        // Prueba simple de getUserMedia
+        try {
+          var s = await navigator.mediaDevices.getUserMedia({ video:true, audio:false });
+          s.getTracks().forEach(function(t){ t.stop(); });
+          txt += 'getUserMedia: ✅ OK\n';
+        } catch (e) {
+          txt += 'getUserMedia: ❌ ' + (e.name || e.message) + '\n';
+        }
+
+        // Enumerar cámaras
+        var devs = await navigator.mediaDevices.enumerateDevices();
+        var cams = devs.filter(function(d){ return d.kind==='videoinput'; });
+        txt += 'Cámaras detectadas: ' + cams.length + '\n';
+        cams.forEach(function(d,i){ txt += '- ['+i+'] ' + (d.label || '(sin etiqueta)') + '\n'; });
+
+        cont.textContent = txt;
+        cont.style.whiteSpace = 'pre-wrap';
+        cont.style.color = '#cfe7ff';
+      } catch (e) {
+        showError('Test falló: ' + (e.name || '') + ' ' + (e.message || e));
+      }
+    }
+
+    // ---- Eventos UI ----
+    $('btnScan').addEventListener('click', startScanner);
+    $('btnStop').addEventListener('click', stopScanner);
+    $('btnTest').addEventListener('click', testCamera);
+    $('btnBuscar').addEventListener('click', async function(){
+      var code = $('eanInput').value.trim();
+      if (code) await lookupAndRender(code);
+    });
+  })();
+  </script>
+</body>
+</html>
