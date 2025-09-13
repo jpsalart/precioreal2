@@ -18,6 +18,7 @@
     .panel{background:var(--panel);border:1px solid var(--bd);border-radius:14px;padding:14px;margin:16px 0}
     .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 16px;border:0;border-radius:12px;cursor:pointer;background:linear-gradient(180deg,var(--brand),var(--brand2));color:#06121f;font-weight:800}
     .btn.secondary{background:#182339;color:var(--text);border:1px solid #223352}
+    .btn[disabled]{opacity:.5;cursor:not-allowed}
     .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
     .row input{flex:1;min-width:180px;padding:12px;border-radius:12px;border:1px solid #223352;background:#0c1322;color:#e7edf7}
     #scanner{position:relative;aspect-ratio:3/2;background:#0d1423;border:1px dashed #223352;border-radius:12px;display:grid;place-items:center;overflow:hidden;margin-top:12px}
@@ -27,7 +28,9 @@
     .thumb{width:88px;height:88px;border-radius:10px;overflow:hidden;background:#101a2c;display:grid;place-items:center}
     .thumb img{width:100%;height:100%;object-fit:cover}
     .title{font-weight:700;line-height:1.25}.price{font-weight:900;font-size:18px;margin-top:4px}
-    .cta{margin-top:8px}.link{display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;background:#182339;border:1px solid #223352;color:#e7edf7;text-decoration:none}
+    .cta{margin-top:8px}
+    .link{display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;background:#182339;border:1px solid #223352;color:#e7edf7;text-decoration:none}
+    .link.disabled{opacity:.5;pointer-events:none}
     .disclaimer{font-size:12px;color:#a8b3c7;margin-top:8px}
     .hint{font-size:12px;color:#9bb4d9;margin-top:6px}
   </style>
@@ -62,7 +65,7 @@
     <section class="panel">
       <b>O introduce el código (EAN/ISBN/UPC)</b>
       <div class="row">
-        <input id="eanInput" inputmode="numeric" pattern="[0-9]*" placeholder="Ej.: 9788408306863" />
+        <input id="eanInput" inputmode="numeric" pattern="[0-9]*" placeholder="Ej.: 9788491296014" />
         <button class="btn secondary" id="btnBuscar">Buscar</button>
       </div>
       <div class="hint" id="eanHint"></div>
@@ -75,10 +78,12 @@
           <div class="title" id="title">—</div>
           <div class="muted" id="category">—</div>
           <div class="price" id="price">—</div>
-          <div class="cta"><a class="link" id="amazonLink" target="_blank" rel="noopener">🛒 Ver en Amazon</a></div>
+          <div class="cta">
+            <a class="link disabled" id="amazonLink" target="_self" rel="noopener">🛒 Ver en Amazon</a>
+          </div>
         </div>
       </div>
-      <div class="disclaimer">Como Asociado de Amazon, gano por compras calificadas.</div>
+      <div class="disclaimer">Como Asociado de Amazon, obtengo ingresos por las compras adscritas que cumplen los requisitos aplicables.</div>
     </section>
   </div>
 
@@ -97,24 +102,43 @@
       try{ navigator.vibrate && navigator.vibrate(80); }catch(_){}
     }
 
-    // EAN/UPC checksum básico
+    // EAN/UPC checksum correcto
+    function ean13Valid(s){
+      s = String(s).replace(/[^0-9]/g,'');
+      if (s.length !== 13) return false;
+      const digits = s.split('').map(n=>+n);
+      const check = digits[12];
+      let sum = 0;
+      for (let i=0;i<12;i++){
+        sum += digits[i] * (i % 2 === 0 ? 1 : 3); // posiciones desde la izquierda: 1,3,5,... x1 ; 2,4,6,... x3
+      }
+      const calc = (10 - (sum % 10)) % 10;
+      return calc === check;
+    }
+    function ean8Valid(s){
+      s = String(s).replace(/[^0-9]/g,'');
+      if (s.length !== 8) return false;
+      const d = s.split('').map(n=>+n);
+      const check = d[7];
+      let sum = 0;
+      for (let i=0;i<7;i++){
+        sum += d[i] * (i % 2 === 0 ? 3 : 1); // EAN-8 pesa al revés
+      }
+      const calc = (10 - (sum % 10)) % 10;
+      return calc === check;
+    }
+    function upcAValid(s){
+      s = String(s).replace(/[^0-9]/g,'');
+      if (s.length !== 12) return false;
+      // UPC-A: equivalente a EAN-13 con un 0 delante
+      return ean13Valid('0'+s);
+    }
     function validCode(code){
       const s = String(code).replace(/[^0-9]/g,'');
-      if (![8,12,13].includes(s.length)) return { ok:false, reason:'longitud' };
-      if (s.length === 8 || s.length === 13){
-        // EAN-8/13 checksum
-        const digits = s.split('').map(n=>+n);
-        const check = digits.pop();
-        const sum = digits.reverse().reduce((acc,d,i)=> acc + d*(i%2?3:1), 0);
-        const calc = (10 - (sum % 10)) % 10;
-        return { ok: calc === check, reason: calc === check ? '' : 'checksum' };
-      }
-      // UPC-A (12): convertir a EAN-13 con 0 delante para validar
-      const e13 = ('0'+s).split('').map(n=>+n);
-      const check = e13.pop();
-      const sum = e13.reverse().reduce((acc,d,i)=> acc + d*(i%2?3:1), 0);
-      const calc = (10 - (sum % 10)) % 10;
-      return { ok: calc === check, reason: calc === check ? '' : 'checksum' };
+      if (s.length === 13) return { ok: ean13Valid(s), type:'EAN-13' };
+      if (s.length === 8)  return { ok: ean8Valid(s),  type:'EAN-8'  };
+      if (s.length === 12) return { ok: upcAValid(s),  type:'UPC-A'  };
+      return { ok:false, type:'unknown' };
     }
 
     function setEanHint(msg, ok){
@@ -138,30 +162,41 @@
       try{ localStorage.setItem('pr-cache-'+ean, JSON.stringify({ t: Date.now(), d: data })); }catch(_){}
     }
 
-    // Logs muy simples (a Vercel Logs)
+    // Logs muy simples
     async function log(evt, data){
       try {
         await fetch('/api/log', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ evt, data, t: Date.now() }) });
       } catch(_){}
     }
 
+    function setAmazonLink(href){
+      const a = $('amazonLink');
+      if (href){
+        a.href = href;
+        a.classList.remove('disabled');
+      } else {
+        a.href = '#';
+        a.classList.add('disabled');
+      }
+    }
+
     function renderResult(ok, p, ean){
       p=p||{}; ean=ean||'';
-      const box=$('resultado'), thumb=$('thumb'), title=$('title'), cat=$('category'), price=$('price'), link=$('amazonLink');
+      const box=$('resultado'), thumb=$('thumb'), title=$('title'), cat=$('category'), price=$('price');
       if(!ok){
         box.style.display='block';
         thumb.textContent='—';
-        title.textContent = 'Sin precio para ' + ean;
-        cat.textContent = 'Puede no estar en Amazon o no tener precio público.';
+        title.textContent = 'No encontrado para ' + ean;
+        cat.textContent = '—';
         price.textContent = '—';
-        link.href = '#';
+        setAmazonLink(null);
         return;
       }
       thumb.innerHTML = p.image ? '<img alt="Imagen" src="'+p.image+'">' : '—';
       title.textContent = p.title || ('Código '+ean);
       cat.textContent = p.category || '—';
       price.textContent = (p.price != null) ? (p.price.toFixed ? p.price.toFixed(2) : p.price) + ' €' : '—';
-      link.href = p.affiliateLink || '#';
+      setAmazonLink(p.affiliateLink || null);
       box.style.display='block';
       box.scrollIntoView({behavior:'smooth', block:'start'});
     }
@@ -169,7 +204,6 @@
     async function lookupAndRender(ean){
       const cached = cacheGet(ean);
       if (cached){ renderResult(cached.success, cached.product, ean); log('cache-hit', { ean }); return; }
-
       try{
         const r = await fetch('/api/lookup?ean='+encodeURIComponent(ean));
         const d = await r.json();
@@ -183,7 +217,7 @@
       }
     }
 
-    // ---------- ZXing + cámara ----------
+    // ---------- ZXing + cámara (igual que tu versión estable) ----------
     let reader=null, currentStream=null, cams=[], camIndex=0, torchOn=false, justScanned=false;
 
     function stopScanner(){
@@ -244,7 +278,6 @@
       const Reader = ZX && ZX.BrowserMultiFormatReader ? ZX.BrowserMultiFormatReader : null;
       if (!ok || !Reader) { note('ZXing no disponible. Usa la búsqueda manual.'); return; }
 
-      // Log motor (local-file / mirror / stub)
       try{
         const r = await fetch('/api/zxing.js', { cache:'no-store' });
         log('engine', { header:r.headers.get('X-Precioreal-ZXing') });
@@ -282,7 +315,7 @@
 
       note('Escaneando…');
       reader = new Reader();
-      justScanned = false;
+      let justScanned=false;
       await reader.decodeFromVideoDevice(deviceId || null, video, async (result, err)=>{
         if (result && result.getText && !justScanned) {
           const raw = result.getText() || '';
@@ -320,7 +353,7 @@
         if (!Reader) { note('ZXing no disponible.'); return; }
 
         const rdr = new Reader();
-        justScanned = false;
+        let justScanned=false;
         note('Escaneando…');
         await rdr.decodeFromVideoDevice(deviceId || null, video, async (result, err)=>{
           if (result && result.getText && !justScanned) {
@@ -334,7 +367,7 @@
       }
     }
 
-    // Leer desde imagen (BarcodeDetector; si no hay, informamos)
+    // Subir imagen para leer código
     $('btnUpload').addEventListener('click', ()=> $('imgInput').click());
     $('imgInput').addEventListener('change', async (ev)=>{
       const f = ev.target.files && ev.target.files[0];
@@ -364,20 +397,24 @@
       }catch(_){ note('No se pudo abrir la imagen.'); }
     });
 
-    // Validación al escribir EAN
+    // Validación al escribir EAN/UPC
     $('eanInput').addEventListener('input', ()=>{
       const s = $('eanInput').value.replace(/[^0-9]/g,'');
       if (!s) { setEanHint('', true); return; }
       const v = validCode(s);
       if (!v.ok) {
-        setEanHint(v.reason==='longitud' ? 'El código debe tener 8, 12 o 13 dígitos.' : 'El dígito de control no cuadra.', false);
+        setEanHint('Código no válido (longitud o checksum).', false);
       } else {
-        setEanHint('Código válido.', true);
+        setEanHint(`Código válido (${v.type}).`, true);
       }
     });
 
-    // Test rápida
-    async function testCamera(){
+    // Botones
+    $('btnScan').addEventListener('click', startScanner);
+    $('btnStop').addEventListener('click', stopScanner);
+    $('btnSwap').addEventListener('click', swapCamera);
+    $('btnTorch').addEventListener('click', toggleTorch);
+    $('btnTest').addEventListener('click', async ()=>{
       let txt='';
       if (navigator.permissions && navigator.permissions.query) {
         try { const p=await navigator.permissions.query({name:'camera'}); txt+='Permiso cámara: '+p.state+'\n'; } catch(_){}
@@ -391,14 +428,7 @@
         txt+='Torch soportado: '+(caps.torch?'sí':'no')+'\n';
       }
       note(txt||'Test hecho');
-    }
-
-    // eventos
-    $('btnScan').addEventListener('click', startScanner);
-    $('btnStop').addEventListener('click', stopScanner);
-    $('btnSwap').addEventListener('click', swapCamera);
-    $('btnTorch').addEventListener('click', toggleTorch);
-    $('btnTest').addEventListener('click', testCamera);
+    });
     $('btnBuscar').addEventListener('click', async ()=>{
       const code = $('eanInput').value.replace(/[^0-9]/g,'');
       const v = validCode(code);
