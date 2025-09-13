@@ -233,7 +233,10 @@
       showError(`Test falló: ${e.name || ''} ${e.message || e}`);
     }
   }
-
+ var BrowserMultiFormatReader =
+    (window.ZXingBrowser && window.ZXingBrowser.BrowserMultiFormatReader) ||
+    (window.ZXing && window.ZXing.BrowserMultiFormatReader) ||
+    null;
   // Eventos
   document.getElementById('btnScan').onclick = startScanner;
   document.getElementById('btnStop').onclick = stopScanner;
@@ -247,6 +250,7 @@
 
 </body>
 </html>
+
 
 
 
