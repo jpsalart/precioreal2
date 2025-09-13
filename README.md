@@ -167,3 +167,20 @@ docs/HANDOFF.md
 
 docs/ANEXO-PAAPI-DECISION.md
 
+--------------------------------------
+A) “Staged + Promote”: congelar producción y promocionar a mano (recomendado)
+B) “Instant Rollback”: volver al estado bueno en segundos
+
+Aquí tienes el mini checklist de guardia (3 líneas) para tu README:
+
+Si producción falla: Vercel → Project → Production Deployment → Instant Rollback (Hobby: al anterior; Pro: eliges cualquiera).
+
+Publicar un build concreto: Deployments → … → Promote to Production.
+
+Congelar producción (publicar solo manualmente): Settings → Environments → Production → desactiva Auto-assign Custom Production Domains.
+
+Recomendación
+
+Usa GitHub como “fuente de verdad” (código, README, checkpoints con tags/releases).
+
+Usa Vercel para publicar/volver atrás rápido (Promote/Rollback) y gestionar entorno (env vars).
