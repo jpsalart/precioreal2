@@ -44,8 +44,8 @@
     .mini .title{font-size:13px;font-weight:700;max-height:2.6em;overflow:hidden}
     .mini .muted{font-size:12px}
     .mini .actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
-    .banner{display:flex;justify-content:center;align-items:center;width:100%;padding:10px 12px;border-radius:10px;background:#182339;border:1px solid #223352;color:#e7edf7;text-decoration:none;font-size:14px;font-weight:900}
-    .pvpLineMini{font-size:14px;font-weight:800;margin-top:6px;color:#cfe2ff}
+    .banner{display:flex;justify-content:center;align-items:center;width:100%;padding:12px 14px;border-radius:10px;background:#182339;border:1px solid #223352;color:#e7edf7;text-decoration:none;font-size:15px;font-weight:900}
+    .pvpLineMini{font-size:16px;font-weight:900;margin-top:8px;color:#cfe2ff}
     .icon-btn{position:absolute;top:6px;right:6px;background:#172033;border:1px solid #284066;color:#c9d9f2;width:24px;height:24px;line-height:22px;text-align:center;border-radius:8px;cursor:pointer;font-weight:900}
     /* ⭐ estrella más grande y clicable */
     .star{position:absolute;top:6px;left:6px;background:#172033;border:1px solid #284066;color:#f6e08f;width:30px;height:30px;line-height:28px;text-align:center;border-radius:10px;cursor:pointer;font-weight:900;font-size:18px}
@@ -54,8 +54,19 @@
     .bar{display:flex;justify-content:space-between;align-items:center;margin:8px 0 4px 0}
     .bar .title{font-size:14px;font-weight:800}
     .ok{color:var(--ok)} .bad{color:var(--bad)}
-    .notePvp{font-size:12px;color:#b9c9e6;margin-top:6px}
+    .notePvp{font-size:14px;color:#b9c9e6;margin-top:6px;font-weight:800}
     .tipRecents{margin-top:10px;color:#9bb4d9;font-size:12px}
+
+    /* Controles extra */
+    .toggles{display:flex;gap:12px;align-items:center;font-size:13px;color:#cfe2ff}
+    .toggles label{display:inline-flex;gap:6px;align-items:center;cursor:pointer}
+
+    /* Modal lote */
+    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6);z-index:9999}
+    .modal .box{background:#0d1423;border:1px solid var(--bd);border-radius:12px;padding:12px;width:min(680px,90vw)}
+    .modal h3{margin:0 0 8px 0;font-size:16px}
+    .modal textarea{width:100%;min-height:190px;resize:vertical;border-radius:8px;border:1px solid #223352;background:#0c1322;color:#e7edf7;padding:10px}
+    .modal .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
   </style>
 </head>
 <body>
@@ -70,13 +81,18 @@
 
     <section class="panel">
       <b>Escanear con la cámara</b>
-      <div id="scanner"><div id="overlay">Pulsa “Iniciar escáner (ZXing)” y permite la cámara</div></div>
+      <div id="scanner"><div id="overlay">Pulsa “Iniciar escáner” y permite la cámara</div></div>
       <div class="row">
-        <button class="btn" id="btnScan">Iniciar escáner (ZXing)</button>
+        <button class="btn" id="btnScan">Iniciar escáner</button>
         <button class="btn secondary" id="btnStop">Parar</button>
         <button class="btn secondary" id="btnSwap">Cambiar cámara</button>
         <button class="btn secondary" id="btnTorch">Linterna</button>
         <button class="btn secondary" id="btnTest">Test cámara</button>
+        <button class="btn secondary" id="btnBatch">Añadir por lote</button>
+      </div>
+      <div class="row toggles">
+        <label><input type="checkbox" id="chkNoSound"> Sin sonido</label>
+        <label><input type="checkbox" id="chkNoVibra"> Sin vibración</label>
       </div>
       <div class="row">
         <input id="imgInput" type="file" accept="image/*" style="display:none">
@@ -100,13 +116,13 @@
         <div>
           <div class="title" id="title">—</div>
           <div class="muted" id="category">—</div>
-          <!-- Precio oculto en el resultado (evitar -0,02 € y confusión) -->
+          <!-- Línea vs tu PVP -->
           <div class="notePvp" id="userPvpLine" aria-live="polite"></div>
           <div class="cta">
             <button class="btn secondary" id="btnPvp">💾 Guardar tu precio</button>
             <button class="btn secondary" id="btnPvpDel">🗑 Borrar precio</button>
           </div>
-          <!-- Botón grande de Amazon DEBAJO del PVP guardado -->
+          <!-- Botón grande de Amazon DEBAJO del PVP -->
           <a class="link big disabled" id="amazonLink" target="_self" rel="nofollow sponsored noopener">
             🛒 Ver en Amazon
           </a>
@@ -122,8 +138,8 @@
       </div>
       <div id="recents" class="list-grid"></div>
       <div id="recentsEmpty" class="empty" style="display:none">Aquí verás tus últimos escaneos.</div>
-      <!-- Tip AL FINAL del panel, no arriba -->
-      <div id="tipRecents" class="tipRecents">Tip: si te interesa, añádelo a tu carrito en Amazon para guardarlo (no es precio de Amazon).</div>
+      <!-- Consejo AL FINAL del panel -->
+      <div id="tipRecents" class="tipRecents">Consejo: Añádelo en tu carrito de Amazon para no perderlo.</div>
     </section>
 
     <!-- Favoritos -->
@@ -142,6 +158,22 @@
     </footer>
   </div>
 
+  <!-- Modal de lote -->
+  <div class="modal" id="batchModal" aria-hidden="true">
+    <div class="box">
+      <h3>Añadir por lote</h3>
+      <p class="muted" style="margin:4px 0 10px">Pega códigos separados por salto de línea, espacios o comas. Acepta EAN-13, UPC-A (12) y EAN-8. Se procesarán en orden.</p>
+      <textarea id="batchCodes" placeholder="Ejemplo:
+9788491296014
+740617300253
+8715946725963"></textarea>
+      <div class="actions">
+        <button class="btn secondary" id="batchCancel">Cancelar</button>
+        <button class="btn" id="batchRun">Procesar</button>
+      </div>
+    </div>
+  </div>
+
   <script>
   (function(){
     'use strict';
@@ -154,11 +186,24 @@
     const MAX_RECENTS = 20;
     const K_RECENTS = 'pr-recent-v1';
     const K_FAVS = 'pr-favs-v1';
+    const K_SETTINGS = 'pr-settings-v1';
+
+    function loadSettings(){ try{ return JSON.parse(localStorage.getItem(K_SETTINGS)||'{}')||{}; }catch(_){ return {}; } }
+    function saveSettings(s){ try{ localStorage.setItem(K_SETTINGS, JSON.stringify(s)); }catch(_){ } }
+    let settings = loadSettings();
 
     function beep(){
-      try{ const ctx=new (window.AudioContext||window.webkitAudioContext)(); const o=ctx.createOscillator(); const g=ctx.createGain();
-        o.frequency.value=880; g.gain.value=0.1; o.connect(g).connect(ctx.destination); o.start(); setTimeout(()=>{o.stop();ctx.close();},120);}catch(_){}
-      try{ navigator.vibrate && navigator.vibrate(80); }catch(_){}
+      try{
+        if (!settings.noSound){
+          const ctx=new (window.AudioContext||window.webkitAudioContext)();
+          const o=ctx.createOscillator(); const g=ctx.createGain();
+          o.frequency.value=880; g.gain.value=0.1; o.connect(g).connect(ctx.destination);
+          o.start(); setTimeout(()=>{o.stop();ctx.close();},120);
+        }
+      }catch(_){}
+      try{
+        if (!settings.noVibra){ navigator.vibrate && navigator.vibrate(80); }
+      }catch(_){}
     }
     const fmtMoney = (n)=> (isFinite(n)? (Number(n).toFixed(2).replace('.',',')) : '');
 
@@ -305,7 +350,7 @@
         const img = item.image ? `<img alt="Imagen" src="${item.image}">` : '—';
         const starOn = isFav(item.id);
         const disabled = item.affiliateLink ? '' : 'disabled';
-        const pvpTxt = (item.userPrice!=null) ? `Tu PVP: ${fmtMoney(item.userPrice)} €` : '';
+        const pvpTxt = (item.userPrice!=null) ? `vs tu PVP: ${fmtMoney(item.userPrice)} €` : '';
         return `
           <div class="mini" data-id="${item.id}">
             <div class="icon-btn" title="Quitar" data-action="remove">✕</div>
@@ -362,7 +407,7 @@
       const line = $('userPvpLine');
       if (!line) return;
       if (item?.userPrice!=null){
-        line.textContent = `Tu PVP guardado: ${fmtMoney(item.userPrice)} € (anotado ${tsToText(item.userPriceAt)}) — Solo se guarda en tu dispositivo.`;
+        line.textContent = `vs tu PVP: ${fmtMoney(item.userPrice)} € (anotado ${tsToText(item.userPriceAt)}) — Solo se guarda en tu dispositivo.`;
       } else {
         line.textContent = '';
       }
@@ -610,11 +655,13 @@
       else setEanHint(`Código válido (${v.type}).`, true);
     });
 
-    // Botones
+    // Botones principales
     $('btnScan').addEventListener('click', startScanner);
     $('btnStop').addEventListener('click', stopScanner);
     $('btnSwap').addEventListener('click', swapCamera);
     $('btnTorch').addEventListener('click', toggleTorch);
+
+    // Test cámara
     $('btnTest').addEventListener('click', async ()=>{
       let txt='';
       if (navigator.permissions && navigator.permissions.query) {
@@ -630,11 +677,43 @@
       }
       note(txt||'Test hecho');
     });
+
+    // Buscar manual
     $('btnBuscar').addEventListener('click', async ()=>{
       const code = $('eanInput').value.replace(/[^0-9]/g,'');
       const v = validCode(code);
       if (!v.ok){ setEanHint('Código no válido.', false); return; }
       await lookupAndRender(code);
+    });
+
+    // Toggles sonido/vibración
+    $('chkNoSound').checked = !!settings.noSound;
+    $('chkNoVibra').checked = !!settings.noVibra;
+    $('chkNoSound').addEventListener('change', e=>{ settings.noSound = e.target.checked; saveSettings(settings); });
+    $('chkNoVibra').addEventListener('change', e=>{ settings.noVibra = e.target.checked; saveSettings(settings); });
+
+    // Lote
+    function openBatch(){ $('batchModal').style.display='flex'; $('batchModal').setAttribute('aria-hidden','false'); $('batchCodes').focus(); }
+    function closeBatch(){ $('batchModal').style.display='none'; $('batchModal').setAttribute('aria-hidden','true'); }
+    $('btnBatch').addEventListener('click', openBatch);
+    $('batchCancel').addEventListener('click', closeBatch);
+    $('batchRun').addEventListener('click', async ()=>{
+      const raw = $('batchCodes').value || '';
+      const toks = raw.split(/[\s,;]+/).filter(Boolean);
+      const codes=[];
+      for (const t of toks){
+        const s = String(t).replace(/[^0-9]/g,'');
+        if (!s) continue;
+        const v = validCode(s);
+        if (v.ok) codes.push(s);
+      }
+      if (!codes.length){ alert('No hay códigos válidos.'); return; }
+      closeBatch();
+      for (let i=0;i<codes.length;i++){
+        note(`Procesando lote ${i+1}/${codes.length}…`);
+        await lookupAndRender(codes[i]);
+      }
+      note('Lote terminado'); setTimeout(hideNote, 1200);
     });
 
     // Controles de listas
