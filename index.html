@@ -29,11 +29,11 @@
     .card{display:grid;grid-template-columns:88px 1fr;gap:12px;align-items:center;background:#0d1423;border:1px solid var(--bd);border-radius:12px;padding:12px}
     .thumb{width:88px;height:88px;border-radius:10px;overflow:hidden;background:#101a2c;display:grid;place-items:center}
     .thumb img{width:100%;height:100%;object-fit:cover}
-    .title{font-weight:700;line-height:1.25}.price{font-weight:900;font-size:18px;margin-top:4px}
+    .title{font-weight:700;line-height:1.25}
     .cta{margin-top:8px;display:flex;flex-wrap:wrap;gap:8px}
     .link{display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;background:#182339;border:1px solid #223352;color:#e7edf7;text-decoration:none}
     .link.disabled{opacity:.5;pointer-events:none}
-    .microNote{font-size:12px;color:#a8b3c7;margin-left:6px}
+    .link.big{font-size:18px;font-weight:900;padding:14px 16px;border-width:2px;width:100%;justify-content:center}
     .hint{font-size:12px;color:#9bb4d9;margin-top:6px}
     footer{margin:18px 0 8px;border-top:1px solid var(--bd);padding-top:12px;color:#a8b3c7;font-size:0.9rem;line-height:1.35}
 
@@ -43,16 +43,19 @@
     .mini .thumb{width:72px;height:72px;border-radius:8px}
     .mini .title{font-size:13px;font-weight:700;max-height:2.6em;overflow:hidden}
     .mini .muted{font-size:12px}
-    .mini .actions{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
-    .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 8px;border-radius:8px;background:#182339;border:1px solid #223352;color:#e7edf7;text-decoration:none;font-size:12px}
+    .mini .actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+    .banner{display:flex;justify-content:center;align-items:center;width:100%;padding:10px 12px;border-radius:10px;background:#182339;border:1px solid #223352;color:#e7edf7;text-decoration:none;font-size:14px;font-weight:900}
+    .pvpLineMini{font-size:14px;font-weight:800;margin-top:6px;color:#cfe2ff}
     .icon-btn{position:absolute;top:6px;right:6px;background:#172033;border:1px solid #284066;color:#c9d9f2;width:24px;height:24px;line-height:22px;text-align:center;border-radius:8px;cursor:pointer;font-weight:900}
-    .star{position:absolute;top:6px;left:6px;background:#172033;border:1px solid #284066;color:#f6e08f;width:24px;height:24px;line-height:22px;text-align:center;border-radius:8px;cursor:pointer;font-weight:900}
-    .star.off{color:#7f7f7f}
+    /* ⭐ estrella más grande y clicable */
+    .star{position:absolute;top:6px;left:6px;background:#172033;border:1px solid #284066;color:#f6e08f;width:30px;height:30px;line-height:28px;text-align:center;border-radius:10px;cursor:pointer;font-weight:900;font-size:18px}
+    .star.off{color:#b0b0b0}
     .empty{color:#a8b3c7;font-size:13px}
     .bar{display:flex;justify-content:space-between;align-items:center;margin:8px 0 4px 0}
     .bar .title{font-size:14px;font-weight:800}
     .ok{color:var(--ok)} .bad{color:var(--bad)}
     .notePvp{font-size:12px;color:#b9c9e6;margin-top:6px}
+    .tipRecents{margin-top:10px;color:#9bb4d9;font-size:12px}
   </style>
 </head>
 <body>
@@ -97,17 +100,16 @@
         <div>
           <div class="title" id="title">—</div>
           <div class="muted" id="category">—</div>
-          <div class="price" id="price">—</div>
+          <!-- Precio oculto en el resultado (evitar -0,02 € y confusión) -->
+          <div class="notePvp" id="userPvpLine" aria-live="polite"></div>
           <div class="cta">
-            <a class="link disabled" id="amazonLink" target="_self" rel="nofollow sponsored noopener">
-              🛒 Ver en Amazon
-              <span class="microNote" aria-label="enlace de afiliado">(enlace de afiliado)</span>
-            </a>
             <button class="btn secondary" id="btnPvp">💾 Guardar tu precio</button>
             <button class="btn secondary" id="btnPvpDel">🗑 Borrar precio</button>
           </div>
-          <div class="notePvp" id="userPvpLine" aria-live="polite"></div>
-          <div class="hint">Tip: si te interesa, añádelo a tu carrito en Amazon para guardarlo (no es precio de Amazon). </div>
+          <!-- Botón grande de Amazon DEBAJO del PVP guardado -->
+          <a class="link big disabled" id="amazonLink" target="_self" rel="nofollow sponsored noopener">
+            🛒 Ver en Amazon
+          </a>
         </div>
       </div>
     </section>
@@ -120,6 +122,8 @@
       </div>
       <div id="recents" class="list-grid"></div>
       <div id="recentsEmpty" class="empty" style="display:none">Aquí verás tus últimos escaneos.</div>
+      <!-- Tip AL FINAL del panel, no arriba -->
+      <div id="tipRecents" class="tipRecents">Tip: si te interesa, añádelo a tu carrito en Amazon para guardarlo (no es precio de Amazon).</div>
     </section>
 
     <!-- Favoritos -->
@@ -209,6 +213,12 @@
     function loadList(key){ try{ return JSON.parse(localStorage.getItem(key)||'[]')||[]; }catch(_){ return []; } }
     function saveList(key, arr){ try{ localStorage.setItem(key, JSON.stringify(arr)); }catch(_){ } }
 
+    function getFromAnyList(id){
+      const a = loadList(K_RECENTS).find(x=>x.id===id);
+      if (a) return a;
+      return loadList(K_FAVS).find(x=>x.id===id) || null;
+    }
+
     function normalizeItem(ean, resp){
       const p = resp?.product||{};
       const m = resp?.meta||{};
@@ -225,12 +235,6 @@
         userPriceAt: prev.userPriceAt||null,
         ts: Date.now()
       };
-    }
-
-    function getFromAnyList(id){
-      const a = loadList(K_RECENTS).find(x=>x.id===id);
-      if (a) return a;
-      return loadList(K_FAVS).find(x=>x.id===id) || null;
     }
 
     function addRecent(item){
@@ -301,7 +305,7 @@
         const img = item.image ? `<img alt="Imagen" src="${item.image}">` : '—';
         const starOn = isFav(item.id);
         const disabled = item.affiliateLink ? '' : 'disabled';
-        const chipPvp = (item.userPrice!=null) ? `<span class="chip" title="Precio anotado por ti">💡 ${fmtMoney(item.userPrice)} €</span>` : '';
+        const pvpTxt = (item.userPrice!=null) ? `Tu PVP: ${fmtMoney(item.userPrice)} €` : '';
         return `
           <div class="mini" data-id="${item.id}">
             <div class="icon-btn" title="Quitar" data-action="remove">✕</div>
@@ -311,10 +315,9 @@
               <div class="title">${safeTitle}</div>
               <div class="muted">${item.category||'—'}</div>
               <div class="actions">
-                <a class="chip ${disabled}" href="${item.affiliateLink||'#'}" data-action="open">🛒 Ver en Amazon</a>
-                <span class="chip" data-action="price">💾 Precio</span>
-                ${chipPvp}
+                <a class="banner ${disabled}" href="${item.affiliateLink||'#'}" data-action="open">🛒 Ver en Amazon</a>
               </div>
+              ${pvpTxt ? `<div class="pvpLineMini" data-action="price" title="Toca para editar">${pvpTxt}</div>` : ``}
             </div>
           </div>
         `;
@@ -334,7 +337,7 @@
           }
           if (act==='star'){ toggleFav(item); }
           if (act==='open'){ openAmazon(item.affiliateLink, source, id); }
-          if (act==='price'){ askAndSavePvp(id); }
+          if (act==='price'){ askAndSavePvp(id); } // editar tocando el texto
         }, { passive:false });
       });
     }
@@ -367,13 +370,12 @@
 
     function renderResult(ok, p, ean, meta){
       p=p||{}; ean=ean||'';
-      const box=$('resultado'), thumb=$('thumb'), title=$('title'), cat=$('category'), price=$('price');
+      const box=$('resultado'), thumb=$('thumb'), title=$('title'), cat=$('category');
       if(!ok){
         box.style.display='block';
         thumb.textContent='—';
         title.textContent = 'No encontrado para ' + ean;
         cat.textContent = '—';
-        price.textContent = '—';
         setAmazonLink(null);
         renderUserPvpLine(null);
         return;
@@ -381,7 +383,6 @@
       thumb.innerHTML = p.image ? '<img alt="Imagen" src="'+p.image+'">' : '—';
       title.textContent = p.title || ('Código '+ean);
       cat.textContent = p.category || '—';
-      price.textContent = (p.price != null) ? (p.price.toFixed ? p.price.toFixed(2) : p.price) + ' €' : '—';
       setAmazonLink(p.affiliateLink || null);
       box.style.display='block';
       box.scrollIntoView({behavior:'smooth', block:'start'});
@@ -402,10 +403,11 @@
       if (v===null) return;
       const num = Number(String(v).replace(',','.').replace(/[^\d.]/g,''));
       if (!isFinite(num)){ alert('Precio no válido'); return; }
-      updateItemPvp(id, Math.max(0, num));
+      const n = Math.max(0, num);
+      updateItemPvp(id, n);
       const nowItem = getFromAnyList(id);
       if (nowItem) renderUserPvpLine(nowItem);
-      log('user-price-save', { id, price:num });
+      log('user-price-save', { id, price:n });
     }
 
     async function lookupAndRender(ean){
