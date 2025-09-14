@@ -33,7 +33,7 @@
     .cta{margin-top:8px;display:flex;flex-wrap:wrap;gap:8px}
     .link{display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;background:#182339;border:1px solid #223352;color:#e7edf7;text-decoration:none}
     .link.disabled{opacity:.5;pointer-events:none}
-    .link.big{font-size:18px;font-weight:900;padding:14px 16px;border-width:2px;width:100%;justify-content:center}
+    .link.big{font-size:18px;font-weight:900;padding:14px 16px;border-width:2px;width:100%;justify-content:center;min-height:48px}
     .hint{font-size:12px;color:#9bb4d9;margin-top:6px}
     footer{margin:18px 0 8px;border-top:1px solid var(--bd);padding-top:12px;color:#a8b3c7;font-size:0.9rem;line-height:1.35}
 
@@ -44,11 +44,11 @@
     .mini .title{font-size:13px;font-weight:700;max-height:2.6em;overflow:hidden}
     .mini .muted{font-size:12px}
     .mini .actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
-    .banner{display:flex;justify-content:center;align-items:center;width:100%;padding:12px 14px;border-radius:10px;background:#182339;border:1px solid #223352;color:#e7edf7;text-decoration:none;font-size:15px;font-weight:900}
+    .banner{display:flex;justify-content:center;align-items:center;width:100%;padding:12px 14px;border-radius:10px;background:#182339;border:1px solid #223352;color:#e7edf7;text-decoration:none;font-size:15px;font-weight:900;min-height:48px}
     .pvpLineMini{font-size:16px;font-weight:900;margin-top:8px;color:#cfe2ff}
-    .icon-btn{position:absolute;top:6px;right:6px;background:#172033;border:1px solid #284066;color:#c9d9f2;width:24px;height:24px;line-height:22px;text-align:center;border-radius:8px;cursor:pointer;font-weight:900}
-    /* ⭐ estrella más grande y clicable */
-    .star{position:absolute;top:6px;left:6px;background:#172033;border:1px solid #284066;color:#f6e08f;width:30px;height:30px;line-height:28px;text-align:center;border-radius:10px;cursor:pointer;font-weight:900;font-size:18px}
+    /* invertidos: ✕ a la izquierda, ⭐ a la derecha (más grande) */
+    .icon-btn{position:absolute;top:6px;left:6px;background:#172033;border:1px solid #284066;color:#c9d9f2;width:24px;height:24px;line-height:22px;text-align:center;border-radius:8px;cursor:pointer;font-weight:900}
+    .star{position:absolute;top:6px;right:6px;background:#172033;border:1px solid #284066;color:#f6e08f;width:36px;height:36px;line-height:34px;text-align:center;border-radius:12px;cursor:pointer;font-weight:900;font-size:20px}
     .star.off{color:#b0b0b0}
     .empty{color:#a8b3c7;font-size:13px}
     .bar{display:flex;justify-content:space-between;align-items:center;margin:8px 0 4px 0}
@@ -57,16 +57,8 @@
     .notePvp{font-size:14px;color:#b9c9e6;margin-top:6px;font-weight:800}
     .tipRecents{margin-top:10px;color:#9bb4d9;font-size:12px}
 
-    /* Controles extra */
-    .toggles{display:flex;gap:12px;align-items:center;font-size:13px;color:#cfe2ff}
-    .toggles label{display:inline-flex;gap:6px;align-items:center;cursor:pointer}
-
-    /* Modal lote */
-    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6);z-index:9999}
-    .modal .box{background:#0d1423;border:1px solid var(--bd);border-radius:12px;padding:12px;width:min(680px,90vw)}
-    .modal h3{margin:0 0 8px 0;font-size:16px}
-    .modal textarea{width:100%;min-height:190px;resize:vertical;border-radius:8px;border:1px solid #223352;background:#0c1322;color:#e7edf7;padding:10px}
-    .modal .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
+    /* Botones toggle (sonido/vibración) */
+    .toggles{display:flex;gap:8px;flex-wrap:wrap}
   </style>
 </head>
 <body>
@@ -91,8 +83,8 @@
         <button class="btn secondary" id="btnBatch">Añadir por lote</button>
       </div>
       <div class="row toggles">
-        <label><input type="checkbox" id="chkNoSound"> Sin sonido</label>
-        <label><input type="checkbox" id="chkNoVibra"> Sin vibración</label>
+        <button class="btn secondary" id="btnToggleSound">Sonido: ON</button>
+        <button class="btn secondary" id="btnToggleVibra">Vibración: ON</button>
       </div>
       <div class="row">
         <input id="imgInput" type="file" accept="image/*" style="display:none">
@@ -145,11 +137,11 @@
     <!-- Favoritos -->
     <section class="panel" id="panelFavs">
       <div class="bar">
-        <div class="title">⭐ Favoritos</div>
+        <div class="title">Favoritos</div>
         <button class="btn ghost" id="btnClearFavs">Vaciar favoritos</button>
       </div>
       <div id="favs" class="list-grid"></div>
-      <div id="favsEmpty" class="empty" style="display:none">Añade ⭐ en los productos que quieras guardar.</div>
+      <div id="favsEmpty" class="empty" style="display:none">⭐ Añade los productos que quieras guardar.</div>
     </section>
 
     <!-- Footer con la divulgación obligatoria -->
@@ -190,7 +182,12 @@
 
     function loadSettings(){ try{ return JSON.parse(localStorage.getItem(K_SETTINGS)||'{}')||{}; }catch(_){ return {}; } }
     function saveSettings(s){ try{ localStorage.setItem(K_SETTINGS, JSON.stringify(s)); }catch(_){ } }
-    let settings = loadSettings();
+    let settings = Object.assign({ noSound:false, noVibra:false }, loadSettings());
+
+    function renderToggles(){
+      $('btnToggleSound').textContent = 'Sonido: ' + (settings.noSound ? 'OFF' : 'ON');
+      $('btnToggleVibra').textContent = 'Vibración: ' + (settings.noVibra ? 'OFF' : 'ON');
+    }
 
     function beep(){
       try{
@@ -687,10 +684,13 @@
     });
 
     // Toggles sonido/vibración
-    $('chkNoSound').checked = !!settings.noSound;
-    $('chkNoVibra').checked = !!settings.noVibra;
-    $('chkNoSound').addEventListener('change', e=>{ settings.noSound = e.target.checked; saveSettings(settings); });
-    $('chkNoVibra').addEventListener('change', e=>{ settings.noVibra = e.target.checked; saveSettings(settings); });
+    renderToggles();
+    $('btnToggleSound').addEventListener('click', ()=>{
+      settings.noSound = !settings.noSound; saveSettings(settings); renderToggles();
+    });
+    $('btnToggleVibra').addEventListener('click', ()=>{
+      settings.noVibra = !settings.noVibra; saveSettings(settings); renderToggles();
+    });
 
     // Lote
     function openBatch(){ $('batchModal').style.display='flex'; $('batchModal').setAttribute('aria-hidden','false'); $('batchCodes').focus(); }
@@ -725,6 +725,8 @@
     });
 
     // Render inicial
+    function renderRecents(){ renderList('recents','recentsEmpty', loadList(K_RECENTS), 'recent'); }
+    function renderFavs(){ renderList('favs','favsEmpty', loadList(K_FAVS), 'fav'); }
     renderRecents(); renderFavs();
   })();
   </script>
