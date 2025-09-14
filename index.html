@@ -57,8 +57,15 @@
     .notePvp{font-size:14px;color:#b9c9e6;margin-top:6px;font-weight:800}
     .tipRecents{margin-top:10px;color:#9bb4d9;font-size:12px}
 
-    /* Botones toggle (sonido/vibración) */
+    /* Botones toggle (sonido/vibración/continuo) */
     .toggles{display:flex;gap:8px;flex-wrap:wrap}
+
+    /* Modal genérico (se crea dinámicamente) */
+    .modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.6);z-index:9999}
+    .modal .box{background:#0d1423;border:1px solid var(--bd);border-radius:12px;padding:12px;width:min(680px,90vw)}
+    .modal h3{margin:0 0 8px 0;font-size:16px}
+    .modal textarea{width:100%;min-height:190px;resize:vertical;border-radius:8px;border:1px solid #223352;background:#0c1322;color:#e7edf7;padding:10px}
+    .modal .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
   </style>
 </head>
 <body>
@@ -85,6 +92,7 @@
       <div class="row toggles">
         <button class="btn secondary" id="btnToggleSound">Sonido: ON</button>
         <button class="btn secondary" id="btnToggleVibra">Vibración: ON</button>
+        <button class="btn secondary" id="btnToggleContinuous">Escáner continuo: OFF</button>
       </div>
       <div class="row">
         <input id="imgInput" type="file" accept="image/*" style="display:none">
@@ -112,7 +120,6 @@
           <div class="notePvp" id="userPvpLine" aria-live="polite"></div>
           <div class="cta">
             <button class="btn secondary" id="btnPvp">💾 Guardar tu precio</button>
-            <button class="btn secondary" id="btnPvpDel">🗑 Borrar precio</button>
           </div>
           <!-- Botón grande de Amazon DEBAJO del PVP -->
           <a class="link big disabled" id="amazonLink" target="_self" rel="nofollow sponsored noopener">
@@ -137,7 +144,7 @@
     <!-- Favoritos -->
     <section class="panel" id="panelFavs">
       <div class="bar">
-        <div class="title">Favoritos</div>
+        <div class="title" id="favTitle">Favoritos (0)</div>
         <button class="btn ghost" id="btnClearFavs">Vaciar favoritos</button>
       </div>
       <div id="favs" class="list-grid"></div>
@@ -148,22 +155,6 @@
     <footer>
       En calidad de Afiliado de Amazon, obtengo ingresos por las compras adscritas que cumplen los requisitos aplicables.
     </footer>
-  </div>
-
-  <!-- Modal de lote -->
-  <div class="modal" id="batchModal" aria-hidden="true">
-    <div class="box">
-      <h3>Añadir por lote</h3>
-      <p class="muted" style="margin:4px 0 10px">Pega códigos separados por salto de línea, espacios o comas. Acepta EAN-13, UPC-A (12) y EAN-8. Se procesarán en orden.</p>
-      <textarea id="batchCodes" placeholder="Ejemplo:
-9788491296014
-740617300253
-8715946725963"></textarea>
-      <div class="actions">
-        <button class="btn secondary" id="batchCancel">Cancelar</button>
-        <button class="btn" id="batchRun">Procesar</button>
-      </div>
-    </div>
   </div>
 
   <script>
@@ -182,11 +173,12 @@
 
     function loadSettings(){ try{ return JSON.parse(localStorage.getItem(K_SETTINGS)||'{}')||{}; }catch(_){ return {}; } }
     function saveSettings(s){ try{ localStorage.setItem(K_SETTINGS, JSON.stringify(s)); }catch(_){ } }
-    let settings = Object.assign({ noSound:false, noVibra:false }, loadSettings());
+    let settings = Object.assign({ noSound:false, noVibra:false, continuous:false }, loadSettings());
 
     function renderToggles(){
       $('btnToggleSound').textContent = 'Sonido: ' + (settings.noSound ? 'OFF' : 'ON');
       $('btnToggleVibra').textContent = 'Vibración: ' + (settings.noVibra ? 'OFF' : 'ON');
+      $('btnToggleContinuous').textContent = 'Escáner continuo: ' + (settings.continuous ? 'ON' : 'OFF');
     }
 
     function beep(){
@@ -385,7 +377,11 @@
     }
 
     function renderRecents(){ renderList('recents','recentsEmpty', loadList(K_RECENTS), 'recent'); }
-    function renderFavs(){ renderList('favs','favsEmpty', loadList(K_FAVS), 'fav'); }
+    function renderFavs(){
+      const arr = loadList(K_FAVS);
+      renderList('favs','favsEmpty', arr, 'fav');
+      const t = $('favTitle'); if (t) t.textContent = 'Favoritos ('+arr.length+')';
+    }
 
     // --------- Logging simple ----------
     async function log(evt, data){
@@ -433,9 +429,8 @@
       const item = normalizeItem(ean, { product:p, meta:meta||{} });
       addRecent(item);
       renderUserPvpLine(item);
-      // vincular botones PVP al item actual
+      // vincular botón PVP al item actual
       $('btnPvp').onclick = ()=> askAndSavePvp(item.id);
-      $('btnPvpDel').onclick = ()=> { updateItemPvp(item.id, null); renderUserPvpLine({}); };
     }
 
     function askAndSavePvp(id){
@@ -469,10 +464,9 @@
     }
 
     // ---------- ZXing + cámara ----------
-    let reader=null, currentStream=null, cams=[], camIndex=0, torchOn=false;
+    let currentStream=null, cams=[], camIndex=0, torchOn=false;
 
     function stopScanner(){
-      try{ reader&&reader.reset&&reader.reset(); }catch(_){}
       try{ currentStream&&currentStream.getTracks().forEach(t=>t.stop()); }catch(_){}
       currentStream=null; note('Escáner detenido'); torchOn=false;
     }
@@ -562,14 +556,27 @@
         return;
       }
 
-      note('Escaneando…');
-      const reader = new Reader();
+      // ------ Decodificación (continuo / simple)
+      const rdr = new Reader();
       let justScanned=false;
-      await reader.decodeFromVideoDevice(deviceId || null, video, async (result)=>{
-        if (result && result.getText && !justScanned) {
-          const raw = result.getText() || '';
-          const code = raw.replace(/[^0-9Xx]/g,'');
-          if (code) { justScanned=true; beep(); stopScanner(); await lookupAndRender(code); }
+      let lastText='', lastAt=0;
+      const COOLDOWN = 1200; // ms anti-duplicados
+
+      note('Escaneando…');
+      await rdr.decodeFromVideoDevice(deviceId || null, video, async (result)=>{
+        if (!result || !result.getText) return;
+        const raw = result.getText() || '';
+        const code = raw.replace(/[^0-9Xx]/g,'');
+        if (!code) return;
+
+        const now = Date.now();
+        if (settings.continuous){
+          if (code===lastText && (now-lastAt)<COOLDOWN) return;
+          lastText = code; lastAt = now;
+          beep();
+          lookupAndRender(code); // no esperamos; continúa escaneando
+        } else {
+          if (!justScanned){ justScanned=true; beep(); stopScanner(); await lookupAndRender(code); }
         }
       });
     }
@@ -600,12 +607,23 @@
 
         const rdr = new Reader();
         let justScanned=false;
+        let lastText='', lastAt=0;
+        const COOLDOWN = 1200;
+
         note('Escaneando…');
         await rdr.decodeFromVideoDevice(deviceId || null, video, async (result)=>{
-          if (result && result.getText && !justScanned) {
-            const raw = result.getText()||'';
-            const code = raw.replace(/[^0-9Xx]/g,'');
-            if (code) { justScanned=true; beep(); stopScanner(); await lookupAndRender(code); }
+          if (!result || !result.getText) return;
+          const raw = result.getText()||'';
+          const code = raw.replace(/[^0-9Xx]/g,'');
+          if (!code) return;
+
+          const now = Date.now();
+          if (settings.continuous){
+            if (code===lastText && (now-lastAt)<COOLDOWN) return;
+            lastText = code; lastAt = now;
+            beep(); lookupAndRender(code);
+          } else {
+            if (!justScanned){ justScanned=true; beep(); stopScanner(); await lookupAndRender(code); }
           }
         });
       } catch(e){
@@ -683,7 +701,7 @@
       await lookupAndRender(code);
     });
 
-    // Toggles sonido/vibración
+    // Toggles
     renderToggles();
     $('btnToggleSound').addEventListener('click', ()=>{
       settings.noSound = !settings.noSound; saveSettings(settings); renderToggles();
@@ -691,30 +709,53 @@
     $('btnToggleVibra').addEventListener('click', ()=>{
       settings.noVibra = !settings.noVibra; saveSettings(settings); renderToggles();
     });
-
-    // Lote
-    function openBatch(){ $('batchModal').style.display='flex'; $('batchModal').setAttribute('aria-hidden','false'); $('batchCodes').focus(); }
-    function closeBatch(){ $('batchModal').style.display='none'; $('batchModal').setAttribute('aria-hidden','true'); }
-    $('btnBatch').addEventListener('click', openBatch);
-    $('batchCancel').addEventListener('click', closeBatch);
-    $('batchRun').addEventListener('click', async ()=>{
-      const raw = $('batchCodes').value || '';
-      const toks = raw.split(/[\s,;]+/).filter(Boolean);
-      const codes=[];
-      for (const t of toks){
-        const s = String(t).replace(/[^0-9]/g,'');
-        if (!s) continue;
-        const v = validCode(s);
-        if (v.ok) codes.push(s);
-      }
-      if (!codes.length){ alert('No hay códigos válidos.'); return; }
-      closeBatch();
-      for (let i=0;i<codes.length;i++){
-        note(`Procesando lote ${i+1}/${codes.length}…`);
-        await lookupAndRender(codes[i]);
-      }
-      note('Lote terminado'); setTimeout(hideNote, 1200);
+    $('btnToggleContinuous').addEventListener('click', ()=>{
+      settings.continuous = !settings.continuous; saveSettings(settings); renderToggles();
     });
+
+    // Lote (modal dinámico)
+    function openBatch(){
+      if (document.getElementById('batchModal')) return;
+      const modal = document.createElement('div');
+      modal.className = 'modal'; modal.id = 'batchModal'; modal.setAttribute('aria-hidden','false');
+      modal.innerHTML = `
+        <div class="box">
+          <h3>Añadir por lote</h3>
+          <p class="muted" style="margin:4px 0 10px">Pega códigos separados por salto de línea, espacios o comas. Acepta EAN-13, UPC-A (12) y EAN-8. Se procesarán en orden.</p>
+          <textarea id="batchCodes" placeholder="Ejemplo:
+9788491296014
+740617300253
+8715946725963"></textarea>
+          <div class="actions">
+            <button class="btn secondary" id="batchCancel">Cancelar</button>
+            <button class="btn" id="batchRun">Procesar</button>
+          </div>
+        </div>`;
+      document.body.appendChild(modal);
+      const onClose = ()=>{ modal.remove(); };
+      modal.querySelector('#batchCancel').addEventListener('click', onClose);
+      modal.addEventListener('click', (e)=>{ if(e.target===modal) onClose(); });
+      modal.querySelector('#batchRun').addEventListener('click', async ()=>{
+        const raw = modal.querySelector('#batchCodes').value || '';
+        const toks = raw.split(/[\s,;]+/).filter(Boolean);
+        const codes=[];
+        for (const t of toks){
+          const s = String(t).replace(/[^0-9]/g,'');
+          if (!s) continue;
+          const v = validCode(s);
+          if (v.ok) codes.push(s);
+        }
+        if (!codes.length){ alert('No hay códigos válidos.'); return; }
+        onClose();
+        for (let i=0;i<codes.length;i++){
+          note(`Procesando lote ${i+1}/${codes.length}…`);
+          await lookupAndRender(codes[i]);
+        }
+        note('Lote terminado'); setTimeout(hideNote, 1200);
+      });
+      modal.querySelector('#batchCodes').focus();
+    }
+    $('btnBatch').addEventListener('click', openBatch);
 
     // Controles de listas
     $('btnClearRecents').addEventListener('click', ()=>{
@@ -725,8 +766,6 @@
     });
 
     // Render inicial
-    function renderRecents(){ renderList('recents','recentsEmpty', loadList(K_RECENTS), 'recent'); }
-    function renderFavs(){ renderList('favs','favsEmpty', loadList(K_FAVS), 'fav'); }
     renderRecents(); renderFavs();
   })();
   </script>
