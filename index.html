@@ -310,32 +310,34 @@ function buildWebLink(item){
 }
 function isAndroidChrome(){
   const ua = navigator.userAgent || '';
-  // Chrome/Edge/Chromium en Android (intent:// soportado)
-  return /Android/i.test(ua) && /(Chrome|EdgA|Chromium)/i.test(ua);
+  // Android + navegadores que soportan intent:// de forma fiable
+  return /Android/i.test(ua) && /(Chrome|EdgA|Chromium|SamsungBrowser|Brave)/i.test(ua);
 }
+
 function openAmazon(item){
-  const web = buildWebLink(item);
+  const web = buildWebLink(item);            // ya incluye ?tag=...
   const asin = item.asin || extractASIN(web);
   const domain = item.domain || 'amazon.es';
 
-  // ANDROID + CHROME: intenta abrir la app con intent:// y
-  // deja "browser_fallback_url" apuntando a tu enlace web (con tag)
+  // ANDROID + Chrome/Edge: usar intent:// con la URL COMPLETA (con ?tag=)
   if (isAndroidChrome() && asin){
+    // Quita protocolo para el intent (dejamos dominio + path + query intactos)
+    const pathAndQuery = web.replace(/^https?:\/\//i, '');
     const appIntent =
-      `intent://www.${domain}/dp/${asin}` +
+      `intent://${pathAndQuery}` +
       `#Intent;scheme=https;package=com.amazon.mShop.android.shopping;` +
       `S.browser_fallback_url=${encodeURIComponent(web)};end`;
 
-    // Fallback extra por si algún navegador ignora el Intent
     let jumped = false;
     const timer = setTimeout(()=>{ if(!jumped) location.href = web; }, 1500);
     try { location.href = appIntent; jumped = true; } catch(_) { location.href = web; }
     return;
   }
 
-  // iOS/desktop/otros → enlace web normal (si la app soporta Universal Links, iOS la abrirá solo)
+  // iOS / escritorio / otros navegadores → enlace web normal (con tag)
   location.href = web;
 }
+
 
     
     // ---------- ZXing + cámara ----------
@@ -601,6 +603,7 @@ function openAmazon(item){
 
 </body>
 </html>
+
 
 
 
