@@ -260,7 +260,7 @@
           ev.preventDefault(); ev.stopPropagation();
           if(act==='remove'){ source==='recents'?removeRecent(id):(saveList(K_FAVS,loadList(K_FAVS).filter(x=>x.id!==id)),renderFavs(),renderRecents()); }
           if(act==='star'){ toggleFav(item); }
-          if(act==='open'){ if(item.affiliateLink) location.href=item.affiliateLink; }
+          if(act==='open'){ openAmazon(item); }
           if(act==='price'){ askAndSavePvp(id); }
         }, { passive:false });
       });
@@ -295,6 +295,49 @@
       }catch(e){ note('No se pudo consultar el backend.'); }
     }
 
+    // ---------- Amazon deep-link helpers ----------
+function extractASIN(link){
+  if (!link) return null;
+  const m = link.match(/\/(?:dp|gp\/product)\/([A-Z0-9]{10})/i);
+  return m ? m[1].toUpperCase() : null;
+}
+function buildWebLink(item){
+  // Usa el enlace de afiliado que ya te da el backend (con ?tag=...)
+  // y cae a un enlace base si faltase.
+  const domain = item.domain || 'amazon.es';
+  const asin = item.asin || extractASIN(item.affiliateLink) || '';
+  return item.affiliateLink || `https://www.${domain}/dp/${asin}`;
+}
+function isAndroidChrome(){
+  const ua = navigator.userAgent || '';
+  // Chrome/Edge/Chromium en Android (intent:// soportado)
+  return /Android/i.test(ua) && /(Chrome|EdgA|Chromium)/i.test(ua);
+}
+function openAmazon(item){
+  const web = buildWebLink(item);
+  const asin = item.asin || extractASIN(web);
+  const domain = item.domain || 'amazon.es';
+
+  // ANDROID + CHROME: intenta abrir la app con intent:// y
+  // deja "browser_fallback_url" apuntando a tu enlace web (con tag)
+  if (isAndroidChrome() && asin){
+    const appIntent =
+      `intent://www.${domain}/dp/${asin}` +
+      `#Intent;scheme=https;package=com.amazon.mShop.android.shopping;` +
+      `S.browser_fallback_url=${encodeURIComponent(web)};end`;
+
+    // Fallback extra por si algún navegador ignora el Intent
+    let jumped = false;
+    const timer = setTimeout(()=>{ if(!jumped) location.href = web; }, 1500);
+    try { location.href = appIntent; jumped = true; } catch(_) { location.href = web; }
+    return;
+  }
+
+  // iOS/desktop/otros → enlace web normal (si la app soporta Universal Links, iOS la abrirá solo)
+  location.href = web;
+}
+
+    
     // ---------- ZXing + cámara ----------
     let currentStream=null, torchOn=false, scannerReader=null;
 
@@ -558,6 +601,7 @@
 
 </body>
 </html>
+
 
 
 
