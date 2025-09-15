@@ -6,7 +6,6 @@
   <title>PrecioReal · Escanea y abre en Amazon</title>
   <meta name="description" content="Escanea EAN/UPC/ISBN, encuentra el ASIN y abre la ficha en Amazon con tu enlace de afiliado.">
   <link rel="manifest" href="/manifest.json">
-  <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png">
   <meta name="theme-color" content="#0b0f14">
   <style>
     :root{ --bg:#0b0f14; --panel:#121824; --text:#e7edf7; --muted:#a8b3c7; --brand:#3aa1ff; --brand2:#1e78d5; --bd:#1a2434; --ok:#9fe29f; --bad:#ffb3b3; }
@@ -58,6 +57,13 @@
     .toggles{display:flex;gap:8px;flex-wrap:wrap}
 
     .link.big{font-size:18px;font-weight:900;padding:14px 16px;border-width:2px;width:100%;justify-content:center;min-height:48px}
+
+    /* ---------- TAGS (Favoritos) ---------- */
+    .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+    .chip{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;border:1px solid #2a3f66;background:#13203b;color:#cfe2ff;font-size:12px;font-weight:700;cursor:default}
+    .chip .x{cursor:pointer;font-weight:900;opacity:.85}
+    .chip.add{cursor:pointer;background:transparent;border:1px dashed #2a3a5a;color:#9bb4d9}
+    .chip.add:hover{border-style:solid;color:#cfe2ff}
   </style>
 </head>
 <body>
@@ -80,9 +86,7 @@
         <button class="btn secondary" id="btnTorch">Linterna</button>
         <button class="btn secondary" id="btnTest">Test cámara</button>
         <button class="btn secondary" id="btnBatch">Añadir por lote</button>
-        <!-- Botón Instalar app (PWA) -->
-<button class="btn secondary" id="btnInstall" style="display:none">Instalar app</button>
-
+        <button class="btn secondary" id="btnInstall" style="display:none">Instalar app</button>
       </div>
       <div class="row toggles">
         <button class="btn secondary" id="btnToggleSound">Sonido: ON</button>
@@ -95,10 +99,11 @@
       </div>
       <div class="hint">Si la cámara no abre, puedes subir una foto del código o introducir el EAN manualmente.</div>
     </section>
-  <!-- NUEVO: tip iOS para instalar como app -->
-  <div id="a2hsTip" class="hint" style="display:none">
-    iOS: para instalar, toca <b>Compartir</b> → <b>Añadir a pantalla de inicio</b>.
-  </div>
+
+    <!-- Tip iOS para A2HS (opcional) -->
+    <div id="a2hsTip" class="hint" style="display:none">
+      iOS: para instalar, toca <b>Compartir</b> → <b>Añadir a pantalla de inicio</b>.
+    </div>
 
     <section class="panel">
       <b>O introduce el código (EAN/ISBN/UPC)</b>
@@ -189,6 +194,27 @@
     function saveList(key,arr){ try{ localStorage.setItem(key, JSON.stringify(arr)); }catch(_){ } }
     function getFromAnyList(id){ const a=loadList(K_RECENTS).find(x=>x.id===id); if(a) return a; return loadList(K_FAVS).find(x=>x.id===id)||null; }
 
+    // ---------- TAGS utilidades ----------
+    function normalizeTags(arr){
+      if(!Array.isArray(arr)) return [];
+      const out=[]; for(const t of arr){
+        const s=String(t||'').trim();
+        if(!s) continue;
+        if(!out.includes(s)) out.push(s);
+      }
+      return out.slice(0,12); // límite razonable por ítem
+    }
+    function colorForTag(tag){
+      // color determinista a partir del texto
+      const s = String(tag||'');
+      let h=0; for(let i=0;i<s.length;i++){ h = (h*31 + s.charCodeAt(i)) % 360; }
+      const bg = `hsla(${h},70%,18%,.55)`;
+      const br = `hsla(${h},70%,38%,.95)`;
+      const tx = `hsla(${h},95%,90%,1)`;
+      return { bg, br, tx };
+    }
+
+    // --------- Modelo de item ----------
     function normalizeItem(ean, resp){
       const p = resp?.product||{}; const m = resp?.meta||{};
       const id = m.asin || ean || p.asin || p.id || (p.affiliateLink||'').split('/api/go/')[1]?.split('?')[0] || null;
@@ -196,7 +222,9 @@
       return { id, ean: ean||null, asin: m.asin||null, domain: m.domain||null,
                title: p.title||('Código '+(ean||'desconocido')), image: p.image||null,
                category: p.category||'', affiliateLink: p.affiliateLink||null,
-               userPrice: prev.userPrice||null, userPriceAt: prev.userPriceAt||null, ts: Date.now() };
+               userPrice: prev.userPrice||null, userPriceAt: prev.userPriceAt||null,
+               tags: normalizeTags(prev.tags || p.tags || []),
+               ts: Date.now() };
     }
 
     function addRecent(item){
@@ -214,6 +242,22 @@
       renderRecents(); renderFavs();
     }
 
+    // ---- TAGS: añadir/quitar en ambas listas ----
+    function addTagTo(id, tag){
+      const t = String(tag||'').trim(); if(!t) return;
+      const apply=(key)=>{ const arr=loadList(key); const i=arr.findIndex(x=>x.id===id);
+        if(i>=0){ const tags=normalizeTags(arr[i].tags||[]); if(!tags.includes(t)) tags.push(t); arr[i].tags=tags; saveList(key,arr); } };
+      apply(K_RECENTS); apply(K_FAVS);
+      renderRecents(); renderFavs();
+    }
+    function removeTagFrom(id, tag){
+      const t = String(tag||'').trim(); if(!t) return;
+      const apply=(key)=>{ const arr=loadList(key); const i=arr.findIndex(x=>x.id===id);
+        if(i>=0){ const tags=normalizeTags(arr[i].tags||[]).filter(x=>x!==t); arr[i].tags=tags; saveList(key,arr); } };
+      apply(K_RECENTS); apply(K_FAVS);
+      renderRecents(); renderFavs();
+    }
+
     function removeRecent(id){ const arr=loadList(K_RECENTS).filter(x=>x.id!==id); saveList(K_RECENTS,arr); renderRecents(); }
     function clearRecents(){ saveList(K_RECENTS,[]); renderRecents(); }
     function isFav(id){ return loadList(K_FAVS).some(x=>x.id===id); }
@@ -221,6 +265,41 @@
     function clearFavs(){ saveList(K_FAVS,[]); renderFavs(); renderRecents(); }
 
     function tsToText(ts){ try{ if(!ts) return ''; const d=new Date(ts); const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const hh=String(d.getHours()).padStart(2,'0'); const mi=String(d.getMinutes()).padStart(2,'0'); return `${dd}/${mm} ${hh}:${mi}`; }catch(_){ return ''; } }
+
+    // ---------- AMAZON deep-link helpers ----------
+    function extractASIN(link){
+      if (!link) return null;
+      const m = String(link).match(/\/(?:dp|gp\/product)\/([A-Z0-9]{10})/i);
+      return m ? m[1].toUpperCase() : null;
+    }
+    function buildWebLink(item){
+      const domain = item?.domain || 'amazon.es';
+      const asin = item?.asin || extractASIN(item?.affiliateLink) || '';
+      return item?.affiliateLink || `https://www.${domain}/dp/${asin}`;
+    }
+    function isAndroidChrome(){
+      const ua = navigator.userAgent || '';
+      // Android + navegadores que soportan intent://
+      return /Android/i.test(ua) && /(Chrome|EdgA|Chromium|SamsungBrowser|Brave)/i.test(ua);
+    }
+    function openAmazon(item){
+      const web = buildWebLink(item);            // ya incluye ?tag=...
+      const asin = item.asin || extractASIN(web);
+      const domain = item.domain || 'amazon.es';
+    
+      if (isAndroidChrome() && asin){
+        const pathAndQuery = web.replace(/^https?:\/\//i, '');
+        const appIntent =
+          `intent://${pathAndQuery}` +
+          `#Intent;scheme=https;package=com.amazon.mShop.android.shopping;` +
+          `S.browser_fallback_url=${encodeURIComponent(web)};end`;
+        let jumped = false;
+        const timer = setTimeout(()=>{ if(!jumped) location.href = web; }, 1500);
+        try { location.href = appIntent; jumped = true; } catch(_) { location.href = web; }
+        return;
+      }
+      location.href = web;
+    }
 
     function renderList(containerId, emptyId, arr, source){
       const el=$(containerId), empty=$(emptyId);
@@ -231,11 +310,30 @@
         const img=item.image?`<img alt="Imagen" src="${item.image}">`:'—';
         const starOn=isFav(item.id);
         const disabled=item.affiliateLink?'':'disabled';
+
+        // Precio manual (igual que antes)
         const pvpBlock = (item.userPrice!=null) ? `
           <div class="pvpLineMini" data-action="price" title="Toca para editar">
             <span class="badgeManual">Manual</span> 🏷️ Precio anotado: ${fmtMoney(item.userPrice)} €
             <div class="pvpSub">Solo en este dispositivo · No es el precio de Amazon.</div>
           </div>` : '';
+
+        // TAGS (solo visibles/gestionables en Favoritos)
+        let tagsBlock = '';
+        if (source==='fav'){
+          const tags = normalizeTags(item.tags||[]);
+          const chips = tags.map(t=>{
+            const c = colorForTag(t);
+            const style = `background:${c.bg};border-color:${c.br};color:${c.tx}`;
+            return `<span class="chip" data-action="tag-remove" data-tag="${t}" style="${style}" title="Quitar etiqueta">${t}<span class="x">×</span></span>`;
+          }).join('');
+          tagsBlock = `
+            <div class="tags" data-id="${item.id}">
+              ${chips}
+              <span class="chip add" data-action="tag-add">+ etiqueta</span>
+            </div>`;
+        }
+
         return `
           <div class="mini" data-id="${item.id}">
             <div class="icon-btn" title="Quitar" data-action="remove">✕</div>
@@ -248,20 +346,32 @@
                 <a class="banner ${disabled}" href="${item.affiliateLink||'#'}" data-action="open">🛒 Ver en Amazon</a>
               </div>
               ${pvpBlock}
+              ${tagsBlock}
             </div>
           </div>`;
       }).join('');
 
+      // Eventos tarjeta
       el.querySelectorAll('.mini').forEach(card=>{
         const id=card.getAttribute('data-id');
         const item=arr.find(x=>x.id===id);
         card.addEventListener('click', (ev)=>{
-          const act=ev.target?.getAttribute?.('data-action'); if(!act) return;
+          const act=ev.target?.getAttribute?.('data-action'); 
+          if(!act) return;
           ev.preventDefault(); ev.stopPropagation();
           if(act==='remove'){ source==='recents'?removeRecent(id):(saveList(K_FAVS,loadList(K_FAVS).filter(x=>x.id!==id)),renderFavs(),renderRecents()); }
           if(act==='star'){ toggleFav(item); }
           if(act==='open'){ openAmazon(item); }
           if(act==='price'){ askAndSavePvp(id); }
+          if(act==='tag-add'){
+            const t = prompt('Nueva etiqueta (ej.: supermercado, regalo, urgente):','');
+            if(t!=null){ addTagTo(id, t); }
+          }
+          if(act==='tag-remove'){
+            const t = ev.target?.getAttribute?.('data-tag') || ev.target?.parentElement?.getAttribute?.('data-tag');
+            if(!t) return;
+            if(confirm(`Quitar etiqueta “${t}”?`)){ removeTagFrom(id, t); }
+          }
         }, { passive:false });
       });
     }
@@ -283,7 +393,6 @@
       if(v===null) return;
       const num=Number(String(v).replace(',','.').replace(/[^\d.]/g,'')); if(!isFinite(num)){ alert('Precio no válido'); return; }
       updateItemPvp(id, Math.max(0,num));
-      // (sin logs ni envíos al backend para mantenerlo 100% local)
     }
 
     async function lookupAndRender(ean){
@@ -295,51 +404,6 @@
       }catch(e){ note('No se pudo consultar el backend.'); }
     }
 
-    // ---------- Amazon deep-link helpers ----------
-function extractASIN(link){
-  if (!link) return null;
-  const m = link.match(/\/(?:dp|gp\/product)\/([A-Z0-9]{10})/i);
-  return m ? m[1].toUpperCase() : null;
-}
-function buildWebLink(item){
-  // Usa el enlace de afiliado que ya te da el backend (con ?tag=...)
-  // y cae a un enlace base si faltase.
-  const domain = item.domain || 'amazon.es';
-  const asin = item.asin || extractASIN(item.affiliateLink) || '';
-  return item.affiliateLink || `https://www.${domain}/dp/${asin}`;
-}
-function isAndroidChrome(){
-  const ua = navigator.userAgent || '';
-  // Android + navegadores que soportan intent:// de forma fiable
-  return /Android/i.test(ua) && /(Chrome|EdgA|Chromium|SamsungBrowser|Brave)/i.test(ua);
-}
-
-function openAmazon(item){
-  const web = buildWebLink(item);            // ya incluye ?tag=...
-  const asin = item.asin || extractASIN(web);
-  const domain = item.domain || 'amazon.es';
-
-  // ANDROID + Chrome/Edge: usar intent:// con la URL COMPLETA (con ?tag=)
-  if (isAndroidChrome() && asin){
-    // Quita protocolo para el intent (dejamos dominio + path + query intactos)
-    const pathAndQuery = web.replace(/^https?:\/\//i, '');
-    const appIntent =
-      `intent://${pathAndQuery}` +
-      `#Intent;scheme=https;package=com.amazon.mShop.android.shopping;` +
-      `S.browser_fallback_url=${encodeURIComponent(web)};end`;
-
-    let jumped = false;
-    const timer = setTimeout(()=>{ if(!jumped) location.href = web; }, 1500);
-    try { location.href = appIntent; jumped = true; } catch(_) { location.href = web; }
-    return;
-  }
-
-  // iOS / escritorio / otros navegadores → enlace web normal (con tag)
-  location.href = web;
-}
-
-
-    
     // ---------- ZXing + cámara ----------
     let currentStream=null, torchOn=false, scannerReader=null;
 
@@ -545,67 +609,5 @@ function openAmazon(item){
     renderRecents(); renderFavs();
   })();
   </script>
-
-  <script>
-/* PWA: registrar Service Worker + Add to Home Screen */
-(function(){
-  // Registrar SW
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js')
-      .then(r => console.log('[PWA] SW registrado:', r.scope))
-      .catch(e => console.warn('[PWA] SW error:', e));
-  }
-
-  // Estado instalación (standalone)
-  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-  const isiOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-
-  // beforeinstallprompt (Android/Chrome)
-  let deferredPrompt = null;
-  window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    const btn = document.getElementById('btnInstall');
-    if (btn) btn.style.display = 'inline-flex';
-  });
-
-  const btnInstall = document.getElementById('btnInstall');
-  if (btnInstall) {
-    btnInstall.addEventListener('click', async () => {
-      if (!deferredPrompt) return;
-      deferredPrompt.prompt();
-      try {
-        const choice = await deferredPrompt.userChoice;
-        console.log('[PWA] A2HS:', choice.outcome);
-      } catch(_) {}
-      deferredPrompt = null;
-      btnInstall.style.display = 'none';
-    });
-  }
-
-  // iOS tip si no está instalada
-  const tip = document.getElementById('a2hsTip');
-  if (tip) {
-    if (isiOS && !isStandalone) tip.style.display = 'block';
-  }
-
-  // Ocultar botón si ya está instalada
-  if (isStandalone && btnInstall) btnInstall.style.display = 'none';
-
-  // Detectar instalación
-  window.addEventListener('appinstalled', () => {
-    console.log('[PWA] App instalada');
-    if (btnInstall) btnInstall.style.display = 'none';
-    if (tip) tip.style.display = 'none';
-  });
-})();
-</script>
-
 </body>
 </html>
-
-
-
-
-
-
