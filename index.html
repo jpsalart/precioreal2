@@ -79,6 +79,9 @@
         <button class="btn secondary" id="btnTorch">Linterna</button>
         <button class="btn secondary" id="btnTest">Test cámara</button>
         <button class="btn secondary" id="btnBatch">Añadir por lote</button>
+        <!-- Botón Instalar app (PWA) -->
+<button class="btn secondary" id="btnInstall" style="display:none">Instalar app</button>
+
       </div>
       <div class="row toggles">
         <button class="btn secondary" id="btnToggleSound">Sonido: ON</button>
@@ -91,6 +94,10 @@
       </div>
       <div class="hint">Si la cámara no abre, puedes subir una foto del código o introducir el EAN manualmente.</div>
     </section>
+  <!-- NUEVO: tip iOS para instalar como app -->
+  <div id="a2hsTip" class="hint" style="display:none">
+    iOS: para instalar, toca <b>Compartir</b> → <b>Añadir a pantalla de inicio</b>.
+  </div>
 
     <section class="panel">
       <b>O introduce el código (EAN/ISBN/UPC)</b>
@@ -494,3 +501,4 @@
   </script>
 </body>
 </html>
+
