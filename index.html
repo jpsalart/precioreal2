@@ -6,6 +6,7 @@
   <title>PrecioReal · Escanea y abre en Amazon</title>
   <meta name="description" content="Escanea EAN/UPC/ISBN, encuentra el ASIN y abre la ficha en Amazon con tu enlace de afiliado.">
   <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png">
   <meta name="theme-color" content="#0b0f14">
   <style>
     :root{ --bg:#0b0f14; --panel:#121824; --text:#e7edf7; --muted:#a8b3c7; --brand:#3aa1ff; --brand2:#1e78d5; --bd:#1a2434; --ok:#9fe29f; --bad:#ffb3b3; }
@@ -29,7 +30,7 @@
     footer{margin:18px 0 8px;border-top:1px solid var(--bd);padding-top:12px;color:#a8b3c7;font-size:0.9rem;line-height:1.35}
 
     /* Panel headings más grandes */
-    .bar{display:flex;justify-content:space-between;align-items:center;margin:8px 0 4px 0}
+    .bar{display:flex;justify-content:space-between;align-items:center;margin:8px 0 4px 0;gap:8px;flex-wrap:wrap}
     .bar .title{font-size:18px;font-weight:900}
 
     /* Tarjetas de listas */
@@ -129,7 +130,10 @@
     <section class="panel" id="panelFavs">
       <div class="bar">
         <div class="title" id="favTitle">Favoritos (0)</div>
-        <button class="btn ghost" id="btnClearFavs">Vaciar favoritos</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn ghost" id="btnFavsToCart">Añadir favoritos al carrito</button>
+          <button class="btn ghost" id="btnClearFavs">Vaciar favoritos</button>
+        </div>
       </div>
       <div id="favs" class="list-grid"></div>
       <div id="favsEmpty" class="empty" style="display:none">⭐ Añade los productos que quieras guardar.</div>
@@ -242,22 +246,6 @@
       renderRecents(); renderFavs();
     }
 
-    // ---- TAGS: añadir/quitar en ambas listas ----
-    function addTagTo(id, tag){
-      const t = String(tag||'').trim(); if(!t) return;
-      const apply=(key)=>{ const arr=loadList(key); const i=arr.findIndex(x=>x.id===id);
-        if(i>=0){ const tags=normalizeTags(arr[i].tags||[]); if(!tags.includes(t)) tags.push(t); arr[i].tags=tags; saveList(key,arr); } };
-      apply(K_RECENTS); apply(K_FAVS);
-      renderRecents(); renderFavs();
-    }
-    function removeTagFrom(id, tag){
-      const t = String(tag||'').trim(); if(!t) return;
-      const apply=(key)=>{ const arr=loadList(key); const i=arr.findIndex(x=>x.id===id);
-        if(i>=0){ const tags=normalizeTags(arr[i].tags||[]).filter(x=>x!==t); arr[i].tags=tags; saveList(key,arr); } };
-      apply(K_RECENTS); apply(K_FAVS);
-      renderRecents(); renderFavs();
-    }
-
     function removeRecent(id){ const arr=loadList(K_RECENTS).filter(x=>x.id!==id); saveList(K_RECENTS,arr); renderRecents(); }
     function clearRecents(){ saveList(K_RECENTS,[]); renderRecents(); }
     function isFav(id){ return loadList(K_FAVS).some(x=>x.id===id); }
@@ -301,6 +289,59 @@
       location.href = web;
     }
 
+    // --------- Add-to-Cart helpers ----------
+    function getAffiliateTagFromLink(link){
+      try {
+        const u = new URL(link);
+        return u.searchParams.get('tag') || u.searchParams.get('AssociateTag') || '';
+      } catch { return ''; }
+    }
+    function buildCartAddURL(items){
+      const arr = Array.isArray(items) ? items : [items];
+      if (!arr.length) return null;
+      const domain = arr[0]?.domain || 'amazon.es';
+      const tag = getAffiliateTagFromLink(arr[0]?.affiliateLink) || 'TU_TAG_AQUI-21'; // opcional fallback
+      const params = new URLSearchParams();
+      let i = 1;
+      for (const it of arr){
+        const asin = it?.asin || extractASIN(it?.affiliateLink || '') || '';
+        if(!asin) continue;
+        params.set(`ASIN.${i}`, asin);
+        params.set(`Quantity.${i}`, String(Math.max(1, it.quantity||1)));
+        i++;
+      }
+      if (i===1) return null; // sin ASINs válidos
+      params.set('tag', tag);
+      return `https://www.${domain}/gp/aws/cart/add.html?${params.toString()}`;
+    }
+    function isAndroidLike(){
+      const ua = navigator.userAgent || '';
+      return /Android/i.test(ua) && /(Chrome|EdgA|Chromium|SamsungBrowser|Brave)/i.test(ua);
+    }
+    function addToCart(item){
+      const cartUrl = buildCartAddURL(item);
+      if(!cartUrl){ alert('No se pudo construir el enlace de carrito.'); return; }
+      if (isAndroidLike()){
+        const pathAndQuery = cartUrl.replace(/^https?:\/\//i, '');
+        const intent = `intent://${pathAndQuery}` +
+          `#Intent;scheme=https;package=com.amazon.mShop.android.shopping;` +
+          `S.browser_fallback_url=${encodeURIComponent(cartUrl)};end`;
+        let jumped=false;
+        setTimeout(()=>{ if(!jumped) location.href = cartUrl; }, 1200);
+        try { location.href = intent; jumped = true; } catch { location.href = cartUrl; }
+        return;
+      }
+      location.href = cartUrl;
+    }
+    function addAllFavsToCart(){
+      const favs = loadList(K_FAVS);
+      if(!favs.length){ alert('No hay favoritos.'); return; }
+      const cartUrl = buildCartAddURL(favs);
+      if(!cartUrl){ alert('No se pudo construir el enlace de carrito.'); return; }
+      location.href = cartUrl;
+    }
+
+    // ---------- Render de listas ----------
     function renderList(containerId, emptyId, arr, source){
       const el=$(containerId), empty=$(emptyId);
       if(!arr.length){ el.innerHTML=''; empty.style.display='block'; return; }
@@ -311,14 +352,13 @@
         const starOn=isFav(item.id);
         const disabled=item.affiliateLink?'':'disabled';
 
-        // Precio manual (igual que antes)
         const pvpBlock = (item.userPrice!=null) ? `
           <div class="pvpLineMini" data-action="price" title="Toca para editar">
             <span class="badgeManual">Manual</span> 🏷️ Precio anotado: ${fmtMoney(item.userPrice)} €
             <div class="pvpSub">Solo en este dispositivo · No es el precio de Amazon.</div>
           </div>` : '';
 
-        // TAGS (solo visibles/gestionables en Favoritos)
+        // TAGS (solo gestionables en Favoritos)
         let tagsBlock = '';
         if (source==='fav'){
           const tags = normalizeTags(item.tags||[]);
@@ -344,6 +384,7 @@
               <div class="muted">${item.category||'—'}</div>
               <div class="actions" style="margin-top:14px">
                 <a class="banner ${disabled}" href="${item.affiliateLink||'#'}" data-action="open">🛒 Ver en Amazon</a>
+                <a class="banner ${disabled}" href="#" data-action="cart">➕ Añadir al carrito</a>
               </div>
               ${pvpBlock}
               ${tagsBlock}
@@ -362,6 +403,7 @@
           if(act==='remove'){ source==='recents'?removeRecent(id):(saveList(K_FAVS,loadList(K_FAVS).filter(x=>x.id!==id)),renderFavs(),renderRecents()); }
           if(act==='star'){ toggleFav(item); }
           if(act==='open'){ openAmazon(item); }
+          if(act==='cart'){ addToCart(item); }
           if(act==='price'){ askAndSavePvp(id); }
           if(act==='tag-add'){
             const t = prompt('Nueva etiqueta (ej.: supermercado, regalo, urgente):','');
@@ -604,9 +646,64 @@
     // Limpiar listas
     $('btnClearRecents').addEventListener('click', ()=>{ if(confirm('¿Vaciar lista de últimos escaneados?')) clearRecents(); });
     $('btnClearFavs').addEventListener('click', ()=>{ if(confirm('¿Vaciar favoritos?')) clearFavs(); });
+    $('btnFavsToCart').addEventListener('click', addAllFavsToCart);
 
     // Render inicial
     renderRecents(); renderFavs();
+  })();
+  </script>
+
+  <!-- PWA (opt-in): activa con ?pwa=on o pulsando el botón "Instalar app" (Probar modo app) -->
+  <script>
+  (function(){
+    const urlOn = new URLSearchParams(location.search).get('pwa') === 'on';
+    const opted = localStorage.getItem('pwaOptIn') === '1';
+    const allowPWA = urlOn || opted;
+
+    const isiOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    const tip = document.getElementById('a2hsTip');
+    if (tip && isiOS && !isStandalone) tip.style.display = 'block';
+
+    if (!allowPWA) {
+      const btn = document.getElementById('btnInstall');
+      if (btn) {
+        btn.textContent = 'Probar modo app';
+        btn.style.display = 'inline-flex';
+        btn.onclick = () => { localStorage.setItem('pwaOptIn','1'); location.reload(); };
+      }
+      return;
+    }
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then(r => console.log('[PWA] SW registrado:', r.scope))
+        .catch(e => console.warn('[PWA] SW error:', e));
+    }
+
+    let deferredPrompt=null;
+    window.addEventListener('beforeinstallprompt', e => {
+      e.preventDefault(); deferredPrompt = e;
+      const btn = document.getElementById('btnInstall');
+      if (btn) { btn.textContent = 'Instalar app'; btn.style.display = 'inline-flex'; }
+    });
+
+    const btnInstall = document.getElementById('btnInstall');
+    if (btnInstall) {
+      btnInstall.addEventListener('click', async () => {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        try { await deferredPrompt.userChoice; } catch(_){}
+        deferredPrompt = null;
+        btnInstall.style.display = 'none';
+      });
+    }
+
+    window.addEventListener('appinstalled', () => {
+      console.log('[PWA] App instalada');
+      const b=document.getElementById('btnInstall'); if (b) b.style.display='none';
+      if (tip) tip.style.display='none';
+    });
   })();
   </script>
 </body>
