@@ -206,3 +206,122 @@ Recomendación
 Usa GitHub como “fuente de verdad” (código, README, checkpoints con tags/releases).
 
 Usa Vercel para publicar/volver atrás rápido (Promote/Rollback) y gestionar entorno (env vars).
+
+------------------------------------------------------------------------------------------------------------
+PASOS A SEGUIR:
+
+Oleada 1 — Quick wins (1–3 días)
+
+PWA completa (instalable + offline básico) 🟢
+Beneficio: “parece app”, carga instantánea, re-engagement.
+Cómo: añade manifest.json, service worker con cache de / + JS/CSS + iconos. Muestra “Añadir a la pantalla de inicio” si beforeinstallprompt está disponible.
+
+Deep-link a la app de Amazon (si está instalada) 🟢
+Beneficio: más conversión al abrir en app.
+Cómo: intenta primero intent://amazon.com/dp/ASIN#Intent;package=com.amazon.mShop.android.shopping;scheme=https;end (Android) y cae a la URL web con ?tag=…. En iOS usa el enlace web normal; si tienes presupuesto, evalúa puente tipo URLgenius más adelante.
+
+Exportar/Importar listas (CSV/JSON) 🟢
+Beneficio: valor “de trabajo” para usuarios intensivos; retención.
+Cómo: botón “Exportar” que serializa localStorage de “Últimos/Favoritos” y descarga data:application/json. “Importar” lee y fusiona.
+
+Etiquetas y colores en Favoritos 🟢
+Beneficio: organización; se percibe “tu herramienta”.
+Cómo: añade tags: string[] por item; interfaz de chips editables.
+
+Modo “Botones grandes / Alto contraste / Accesible” 🟢
+Beneficio: usabilidad en pasillo/guantes/luz mala.
+Cómo: toggle que aplica una clase a11y con CSS variables más grandes.
+
+Bluetooth/USB “keyboard wedge” 🟢
+Beneficio: compatible con pistolas lectoras que “teclean” el código.
+Cómo: escucha keydown global y bufferiza dígitos hasta Enter → lookup.
+
+Historial por tienda (PVP manual por tienda) 🟢
+Beneficio: memoria real de compras físicas; totalmente local.
+Cómo: al guardar PVP, pide “¿en qué tienda?” (campo libre o listado). Guarda userPriceByStore: { [store]: number }.
+
+Tooltip mínimo y badge “Manual” 🟢
+Beneficio: claridad legal sin ruido visual.
+Cómo: mantenemos Manual · 🏷️ Tu precio: 12,99 € con title="Precio introducido por ti".
+
+Oleada 2 — Diferenciadores de producto (1–2 semanas)
+
+Escaneo “Ráfaga inteligente” 🟢
+Beneficio: más rápido que apps genéricas; deduplica y agrupa.
+Cómo: en continuo, agrupa lecturas iguales en <1,2 s; si detecta 3 códigos distintos en 5 s, muestra “Añadir por lote (3)”.
+
+Corrección y utilidades de códigos 🟢
+Beneficio: precisión + SEO técnico.
+
+Validador EAN/UPC con explicación del dígito de control.
+
+ISBN-13 ↔ ISBN-10 (libros) y EAN↔UPC cuando aplique.
+Cómo: funciones puras (ya tienes validación EAN/UPC); añade conversión ISBN.
+
+Notas y fotos propias por producto 🟢
+Beneficio: “memoria personal” (etiquetas, estantería, etc.).
+Cómo: permitir añadir 1–3 fotos (File API → URL.createObjectURL) y texto; solo local. No subas a servidor salvo que lo pidas luego.
+
+Share rápido (lista o ítem) 🟢
+Beneficio: viralidad y multi-dispositivo.
+Cómo: Web Share API (navigator.share) con título + enlace de afiliado de ese ítem o con /go/ASIN.
+
+Colas offline (“Abrir luego”) 🟢
+Beneficio: funciona en zonas sin cobertura de tienda.
+Cómo: si fetch a /api/lookup falla, encola el EAN y reprocesa al volver.
+
+Atajos iOS/Android 🟢
+Beneficio: re-engagement con 1 toque.
+Cómo: guía + botón que genera un “shortcut” (instrucciones con capturas).
+
+Autoselección de marketplace por país 🟢
+Beneficio: correcto amazon.[tld] y tag según geolocalización (ES/FR/IT/DE).
+Cómo: tabla local de ccTLD y associateTag por país; detecta navigator.language/geoloc (pregunta permiso) o IP (si usas backend).
+
+Oleada 3 — “Moat” real (defensa a medio plazo)
+
+Panel “Mi cesta estimada” (solo con PVP del usuario) 🟢
+Beneficio: valor útil sin tocar precios de Amazon.
+Cómo: suma PVPs manuales marcados; deja notas y exporta presupuesto.
+
+“Recordatorios suaves” 🟢
+Beneficio: retorno orgánico.
+Cómo: botón “recordarme en 7 días” (solo local + Notification API si el usuario acepta). Sin emails todavía (evita backend).
+
+Perfil profesional / etiqueta blanca (opcional) 🟢
+Beneficio: atraer power users (pequeños comercios o resellers).
+Cómo: permite configurar su propio tag de afiliado (bajo su responsabilidad). Guardado local o cuenta básica (si en el futuro añadimos login).
+
+Deep-link inteligente a variantes 🟢
+Beneficio: menos fricción cuando un EAN mapea a varios ASIN.
+Cómo: si Keepa/lookup devuelve múltiples ASIN, abre la búsqueda de Amazon prefiltrada por el EAN y muestra un aviso “elige variante”.
+
+Métricas privadas pro-UX 🟢
+Beneficio: mejorar la app sin invadir privacidad.
+Cómo: eventos anónimos solo de UI (escaneo ok/fallo, clic CTAs). Nada de PVPs ni datos sensibles.
+
+Ideas “agresivas” (solo si pasamos a PA-API)
+
+Estas requieren PA-API y mostrar sello de fecha/hora + disclaimer junto al dato:
+
+“Calcular ahorro ahora”: botón por ítem que llama PA-API en tiempo real, y muestra %/€ + “Actualizado: 15/09 18:03 · Precios sujetos a cambios”.
+
+Histórico mínimo (24 h): guardar último precio con timestamp (cumpliendo TTL).
+
+Alertas: “avísame si baja de X” (cron con PA-API, muy cuidado).
+
+(Mientras no activemos PA-API, mantenemos el foco en PVP manual y flujo a Amazon).
+
+Qué te recomiendo activar YA (mi top 6)
+
+PWA instalable + A2HS
+
+Deep-link a app de Amazon
+
+Exportar/Importar listas
+
+Etiquetas en Favoritos
+
+Validadores/conversores (EAN/UPC/ISBN)
+
+Colas offline + ráfaga inteligente
