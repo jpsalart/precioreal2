@@ -499,6 +499,63 @@
     renderRecents(); renderFavs();
   })();
   </script>
+
+  <script>
+/* PWA: registrar Service Worker + Add to Home Screen */
+(function(){
+  // Registrar SW
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js')
+      .then(r => console.log('[PWA] SW registrado:', r.scope))
+      .catch(e => console.warn('[PWA] SW error:', e));
+  }
+
+  // Estado instalación (standalone)
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  const isiOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+
+  // beforeinstallprompt (Android/Chrome)
+  let deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    const btn = document.getElementById('btnInstall');
+    if (btn) btn.style.display = 'inline-flex';
+  });
+
+  const btnInstall = document.getElementById('btnInstall');
+  if (btnInstall) {
+    btnInstall.addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      try {
+        const choice = await deferredPrompt.userChoice;
+        console.log('[PWA] A2HS:', choice.outcome);
+      } catch(_) {}
+      deferredPrompt = null;
+      btnInstall.style.display = 'none';
+    });
+  }
+
+  // iOS tip si no está instalada
+  const tip = document.getElementById('a2hsTip');
+  if (tip) {
+    if (isiOS && !isStandalone) tip.style.display = 'block';
+  }
+
+  // Ocultar botón si ya está instalada
+  if (isStandalone && btnInstall) btnInstall.style.display = 'none';
+
+  // Detectar instalación
+  window.addEventListener('appinstalled', () => {
+    console.log('[PWA] App instalada');
+    if (btnInstall) btnInstall.style.display = 'none';
+    if (tip) tip.style.display = 'none';
+  });
+})();
+</script>
+
 </body>
 </html>
+
 
