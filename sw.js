@@ -1,5 +1,5 @@
 /* sw.js — Service Worker de PrecioReal */
-const VERSION = 'pr-v1-2025-09-15';
+const VERSION = 'pr-v1c-2025-09-15';
 const STATIC_CACHE = `static-${VERSION}`;
 
 const PRECACHE_URLS = [
