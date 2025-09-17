@@ -1,6 +1,5 @@
 // api/lookup.js - Con cache KV integrado
 export const config = { runtime: 'nodejs' };
-
 import { getCachedLookup, setCachedLookup } from './cache.js';
 
 const KEEPAA_ENDPOINT = 'https://api.keepa.com/product';
