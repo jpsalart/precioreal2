@@ -1,4 +1,9 @@
+// api/kv-health.js
+// Diagnóstico de KV: escribe y lee una clave efímera.
+
 import { kv } from './_kv.js';
+
+export const config = { runtime: 'nodejs' };
 
 export default async function handler(_req, res) {
   try {
