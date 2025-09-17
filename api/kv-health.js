@@ -1,4 +1,4 @@
-import { kv } from '@vercel/kv';
+import { kv } from './_kv.js';
 
 export default async function handler(_req, res) {
   try {
