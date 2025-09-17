@@ -4,7 +4,6 @@ import { getCachedLookup, setCachedLookup } from './cache.js';
 
 const KEEPAA_ENDPOINT = 'https://api.keepa.com/product';
 const DOMAIN = String(process.env.KEEPAA_DOMAIN || '9');
-import { getCachedLookup, setCachedLookup } from './cache.js';
 
 const centsToCurrency = n => (typeof n === 'number' && isFinite(n)) ? (n / 100) : null;
 
@@ -49,14 +48,6 @@ export default async function handler(req, res) {
   if (!key) { 
     res.status(500).json({ success:false, error:'Missing KEEPAA_API_KEY' }); 
     return; 
-  }
-
-// Check cache first
-  const cached = await getCachedLookup(ean);
-  if (cached) {
-    res.setHeader('X-Cache', 'HIT');
-    res.status(200).json(cached);
-    return;
   }
 
   // 1. Check cache first
