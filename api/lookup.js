@@ -38,6 +38,16 @@ async function fetchFromKeepa(ean, apiKey) {
 }
 
 export default async function handler(req, res) {
+// Simple in-memory cache
+  if (!global.prCache) global.prCache = new Map();
+  const cacheKey = `ean:${ean}`;
+  const cached = global.prCache.get(cacheKey);
+  
+  if (cached && (Date.now() - cached.time) < 1800000) { // 30 min
+    res.setHeader('X-Cache', 'HIT');
+    res.status(200).json(cached.data);
+    return;
+  }
   const ean = String(req.query.ean || '').trim();
   if (!ean) { 
     res.status(400).json({ success:false, error:'Missing ean' }); 
@@ -140,6 +150,8 @@ export default async function handler(req, res) {
 
     res.setHeader('X-Cache', 'MISS');
     res.setHeader('Cache-Control','public, max-age=1800, s-maxage=1800');
+    global.prCache.set(cacheKey, { data: response, time: Date.now() });
+    res.setHeader('X-Cache', 'MISS');
     res.status(200).json(response);
 
   } catch (e) {
