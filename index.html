@@ -1,613 +1,279 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>PrecioReal · Escanea y abre en Amazon</title>
-  <meta name="description" content="Escanea EAN/UPC/ISBN, encuentra el ASIN y abre la ficha en Amazon con tu enlace de afiliado.">
-  <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#0b0f14">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b1220" />
+  <title>PrecioReal · Escáner EAN/UPC/ISBN → Amazon</title>
+  <meta name="description" content="Escanea códigos EAN/UPC/ISBN y abre la ficha en Amazon con tu enlace de afiliado. Rápido, sin distracciones y listo para móvil." />
+  <!-- OG/Twitter -->
+  <meta property="og:title" content="PrecioReal · Escáner Amazon" />
+  <meta property="og:description" content="Escanea códigos y abre la ficha en Amazon al instante." />
+  <meta property="og:image" content="/icons/icon-512.png" />
+  <meta name="twitter:card" content="summary" />
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+
   <style>
-    :root{ --bg:#0b0f14; --panel:#121824; --text:#e7edf7; --muted:#a8b3c7; --brand:#3aa1ff; --brand2:#1e78d5; --bd:#1a2434; --ok:#9fe29f; --bad:#ffb3b3; }
+    /* ====== Base visual minimalista (oscuro limpio) ====== */
+    :root{
+      --bg:#0b1220; --fg:#e7eef7; --muted:#9db2ce;
+      --card:#0e1830; --line:#1e2a46;
+      --cta:#1f5eff; --ctaFg:#fff;
+      --cta2:#122042; --cta2Fg:#e7eef7;
+      --focus:#ffd24d;
+      --radius:14px;
+      --fs:16px; --lh:1.35;
+      --btn-h:46px; --btn-px:14px;
+      --space1:8px; --space2:12px; --space3:16px; --space4:22px;
+    }
     *{box-sizing:border-box}
-    body{margin:0;font-family:system-ui,Segoe UI,Roboto,Inter,Arial,sans-serif;background:var(--bg);color:var(--text)}
-    .wrap{max-width:820px;margin:0 auto;padding:16px}
-    header{display:flex;align-items:center;gap:12px;padding:16px 0;border-bottom:1px solid var(--bd)}
-    .logo{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;background:linear-gradient(135deg,var(--brand),#7cc8ff);color:#041423;font-weight:900}
-    h1{font-size:18px;margin:0}.muted{color:var(--muted)}
-    .panel{background:var(--panel);border:1px solid var(--bd);border-radius:14px;padding:14px;margin:16px 0}
-    .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 16px;border:0;border-radius:12px;cursor:pointer;background:linear-gradient(180deg,var(--brand),var(--brand2));color:#06121f;font-weight:800}
-    .btn.secondary{background:#182339;color:var(--text);border:1px solid #223352}
-    .btn.ghost{background:transparent;border:1px dashed #2a3a5a;color:#9bb4d9}
-    .btn[disabled]{opacity:.5;cursor:not-allowed}
-    .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
-    .row input{flex:1;min-width:180px;padding:12px;border-radius:12px;border:1px solid #223352;background:#0c1322;color:#e7edf7}
-    #scanner{position:relative;aspect-ratio:3/2;background:#0d1423;border:1px dashed #223352;border-radius:12px;display:grid;place-items:center;overflow:hidden;margin-top:12px}
-    #scanner video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-    #overlay{position:absolute;left:8px;right:8px;bottom:8px;background:rgba(0,0,0,.45);border:1px solid #223352;border-radius:8px;padding:6px 8px;font-size:12px;color:#cfe7ff;white-space:pre-line}
-    .hint{font-size:12px;color:#9bb4d9;margin-top:6px}
-    footer{margin:18px 0 8px;border-top:1px solid var(--bd);padding-top:12px;color:#a8b3c7;font-size:0.9rem;line-height:1.35}
+    html,body{height:100%}
+    body{
+      margin:0; background:var(--bg); color:var(--fg);
+      font:400 var(--fs)/var(--lh) system-ui, Segoe UI, Roboto, Arial, sans-serif;
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+    }
+    a{color:#a9c8ff; text-decoration:none}
+    a:hover{text-decoration:underline}
+    .wrap{max-width:960px; margin:0 auto; padding: clamp(12px, 3vw, 24px)}
+    header{display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:16px}
+    .brand{display:flex; align-items:center; gap:12px}
+    .logo{
+      width:40px; height:40px; border-radius:10px;
+      display:grid; place-items:center; font-weight:900;
+      background:linear-gradient(180deg,#4c7cff,#1747c9); color:#071126;
+      box-shadow:0 6px 20px rgba(31,94,255,.25);
+    }
+    h1{font-size: clamp(20px, 2.6vw, 28px); margin:0}
+    .muted{color:var(--muted); font-size:0.95em}
 
-    /* Panel headings más grandes */
-    .bar{display:flex;justify-content:space-between;align-items:center;margin:8px 0 4px 0}
-    .bar .title{font-size:18px;font-weight:900}
+    main{display:grid; grid-template-columns: 1.15fr .85fr; gap:20px}
+    @media (max-width:900px){ main{grid-template-columns:1fr} }
 
-    /* Tarjetas de listas */
-    .list-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
-    .mini{position:relative;display:grid;grid-template-columns:72px 1fr;gap:10px;align-items:center;background:#0d1423;border:1px solid var(--bd);border-radius:10px;padding:10px}
-    .mini .thumb{width:72px;height:72px;border-radius:8px;background:#101a2c;display:grid;place-items:center;overflow:hidden}
-    .mini .thumb img{width:100%;height:100%;object-fit:cover}
-    .mini .title{font-size:16px;font-weight:800;line-height:1.25;max-height:2.6em;overflow:hidden}
-    .mini .muted{font-size:12px}
-    .mini .actions{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
-    .banner{display:flex;justify-content:center;align-items:center;width:100%;padding:12px 14px;border-radius:10px;background:#182339;border:1px solid #223352;color:#e7edf7;text-decoration:none;font-size:15px;font-weight:900;min-height:48px}
+    .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:16px}
+    .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+    .row + .row{margin-top:10px}
 
-    /* Precio anotado (manual) */
-    .pvpLineMini{font-size:14px;font-weight:800;margin-top:8px;color:#cfe2ff;text-align:right}
-    .badgeManual{display:inline-block;margin-right:6px;padding:2px 6px;border-radius:999px;border:1px solid #2a3f66;background:#13203b;color:#cfe2ff;font-size:11px;font-weight:700;vertical-align:baseline}
-    .pvpSub{font-size:11px;color:#9bb4d9;margin-top:4px;text-align:right;font-weight:500}
+    /* ====== Botones ====== */
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center;
+      min-height:var(--btn-h); padding:0 var(--btn-px);
+      border-radius:var(--radius); border:2px solid transparent;
+      font-weight:700; cursor:pointer; user-select:none;
+      -webkit-tap-highlight-color:transparent; transition:transform .02s ease;
+    }
+    .btn:active{ transform:scale(.985) }
+    .btn-primary{ background:var(--cta); color:var(--ctaFg) }
+    .btn-secondary{ background:var(--cta2); color:var(--cta2Fg) }
+    .btn-ghost{ background:transparent; border-color:var(--line); color:var(--fg) }
+    .btn-block{ display:block; width:100% }
 
-    /* invertidos: ✕ a la izquierda, ⭐ a la derecha (más grande) */
-    .icon-btn{position:absolute;top:6px;left:6px;background:#172033;border:1px solid #284066;color:#c9d9f2;width:24px;height:24px;line-height:22px;text-align:center;border-radius:8px;cursor:pointer;font-weight:900}
-    .star{position:absolute;top:6px;right:6px;background:#172033;border:1px solid #284066;color:#f6e08f;width:36px;height:36px;line-height:34px;text-align:center;border-radius:12px;cursor:pointer;font-weight:900;font-size:20px}
-    .star.off{color:#b0b0b0}
-    .empty{color:#a8b3c7;font-size:13px}
+    .btn:focus-visible, .a11y-toggle:focus-visible{
+      outline:none; box-shadow:0 0 0 3px var(--focus), 0 0 0 6px rgba(0,0,0,.35);
+    }
 
-    /* Botones toggle */
-    .toggles{display:flex;gap:8px;flex-wrap:wrap}
+    input[type="text"]{
+      flex:1; min-height:var(--btn-h);
+      background:#0a152b; color:var(--fg);
+      border:1px solid var(--line); border-radius:var(--radius);
+      padding:10px 12px; font-weight:600; letter-spacing:0.03em;
+    }
 
-    .link.big{font-size:18px;font-weight:900;padding:14px 16px;border-width:2px;width:100%;justify-content:center;min-height:48px}
+    video{width:100%; border-radius:12px; background:#000; aspect-ratio:16/9; border:1px solid var(--line)}
 
-    /* ---------- TAGS (Favoritos) ---------- */
-    .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
-    .chip{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;border:1px solid #2a3f66;background:#13203b;color:#cfe2ff;font-size:12px;font-weight:700;cursor:default}
-    .chip .x{cursor:pointer;font-weight:900;opacity:.85}
-    .chip.add{cursor:pointer;background:transparent;border:1px dashed #2a3a5a;color:#9bb4d9}
-    .chip.add:hover{border-style:solid;color:#cfe2ff}
+    .results .item{
+      border:1px dashed var(--line); border-radius:12px; padding:12px; display:grid; grid-template-columns: 72px 1fr; gap:12px
+    }
+    .results img{width:72px; height:72px; border-radius:10px; object-fit:cover; background:#06101f; border:1px solid var(--line)}
+    .label{font-size:.9em; color:var(--muted)}
+
+    .notice{
+      margin-top:12px; font-size:.9em; color:var(--muted)
+    }
+
+    /* ====== Toggle accesible ====== */
+    .a11y-toggle{
+      display:inline-flex; align-items:center; gap:10px;
+      padding:8px 12px; border-radius:999px; cursor:pointer;
+      background:#122042; color:#e7eef7; border:2px solid transparent; font-weight:800;
+    }
+    .a11y-toggle[data-pressed="true"]{ background:#1f5eff; color:#fff }
+
+    /* ====== Modo accesible ====== */
+    body.a11y{
+      --fs:18.5px; --lh:1.5; --btn-h:56px; --btn-px:18px; --radius:16px;
+      --bg:#000914; --fg:#ffffff; --muted:#cfe0ff;
+      --cta:#0b77ff; --ctaFg:#fff; --cta2:#0c1a33; --cta2Fg:#fff;
+    }
+
+    /* Helper para banners/snakbars */
+    .snackbar{
+      position:fixed; left:12px; right:12px; bottom:12px;
+      background:#0c1a33; color:#fff; padding:10px 12px; border-radius:12px; z-index:9999;
+      border:1px solid #1a315b;
+    }
+    .snackbar button.btn{min-height:40px; padding:0 12px; margin-left:8px}
   </style>
 </head>
 <body>
   <div class="wrap">
     <header>
-      <div class="logo">PR</div>
-      <div>
-        <h1>PrecioReal</h1>
-        <div class="muted">Escanea un producto y abre su ficha en Amazon</div>
+      <div class="brand">
+        <div class="logo">PR</div>
+        <div>
+          <h1>PrecioReal — Escáner → Amazon</h1>
+          <div class="muted">Escanea un producto y abre su ficha en Amazon</div>
+        </div>
       </div>
+      <button id="a11yToggle" class="a11y-toggle" type="button" aria-pressed="false" aria-label="Activar modo accesible">🅰️ Accesible</button>
     </header>
 
-    <section class="panel">
-      <b>Escanear con la cámara</b>
-      <div id="scanner"><div id="overlay">Pulsa “Iniciar escáner” y permite la cámara</div></div>
-      <div class="row">
-        <button class="btn" id="btnScan">Iniciar escáner</button>
-        <button class="btn" id="btnSetPrice">Pon tu Precio</button>
-        <button class="btn secondary" id="btnStop">Parar</button>
-        <button class="btn secondary" id="btnTorch">Linterna</button>
-        <button class="btn secondary" id="btnTest">Test cámara</button>
-        <button class="btn secondary" id="btnBatch">Añadir por lote</button>
-        <button class="btn secondary" id="btnInstall" style="display:none">Instalar app</button>
-      </div>
-      <div class="row toggles">
-        <button class="btn secondary" id="btnToggleSound">Sonido: ON</button>
-        <button class="btn secondary" id="btnToggleVibra">Vibración: ON</button>
-        <button class="btn secondary" id="btnToggleContinuous">Escáner continuo: ON</button>
-      </div>
-      <div class="row">
-        <input id="imgInput" type="file" accept="image/*" style="display:none">
-        <button class="btn secondary" id="btnUpload">Subir foto (leer código)</button>
-      </div>
-      <div class="hint">Si la cámara no abre, puedes subir una foto del código o introducir el EAN manualmente.</div>
-    </section>
+    <main>
+      <!-- Columna 1: Cámara -->
+      <section class="card">
+        <div class="row" style="justify-content:space-between">
+          <div class="label">Cámara</div>
+          <div class="row" role="group" aria-label="Controles de cámara">
+            <button id="btnScan" class="btn btn-primary">📷 Escanear</button>
+            <button id="btnStop" class="btn btn-ghost">⏹️ Detener</button>
+            <button id="btnTorch" class="btn btn-secondary">🔦 Linterna</button>
+            <button id="btnSwap" class="btn btn-secondary">🔁 Cambiar cámara</button>
+          </div>
+        </div>
+        <div style="margin-top:10px">
+          <video id="preview" autoplay playsinline muted></video>
+        </div>
+      </section>
 
-    <!-- Tip iOS para A2HS (opcional) -->
-    <div id="a2hsTip" class="hint" style="display:none">
-      iOS: para instalar, toca <b>Compartir</b> → <b>Añadir a pantalla de inicio</b>.
-    </div>
+      <!-- Columna 2: Entrada manual + resultado -->
+      <section class="card">
+        <div class="row">
+          <input id="codeInput" type="text" inputmode="numeric" placeholder="Pega o escribe EAN/UPC/ISBN…" aria-label="Código de barras manual" />
+        </div>
+        <div class="row">
+          <button id="btnPaste" class="btn btn-secondary">📋 Pegar</button>
+          <button id="btnLookup" class="btn btn-primary">🔎 Buscar</button>
+          <button id="btnClear" class="btn btn-ghost">🧹 Limpiar</button>
+        </div>
 
-    <section class="panel">
-      <b>O introduce el código (EAN/ISBN/UPC)</b>
-      <div class="row">
-        <input id="eanInput" inputmode="numeric" pattern="[0-9]*" placeholder="Ej.: 9788491296014" />
-        <button class="btn secondary" id="btnBuscar">Buscar</button>
-      </div>
-      <div class="hint" id="eanHint"></div>
-    </section>
+        <div id="result" class="results" style="margin-top:14px; display:none">
+          <div class="item">
+            <img id="pImg" alt="" />
+            <div>
+              <div id="pTitle" style="font-weight:800">Título</div>
+              <div class="label">Categoría: <span id="pCat">—</span></div>
+              <div class="row" style="margin-top:8px">
+                <a id="btnAmazon" class="btn btn-primary" href="#" target="_blank" rel="nofollow noopener">🛒 Ver en Amazon</a>
+                <button id="btnFav" class="btn btn-secondary">⭐ Favorito</button>
+              </div>
+            </div>
+          </div>
+        </div>
 
-    <!-- Últimos escaneados -->
-    <section class="panel" id="panelRecents">
-      <div class="bar">
-        <div class="title">🕘 Últimos escaneados</div>
-        <button class="btn ghost" id="btnClearRecents">Vaciar lista</button>
-      </div>
-      <div id="recents" class="list-grid"></div>
-      <div id="recentsEmpty" class="empty" style="display:none">Aquí verás tus últimos escaneos.</div>
-      <div id="tipRecents" class="empty" style="margin-top:10px">Consejo: Añádelo en tu carrito de Amazon para no perderlo.</div>
-    </section>
-
-    <!-- Favoritos -->
-    <section class="panel" id="panelFavs">
-      <div class="bar">
-        <div class="title" id="favTitle">Favoritos (0)</div>
-        <button class="btn ghost" id="btnClearFavs">Vaciar favoritos</button>
-      </div>
-      <div id="favs" class="list-grid"></div>
-      <div id="favsEmpty" class="empty" style="display:none">⭐ Añade los productos que quieras guardar.</div>
-    </section>
-
-    <footer>
-      En calidad de Afiliado de Amazon, obtengo ingresos por las compras adscritas que cumplen los requisitos aplicables.
-    </footer>
+        <div class="notice">
+          Aviso de afiliado: los enlaces a Amazon incluyen nuestro <em>tag</em> de afiliado. No mostramos precios aquí (política de Amazon).
+        </div>
+      </section>
+    </main>
   </div>
 
+  <!-- ====== Librerías/JS de la app ====== -->
+  <script src="/vendor/zxing/index.min.js"></script>
+  <script src="/index.min.js"></script>
+
+  <!-- ====== Accesibilidad: estado + toggle + atajo teclado ====== -->
   <script>
   (function(){
-    'use strict';
+    const KEY = 'precioreal:a11y';
+    const body = document.body;
+    const btn  = document.getElementById('a11yToggle');
 
-    // ---------- helpers ----------
-    const $ = id => document.getElementById(id);
-    const note = (m)=>{ const o=$('overlay'); if(o){o.textContent=m;o.style.display='block';} console.log('[PrecioReal]', m); };
-    const hideNote = ()=>{ const o=$('overlay'); if(o) o.style.display='none'; };
-    const ttlSec = 1800; // 30 min cache local
-    const MAX_RECENTS = 20;
-    const K_RECENTS = 'pr-recent-v1';
-    const K_FAVS = 'pr-favs-v1';
-    const K_SETTINGS = 'pr-settings-v1';
+    // merge con settings si tu index.min.js lo usa (fallback localStorage simple)
+    function getSaved(){ try{ return localStorage.getItem(KEY); }catch(e){ return null; } }
+    function setSaved(v){ try{ localStorage.setItem(KEY, v ? '1':'0'); }catch(e){} }
 
-    function loadSettings(){ try{ return JSON.parse(localStorage.getItem(K_SETTINGS)||'{}')||{}; }catch(_){ return {}; } }
-    function saveSettings(s){ try{ localStorage.setItem(K_SETTINGS, JSON.stringify(s)); }catch(_){ } }
-    // continuo ON por defecto
-    let settings = Object.assign({ noSound:false, noVibra:false, continuous:true }, loadSettings());
+    // Arranque
+    const saved = getSaved() === '1';
+    if (saved) body.classList.add('a11y');
 
-    function renderToggles(){
-      $('btnToggleSound').textContent = 'Sonido: ' + (settings.noSound ? 'OFF' : 'ON');
-      $('btnToggleVibra').textContent = 'Vibración: ' + (settings.noVibra ? 'OFF' : 'ON');
-      $('btnToggleContinuous').textContent = 'Escáner continuo: ' + (settings.continuous ? 'ON' : 'OFF');
-    }
-
-    function beep(){
-      try{
-        if (!settings.noSound){
-          const ctx=new (window.AudioContext||window.webkitAudioContext)();
-          const o=ctx.createOscillator(); const g=ctx.createGain();
-          o.frequency.value=880; g.gain.value=0.1; o.connect(g).connect(ctx.destination);
-          o.start(); setTimeout(()=>{o.stop();ctx.close();},120);
-        }
-      }catch(_){}
-      try{ if (!settings.noVibra){ navigator.vibrate && navigator.vibrate(80); } }catch(_){}
-    }
-    const fmtMoney = (n)=> (isFinite(n)? (Number(n).toFixed(2).replace('.',',')) : '');
-
-    // --------- Validación EAN/UPC ----------
-    function ean13Valid(s){ s=String(s).replace(/[^0-9]/g,''); if(s.length!==13) return false; const d=s.split('').map(n=>+n); const c=d[12]; let sum=0; for(let i=0;i<12;i++) sum+=d[i]*(i%2===0?1:3); return ((10-(sum%10))%10)===c; }
-    function ean8Valid(s){ s=String(s).replace(/[^0-9]/g,''); if(s.length!==8) return false; const d=s.split('').map(n=>+n); const c=d[7]; let sum=0; for(let i=0;i<7;i++) sum+=d[i]*(i%2===0?3:1); return ((10-(sum%10))%10)===c; }
-    function upcAValid(s){ s=String(s).replace(/[^0-9]/g,''); if(s.length!==12) return false; return ean13Valid('0'+s); }
-    function validCode(code){ const s=String(code).replace(/[^0-9]/g,''); if(s.length===13) return {ok:ean13Valid(s),type:'EAN-13'}; if(s.length===8) return {ok:ean8Valid(s),type:'EAN-8'}; if(s.length===12) return {ok:upcAValid(s),type:'UPC-A'}; return {ok:false,type:'unknown'}; }
-    function setEanHint(msg, ok){ const el=$('eanHint'); el.textContent=msg||''; el.style.color=ok?'#9fe29f':'#ffb3b3'; }
-
-    // --------- Cache local mínima ----------
-    function cacheGet(ean){ try{ const raw=localStorage.getItem('pr-cache-'+ean); if(!raw) return null; const o=JSON.parse(raw); if(!o||!o.t||!o.d) return null; if((Date.now()-o.t)/1000>ttlSec) return null; return o.d; }catch(_){ return null; } }
-    function cacheSet(ean,data){ try{ localStorage.setItem('pr-cache-'+ean, JSON.stringify({t:Date.now(),d:data})); }catch(_){ } }
-
-    // --------- Storage listas ----------
-    function loadList(key){ try{ return JSON.parse(localStorage.getItem(key)||'[]')||[]; }catch(_){ return []; } }
-    function saveList(key,arr){ try{ localStorage.setItem(key, JSON.stringify(arr)); }catch(_){ } }
-    function getFromAnyList(id){ const a=loadList(K_RECENTS).find(x=>x.id===id); if(a) return a; return loadList(K_FAVS).find(x=>x.id===id)||null; }
-
-    // ---------- TAGS utilidades ----------
-    function normalizeTags(arr){
-      if(!Array.isArray(arr)) return [];
-      const out=[]; for(const t of arr){
-        const s=String(t||'').trim();
-        if(!s) continue;
-        if(!out.includes(s)) out.push(s);
+    const apply = (on)=>{
+      body.classList.toggle('a11y', !!on);
+      setSaved(!!on);
+      if (btn){
+        btn.setAttribute('data-pressed', on ? 'true':'false');
+        btn.setAttribute('aria-pressed', on ? 'true':'false');
+        btn.setAttribute('aria-label', on ? 'Desactivar modo accesible' : 'Activar modo accesible');
       }
-      return out.slice(0,12); // límite razonable por ítem
-    }
-    function colorForTag(tag){
-      // color determinista a partir del texto
-      const s = String(tag||'');
-      let h=0; for(let i=0;i<s.length;i++){ h = (h*31 + s.charCodeAt(i)) % 360; }
-      const bg = `hsla(${h},70%,18%,.55)`;
-      const br = `hsla(${h},70%,38%,.95)`;
-      const tx = `hsla(${h},95%,90%,1)`;
-      return { bg, br, tx };
-    }
+    };
+    apply(saved);
 
-    // --------- Modelo de item ----------
-    function normalizeItem(ean, resp){
-      const p = resp?.product||{}; const m = resp?.meta||{};
-      const id = m.asin || ean || p.asin || p.id || (p.affiliateLink||'').split('/api/go/')[1]?.split('?')[0] || null;
-      const prev = getFromAnyList(id) || {};
-      return { id, ean: ean||null, asin: m.asin||null, domain: m.domain||null,
-               title: p.title||('Código '+(ean||'desconocido')), image: p.image||null,
-               category: p.category||'', affiliateLink: p.affiliateLink||null,
-               userPrice: prev.userPrice||null, userPriceAt: prev.userPriceAt||null,
-               tags: normalizeTags(prev.tags || p.tags || []),
-               ts: Date.now() };
-    }
+    // Click en toggle
+    if (btn) btn.addEventListener('click', ()=> apply(!body.classList.contains('a11y')));
 
-    function addRecent(item){
-      if(!item||!item.id) return;
-      const arr=loadList(K_RECENTS); const idx=arr.findIndex(x=>x.id===item.id);
-      if(idx>=0) arr.splice(idx,1);
-      arr.unshift(item); if(arr.length>MAX_RECENTS) arr.length=MAX_RECENTS;
-      saveList(K_RECENTS, arr); renderRecents();
-    }
+    // Atajo: Alt+Shift+A
+    window.addEventListener('keydown', (e)=>{
+      if (e.altKey && e.shiftKey && (e.key==='a' || e.key==='A')) { e.preventDefault(); apply(!body.classList.contains('a11y')); }
+    });
 
-    function updateItemPvp(id, pvp){
-      const apply=(key)=>{ const arr=loadList(key); const i=arr.findIndex(x=>x.id===id);
-        if(i>=0){ arr[i].userPrice=pvp; arr[i].userPriceAt=(pvp!=null)?Date.now():null; saveList(key,arr); } };
-      apply(K_RECENTS); apply(K_FAVS);
-      renderRecents(); renderFavs();
-    }
-
-    // ---- TAGS: añadir/quitar en ambas listas ----
-    function addTagTo(id, tag){
-      const t = String(tag||'').trim(); if(!t) return;
-      const apply=(key)=>{ const arr=loadList(key); const i=arr.findIndex(x=>x.id===id);
-        if(i>=0){ const tags=normalizeTags(arr[i].tags||[]); if(!tags.includes(t)) tags.push(t); arr[i].tags=tags; saveList(key,arr); } };
-      apply(K_RECENTS); apply(K_FAVS);
-      renderRecents(); renderFavs();
-    }
-    function removeTagFrom(id, tag){
-      const t = String(tag||'').trim(); if(!t) return;
-      const apply=(key)=>{ const arr=loadList(key); const i=arr.findIndex(x=>x.id===id);
-        if(i>=0){ const tags=normalizeTags(arr[i].tags||[]).filter(x=>x!==t); arr[i].tags=tags; saveList(key,arr); } };
-      apply(K_RECENTS); apply(K_FAVS);
-      renderRecents(); renderFavs();
-    }
-
-    function removeRecent(id){ const arr=loadList(K_RECENTS).filter(x=>x.id!==id); saveList(K_RECENTS,arr); renderRecents(); }
-    function clearRecents(){ saveList(K_RECENTS,[]); renderRecents(); }
-    function isFav(id){ return loadList(K_FAVS).some(x=>x.id===id); }
-    function toggleFav(item){ if(!item||!item.id) return; const arr=loadList(K_FAVS); const i=arr.findIndex(x=>x.id===item.id); if(i>=0) arr.splice(i,1); else arr.unshift(item); saveList(K_FAVS,arr); renderFavs(); renderRecents(); }
-    function clearFavs(){ saveList(K_FAVS,[]); renderFavs(); renderRecents(); }
-
-    function tsToText(ts){ try{ if(!ts) return ''; const d=new Date(ts); const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const hh=String(d.getHours()).padStart(2,'0'); const mi=String(d.getMinutes()).padStart(2,'0'); return `${dd}/${mm} ${hh}:${mi}`; }catch(_){ return ''; } }
-
-    // ---------- AMAZON deep-link helpers ----------
-    function extractASIN(link){
-      if (!link) return null;
-      const m = String(link).match(/\/(?:dp|gp\/product)\/([A-Z0-9]{10})/i);
-      return m ? m[1].toUpperCase() : null;
-    }
-    function buildWebLink(item){
-      const domain = item?.domain || 'amazon.es';
-      const asin = item?.asin || extractASIN(item?.affiliateLink) || '';
-      return item?.affiliateLink || `https://www.${domain}/dp/${asin}`;
-    }
-    function isAndroidChrome(){
-      const ua = navigator.userAgent || '';
-      // Android + navegadores que soportan intent://
-      return /Android/i.test(ua) && /(Chrome|EdgA|Chromium|SamsungBrowser|Brave)/i.test(ua);
-    }
-    function openAmazon(item){
-      const web = buildWebLink(item);            // ya incluye ?tag=...
-      const asin = item.asin || extractASIN(web);
-      const domain = item.domain || 'amazon.es';
-    
-      if (isAndroidChrome() && asin){
-        const pathAndQuery = web.replace(/^https?:\/\//i, '');
-        const appIntent =
-          `intent://${pathAndQuery}` +
-          `#Intent;scheme=https;package=com.amazon.mShop.android.shopping;` +
-          `S.browser_fallback_url=${encodeURIComponent(web)};end`;
-        let jumped = false;
-        const timer = setTimeout(()=>{ if(!jumped) location.href = web; }, 1500);
-        try { location.href = appIntent; jumped = true; } catch(_) { location.href = web; }
-        return;
+    // Auto-ON si el sistema lo pide (solo si el usuario no decidió antes)
+    try{
+      const prefersMore  = matchMedia('(prefers-contrast: more)').matches;
+      const forcedColors = matchMedia('(forced-colors: active)').matches;
+      if ((prefersMore || forcedColors) && getSaved() === null) {
+        apply(true);
+        const note = document.createElement('div');
+        note.textContent = 'Modo accesible activado por tu sistema. Puedes cambiarlo.';
+        note.style.cssText='position:fixed;right:12px;bottom:12px;background:#0b77ff;color:#fff;padding:8px 12px;border-radius:10px;z-index:9999;font-weight:600';
+        document.body.appendChild(note);
+        setTimeout(()=>note.remove(), 3500);
       }
-      location.href = web;
-    }
-
-    function renderList(containerId, emptyId, arr, source){
-      const el=$(containerId), empty=$(emptyId);
-      if(!arr.length){ el.innerHTML=''; empty.style.display='block'; return; }
-      empty.style.display='none';
-      el.innerHTML = arr.map(item=>{
-        const safeTitle=(item.title||'Producto').replace(/</g,'&lt;');
-        const img=item.image?`<img alt="Imagen" src="${item.image}">`:'—';
-        const starOn=isFav(item.id);
-        const disabled=item.affiliateLink?'':'disabled';
-
-        // Precio manual (igual que antes)
-        const pvpBlock = (item.userPrice!=null) ? `
-          <div class="pvpLineMini" data-action="price" title="Toca para editar">
-            <span class="badgeManual">Manual</span> 🏷️ Precio anotado: ${fmtMoney(item.userPrice)} €
-            <div class="pvpSub">Solo en este dispositivo · No es el precio de Amazon.</div>
-          </div>` : '';
-
-        // TAGS (solo visibles/gestionables en Favoritos)
-        let tagsBlock = '';
-        if (source==='fav'){
-          const tags = normalizeTags(item.tags||[]);
-          const chips = tags.map(t=>{
-            const c = colorForTag(t);
-            const style = `background:${c.bg};border-color:${c.br};color:${c.tx}`;
-            return `<span class="chip" data-action="tag-remove" data-tag="${t}" style="${style}" title="Quitar etiqueta">${t}<span class="x">×</span></span>`;
-          }).join('');
-          tagsBlock = `
-            <div class="tags" data-id="${item.id}">
-              ${chips}
-              <span class="chip add" data-action="tag-add">+ etiqueta</span>
-            </div>`;
-        }
-
-        return `
-          <div class="mini" data-id="${item.id}">
-            <div class="icon-btn" title="Quitar" data-action="remove">✕</div>
-            <div class="star ${starOn?'':'off'}" title="${starOn?'Quitar de favoritos':'Añadir a favoritos'}" data-action="star">★</div>
-            <div class="thumb">${img}</div>
-            <div>
-              <div class="title">${safeTitle}</div>
-              <div class="muted">${item.category||'—'}</div>
-              <div class="actions" style="margin-top:14px">
-                <a class="banner ${disabled}" href="${item.affiliateLink||'#'}" data-action="open">🛒 Ver en Amazon</a>
-              </div>
-              ${pvpBlock}
-              ${tagsBlock}
-            </div>
-          </div>`;
-      }).join('');
-
-      // Eventos tarjeta
-      el.querySelectorAll('.mini').forEach(card=>{
-        const id=card.getAttribute('data-id');
-        const item=arr.find(x=>x.id===id);
-        card.addEventListener('click', (ev)=>{
-          const act=ev.target?.getAttribute?.('data-action'); 
-          if(!act) return;
-          ev.preventDefault(); ev.stopPropagation();
-          if(act==='remove'){ source==='recents'?removeRecent(id):(saveList(K_FAVS,loadList(K_FAVS).filter(x=>x.id!==id)),renderFavs(),renderRecents()); }
-          if(act==='star'){ toggleFav(item); }
-          if(act==='open'){ openAmazon(item); }
-          if(act==='price'){ askAndSavePvp(id); }
-          if(act==='tag-add'){
-            const t = prompt('Nueva etiqueta (ej.: supermercado, regalo, urgente):','');
-            if(t!=null){ addTagTo(id, t); }
-          }
-          if(act==='tag-remove'){
-            const t = ev.target?.getAttribute?.('data-tag') || ev.target?.parentElement?.getAttribute?.('data-tag');
-            if(!t) return;
-            if(confirm(`Quitar etiqueta “${t}”?`)){ removeTagFrom(id, t); }
-          }
-        }, { passive:false });
-      });
-    }
-
-    function renderRecents(){ renderList('recents','recentsEmpty', loadList(K_RECENTS), 'recent'); }
-    function renderFavs(){ const arr=loadList(K_FAVS); renderList('favs','favsEmpty', arr, 'fav'); const t=$('favTitle'); if(t) t.textContent='Favoritos ('+arr.length+')'; }
-
-    function renderResult(ok, p, ean, meta){
-      if(!ok){ note('No encontrado para '+ean); return; }
-      const item = normalizeItem(ean, { product:p, meta:meta||{} });
-      addRecent(item);
-      note('Añadido a “Últimos escaneados”.'); setTimeout(hideNote, 900);
-    }
-
-    function askAndSavePvp(id){
-      const old=getFromAnyList(id);
-      const pre=(old && old.userPrice!=null)? String(old.userPrice).replace('.',',') : '';
-      const v=prompt('Introduce tu precio (ej. 12,99). Se guarda solo en este dispositivo:', pre);
-      if(v===null) return;
-      const num=Number(String(v).replace(',','.').replace(/[^\d.]/g,'')); if(!isFinite(num)){ alert('Precio no válido'); return; }
-      updateItemPvp(id, Math.max(0,num));
-    }
-
-    async function lookupAndRender(ean){
-      const cached=cacheGet(ean); if(cached){ renderResult(cached.success,cached.product,ean,cached.meta); return; }
-      try{
-        const r=await fetch('/api/lookup?ean='+encodeURIComponent(ean));
-        const d=await r.json(); cacheSet(ean,d);
-        renderResult(d && d.success, d && d.product, ean, d && d.meta);
-      }catch(e){ note('No se pudo consultar el backend.'); }
-    }
-
-    // ---------- ZXing + cámara ----------
-    let currentStream=null, torchOn=false, scannerReader=null;
-
-    function stopScanner(){
-      try{ scannerReader && scannerReader.reset && scannerReader.reset(); }catch(_){}
-      try{ currentStream && currentStream.getTracks().forEach(t=>t.stop()); }catch(_){}
-      currentStream=null; scannerReader=null; torchOn=false;
-      note('Escáner detenido'); setTimeout(hideNote, 800);
-    }
-
-    function ensureMedia(){ return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia); }
-
-    function loadZXing(){
-      if (window.ZXingBrowser || window.ZXing) return Promise.resolve(true);
-      return new Promise(resolve=>{
-        const s=document.createElement('script');
-        s.src='/api/zxing.js'; s.async=true;
-        s.onload=()=>resolve(!!(window.ZXingBrowser||window.ZXing));
-        s.onerror=()=>resolve(false);
-        document.head.appendChild(s);
-      });
-    }
-
-    async function toggleTorch(){
-      const track=currentStream?.getVideoTracks?.()[0];
-      const caps=track?.getCapabilities?.();
-      if(!track || !caps || !caps.torch){ note('Este dispositivo no soporta linterna.'); return; }
-      try{
-        torchOn=!torchOn;
-        await track.applyConstraints({ advanced:[{ torch:torchOn }] });
-        note(torchOn?'Linterna: ON':'Linterna: OFF'); setTimeout(hideNote, 800);
-      }catch(_){ note('No se pudo cambiar la linterna.'); }
-    }
-
-    async function startScanner(){
-      if(!ensureMedia()){ note('Este navegador no soporta cámara.'); return; }
-      note('Cargando ZXing…');
-      const ok = await loadZXing();
-      const ZX = window.ZXingBrowser || window.ZXing || null;
-      const ReaderCtor = ZX && ZX.BrowserMultiFormatReader ? ZX.BrowserMultiFormatReader : null;
-      if(!ok || !ReaderCtor){ note('ZXing no disponible. Usa la búsqueda manual.'); return; }
-
-      try{
-        const r=await fetch('/api/zxing.js', { cache:'no-store' });
-        console.log('X-Precioreal-ZXing:', r.headers.get('X-Precioreal-ZXing')||'(sin cabecera)');
-      }catch(_){}
-
-      note('Pidiendo permiso de cámara…');
-      try{
-        const prov = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'environment' } }, audio:false });
-        prov.getTracks().forEach(t=>t.stop());
-      }catch(e){
-        if(e && (e.name==='NotAllowedError'||e.name==='PermissionDeniedError')){ note('Permiso denegado. Actívalo en los ajustes del navegador.'); return; }
-        if(e && (e.name==='NotFoundError'||e.name==='DevicesNotFoundError')){ note('No hay cámara disponible.'); return; }
-      }
-
-      const cont=$('scanner');
-      const video=document.createElement('video');
-      video.setAttribute('playsinline',''); video.setAttribute('autoplay',''); video.setAttribute('muted','');
-      video.muted=true; video.playsInline=true;
-      video.style.width='100%'; video.style.height='100%'; video.style.objectFit='cover';
-      cont.replaceChildren(video, (function(){ const m=document.createElement('div'); m.id='overlay'; return m;})());
-
-      // abrir stream
-      note('Abriendo cámara…');
-      try{
-        currentStream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'environment' } }, audio:false });
-        video.srcObject=currentStream;
-        await video.play().catch(()=>{}); // por si el autoplay se bloquea
-        hideNote();
-      }catch(e){
-        note('No se pudo abrir la cámara.'); return;
-      }
-
-      // lector global y decodificación continua/única
-      scannerReader = new ReaderCtor();
-      let justScanned=false, lastText='', lastAt=0;
-      const COOLDOWN=1200;
-
-      note('Escaneando…');
-      scannerReader.decodeFromVideoDevice(null, video, (result)=>{
-        if(!result || !result.getText) return;
-        const raw=result.getText()||''; const code=raw.replace(/[^0-9Xx]/g,''); if(!code) return;
-
-        const now=Date.now();
-        if(settings.continuous){
-          if(code===lastText && (now-lastAt)<COOLDOWN) return;
-          lastText=code; lastAt=now; beep(); lookupAndRender(code);
-        }else{
-          if(!justScanned){ justScanned=true; beep(); stopScanner(); lookupAndRender(code); }
-        }
-      }).catch(err=>{
-        console.error('decodeFromVideoDevice error', err);
-        note('Fallo del motor de escaneo. Intenta de nuevo o usa modo manual.');
-      });
-    }
-
-    // Subir imagen para leer código
-    $('btnUpload').addEventListener('click', ()=> $('imgInput').click());
-    $('imgInput').addEventListener('change', async (ev)=>{
-      const f=ev.target.files && ev.target.files[0]; if(!f) return;
-      try{
-        const imgURL=URL.createObjectURL(f); const img=new Image();
-        img.onload=async ()=>{
-          try{
-            if('BarcodeDetector' in window){
-              const bmp=await createImageBitmap(img);
-              const det=new BarcodeDetector({ formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39','qr_code'] });
-              const codes=await det.detect(bmp); bmp.close&&bmp.close();
-              if(codes && codes.length){ const code=String(codes[0].rawValue||'').replace(/[^0-9Xx]/g,''); if(code){ beep(); await lookupAndRender(code); URL.revokeObjectURL(imgURL); return; } }
-              note('No se detectó código en la imagen.');
-            }else{ note('Este navegador no soporta lectura desde imagen.'); }
-          }catch(_){ note('Fallo al procesar la imagen.'); }
-          URL.revokeObjectURL(imgURL);
-        }; img.src=imgURL;
-      }catch(_){ note('No se pudo abrir la imagen.'); }
-    });
-
-    // Test cámara
-    $('btnTest').addEventListener('click', async ()=>{
-      let txt='';
-      if(navigator.permissions && navigator.permissions.query){ try{ const p=await navigator.permissions.query({name:'camera'}); txt+='Permiso cámara: '+p.state+'\n'; }catch(_){} }
-      try{ const s=await navigator.mediaDevices.getUserMedia({video:true,audio:false}); s.getTracks().forEach(t=>t.stop()); txt+='getUserMedia: ✅ OK\n'; }catch(e){ txt+='getUserMedia: ❌ '+(e.name||e.message)+'\n'; }
-      const devs=await navigator.mediaDevices.enumerateDevices(); const list=devs.filter(d=>d.kind==='videoinput'); txt+='Cámaras detectadas: '+list.length+'\n'; list.forEach((d,i)=> txt+='- ['+i+'] '+(d.label||'(sin etiqueta)')+'\n'); note(txt||'Test hecho');
-    });
-
-    // Buscar manual
-    $('btnBuscar').addEventListener('click', async ()=>{
-      const code=$('eanInput').value.replace(/[^0-9]/g,''); const v=validCode(code);
-      if(!v.ok){ setEanHint('Código no válido.', false); return; }
-      await lookupAndRender(code);
-    });
-
-    // Toggles
-    renderToggles();
-    $('btnToggleSound').addEventListener('click', ()=>{ settings.noSound=!settings.noSound; saveSettings(settings); renderToggles(); });
-    $('btnToggleVibra').addEventListener('click', ()=>{ settings.noVibra=!settings.noVibra; saveSettings(settings); renderToggles(); });
-    $('btnToggleContinuous').addEventListener('click', ()=>{ settings.continuous=!settings.continuous; saveSettings(settings); renderToggles(); });
-
-    // Pon tu Precio (al último “reciente”)
-    $('btnSetPrice').addEventListener('click', ()=>{
-      const rec=loadList(K_RECENTS)[0]||null; if(!rec){ alert('Escanea o busca un producto primero.'); return; }
-      askAndSavePvp(rec.id);
-    });
-
-    // Lote (modal rápido)
-    function openBatch(){
-      if(document.getElementById('batchModal')) return;
-      const modal=document.createElement('div');
-      modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:9999';
-      modal.id='batchModal';
-      modal.innerHTML=`
-        <div style="background:#0d1423;border:1px solid #1a2434;border-radius:12px;padding:12px;width:min(680px,90vw)">
-          <h3 style="margin:0 0 8px 0;font-size:16px">Añadir por lote</h3>
-          <p class="muted" style="margin:4px 0 10px">Pega códigos separados por salto de línea, espacios o comas. Acepta EAN-13, UPC-A (12) y EAN-8.</p>
-          <textarea id="batchCodes" style="width:100%;min-height:190px;resize:vertical;border-radius:8px;border:1px solid #223352;background:#0c1322;color:#e7edf7;padding:10px" placeholder="Ejemplo:
-9788491296014
-740617300253
-8715946725963"></textarea>
-          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
-            <button class="btn secondary" id="batchCancel">Cancelar</button>
-            <button class="btn" id="batchRun">Procesar</button>
-          </div>
-        </div>`;
-      document.body.appendChild(modal);
-      const close=()=>modal.remove();
-      modal.addEventListener('click', e=>{ if(e.target===modal) close(); });
-      modal.querySelector('#batchCancel').addEventListener('click', close);
-      modal.querySelector('#batchRun').addEventListener('click', async ()=>{
-        const raw=modal.querySelector('#batchCodes').value||'';
-        const toks=raw.split(/[\s,;]+/).filter(Boolean);
-        const codes=[];
-        for(const t of toks){ const s=String(t).replace(/[^0-9]/g,''); if(!s) continue; const v=validCode(s); if(v.ok) codes.push(s); }
-        if(!codes.length){ alert('No hay códigos válidos.'); return; }
-        close();
-        for(let i=0;i<codes.length;i++){ note(`Procesando lote ${i+1}/${codes.length}…`); await lookupAndRender(codes[i]); }
-        note('Lote terminado'); setTimeout(hideNote, 1200);
-      });
-      modal.querySelector('#batchCodes').focus();
-    }
-    $('btnBatch').addEventListener('click', openBatch);
-
-    // Linterna
-    $('btnTorch').addEventListener('click', toggleTorch);
-
-    // Parar
-    $('btnStop').addEventListener('click', stopScanner);
-
-    // Iniciar
-    $('btnScan').addEventListener('click', startScanner);
-
-    // Validación al escribir
-    $('eanInput').addEventListener('input', ()=>{
-      const s=$('eanInput').value.replace(/[^0-9]/g,''); if(!s){ setEanHint('',true); return; }
-      const v=validCode(s); if(!v.ok) setEanHint('Código no válido (longitud o checksum).', false); else setEanHint(`Código válido (${v.type}).`, true);
-    });
-
-    // Limpiar listas
-    $('btnClearRecents').addEventListener('click', ()=>{ if(confirm('¿Vaciar lista de últimos escaneados?')) clearRecents(); });
-    $('btnClearFavs').addEventListener('click', ()=>{ if(confirm('¿Vaciar favoritos?')) clearFavs(); });
-
-    // Render inicial
-    renderRecents(); renderFavs();
+    }catch(e){}
   })();
   </script>
+
+  <!-- ====== Sugerencia tras fallos de escaneo (expuesto como función global onScanFail) ====== -->
+  <script>
+  (function(){
+    let failCount = 0;
+    window.onScanFail = function(){
+      failCount++;
+      if (failCount === 2 && !document.body.classList.contains('a11y')) {
+        const s = document.createElement('div');
+        s.className = 'snackbar';
+        s.innerHTML = '¿Activar botones grandes/alto contraste? <button class="btn btn-primary" id="okA11y">Sí</button>';
+        document.body.appendChild(s);
+        s.querySelector('#okA11y').onclick = () => {
+          document.body.classList.add('a11y');
+          try{ localStorage.setItem('precioreal:a11y','1'); }catch(e){}
+          s.remove();
+        };
+        setTimeout(()=>{ try{ s.remove(); }catch(e){} }, 6000);
+      }
+    };
+  })();
+  </script>
+
+  <!-- ====== Registro del Service Worker (PWA) ====== -->
+  <script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js', { scope: '/' })
+        .then(r => console.log('[SW] listo:', r.scope))
+        .catch(err => console.error('[SW] error:', err));
+    });
+  }
+  </script>
+
+  <!-- ====== Hooks mínimos para integrarse con tu app ======
+    Tu index.min.js puede:
+      - Llamar a window.onScanFail() cuando falle una lectura.
+      - Rellenar #result, #pTitle, #pCat, #pImg y mostrar el bloque.
+      - Poner href en #btnAmazon (enlace /api/go/ASIN?d=9).
+      - Manejar #btnScan, #btnStop, #btnTorch, #btnSwap, #btnPaste, #btnLookup, #btnClear.
+  ========================================================== -->
 </body>
 </html>
