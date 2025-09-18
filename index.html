@@ -64,6 +64,25 @@
     .chip .x{cursor:pointer;font-weight:900;opacity:.85}
     .chip.add{cursor:pointer;background:transparent;border:1px dashed #2a3a5a;color:#9bb4d9}
     .chip.add:hover{border-style:solid;color:#cfe2ff}
+
+    /* ===== A11Y ++: estilos del modo accesible ===== */
+    body.a11y{ font-size:18.5px; line-height:1.5; }
+    body.a11y .btn{ min-height:56px; padding:14px 18px; border-width:2px; }
+    body.a11y .link.big{ font-size:20px; min-height:56px; }
+    .a11y-toggle{
+      margin-left:auto; /* empuja a la derecha en el header */
+      display:inline-flex;align-items:center;gap:8px;
+      padding:8px 12px;border-radius:999px;cursor:pointer;
+      background:#182339;color:#e7edf7;border:1px solid #223352;font-weight:800
+    }
+    .a11y-toggle[data-pressed="true"]{
+      background:linear-gradient(180deg,var(--brand),var(--brand2));
+      color:#06121f;border-color:transparent;
+    }
+    .btn:focus-visible, .a11y-toggle:focus-visible{
+      outline:none; box-shadow:0 0 0 3px #ffd24d, 0 0 0 6px rgba(0,0,0,.35);
+    }
+    /* ===== A11Y ++ fin ===== */
   </style>
 </head>
 <body>
@@ -74,6 +93,8 @@
         <h1>PrecioReal</h1>
         <div class="muted">Escanea un producto y abre su ficha en Amazon</div>
       </div>
+      <!-- A11Y ++: botón de modo accesible -->
+      <button id="a11yToggle" class="a11y-toggle" type="button" aria-pressed="false" aria-label="Activar modo accesible">🅰️ Accesible</button>
     </header>
 
     <section class="panel">
@@ -156,8 +177,11 @@
 
     function loadSettings(){ try{ return JSON.parse(localStorage.getItem(K_SETTINGS)||'{}')||{}; }catch(_){ return {}; } }
     function saveSettings(s){ try{ localStorage.setItem(K_SETTINGS, JSON.stringify(s)); }catch(_){ } }
-    // continuo ON por defecto
-    let settings = Object.assign({ noSound:false, noVibra:false, continuous:true }, loadSettings());
+    // continuo ON por defecto  /* A11Y ++: añadimos a11y:false en defaults */
+    let settings = Object.assign({ noSound:false, noVibra:false, continuous:true, a11y:false }, loadSettings());
+
+    /* A11Y ++: aplicar estado al arrancar */
+    if (settings.a11y) { document.body.classList.add('a11y'); }
 
     function renderToggles(){
       $('btnToggleSound').textContent = 'Sonido: ' + (settings.noSound ? 'OFF' : 'ON');
@@ -607,8 +631,51 @@
 
     // Render inicial
     renderRecents(); renderFavs();
+
+    /* ===== A11Y ++: lógica del toggle, atajo y auto-ON por sistema ===== */
+    (function(){
+      const btn = $('a11yToggle');
+      const apply = (on)=>{
+        document.body.classList.toggle('a11y', !!on);
+        settings.a11y = !!on;
+        saveSettings(settings);
+        if (btn){
+          btn.setAttribute('data-pressed', on ? 'true' : 'false');
+          btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+          btn.setAttribute('aria-label', on ? 'Desactivar modo accesible' : 'Activar modo accesible');
+        }
+      };
+      // Estado inicial del botón
+      apply(!!settings.a11y);
+
+      // Click → alternar
+      if (btn) btn.addEventListener('click', ()=> apply(!document.body.classList.contains('a11y')));
+
+      // Atajo teclado: Alt+Shift+A
+      window.addEventListener('keydown', (e)=>{
+        if (e.altKey && e.shiftKey && (e.key==='a' || e.key==='A')) {
+          e.preventDefault(); apply(!document.body.classList.contains('a11y'));
+        }
+      });
+
+      // Auto-ON si el sistema lo pide y el usuario aún no decidió
+      try{
+        const userHasSet = Object.prototype.hasOwnProperty.call(settings, 'a11y');
+        const prefersMore  = matchMedia('(prefers-contrast: more)').matches;
+        const forcedColors = matchMedia('(forced-colors: active)').matches;
+        if (!userHasSet && (prefersMore || forcedColors)) {
+          apply(true);
+          // aviso sutil
+          const noteEl = document.createElement('div');
+          noteEl.textContent = 'Modo accesible activado por tu sistema. Puedes cambiarlo.';
+          noteEl.style.cssText='position:fixed;right:12px;bottom:12px;background:#1e78d5;color:#fff;padding:8px 12px;border-radius:10px;z-index:9999;font-weight:600';
+          document.body.appendChild(noteEl);
+          setTimeout(()=>noteEl.remove(), 3500);
+        }
+      }catch(_){}
+    })();
+    /* ===== A11Y ++ fin ===== */
   })();
   </script>
 </body>
 </html>
-
