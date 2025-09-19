@@ -70,21 +70,16 @@
         <button class="btn" id="btnScan">Iniciar escáner</button>
         <button class="btn" id="btnSetPrice">Pon tu Precio</button>
         <button class="btn secondary" id="btnStop">Parar</button>
-        <button class="btn secondary" id="btnTorch">Linterna</button>
+        <button class="btn secondary" id="btnTorch" title="Activar/desactivar linterna">Linterna</button>
         <button class="btn secondary" id="btnTest">Test cámara</button>
-        <button class="btn secondary" id="btnBatch">Añadir por lote</button>
         <button class="btn secondary" id="btnInstall" style="display:none">Instalar app</button>
       </div>
       <div class="row toggles">
-        <button class="btn secondary" id="btnToggleSound">Sonido: ON</button>
+        <button class="btn secondary" id="btnToggleSound">Sonido: OFF</button>
         <button class="btn secondary" id="btnToggleVibra">Vibración: ON</button>
         <button class="btn secondary" id="btnToggleContinuous">Escáner continuo: ON</button>
       </div>
-      <div class="row">
-        <input id="imgInput" type="file" accept="image/*" style="display:none">
-        <button class="btn secondary" id="btnUpload">Subir foto (leer código)</button>
-      </div>
-      <div class="hint">Si la cámara no abre, puedes subir una foto del código o introducir el EAN manualmente.</div>
+      <div class="hint">Si la cámara no abre, introduce el EAN manualmente.</div>
     </section>
 
     <div id="a2hsTip" class="hint" style="display:none">
@@ -128,11 +123,10 @@
   (function(){
     'use strict';
 
-    // ---------- helpers ----------
     const $ = id => document.getElementById(id);
     const note = (m)=>{ const o=$('overlay'); if(o){o.textContent=m;o.style.display='block';} console.log('[PrecioReal]', m); };
     const hideNote = ()=>{ const o=$('overlay'); if(o) o.style.display='none'; };
-    const ttlSec = 1800; // 30 min cache local
+    const ttlSec = 1800;
     const MAX_RECENTS = 20;
     const K_RECENTS = 'pr-recent-v1';
     const K_FAVS = 'pr-favs-v1';
@@ -140,8 +134,9 @@
 
     function loadSettings(){ try{ return JSON.parse(localStorage.getItem(K_SETTINGS)||'{}')||{}; }catch(_){ return {}; } }
     function saveSettings(s){ try{ localStorage.setItem(K_SETTINGS, JSON.stringify(s)); }catch(_){ } }
-    // continuo ON por defecto
-    let settings = Object.assign({ noSound:false, noVibra:false, continuous:true }, loadSettings());
+
+    // Sonido OFF por defecto
+    let settings = Object.assign({ noSound:true, noVibra:false, continuous:true }, loadSettings());
 
     function renderToggles(){
       $('btnToggleSound').textContent = 'Sonido: ' + (settings.noSound ? 'OFF' : 'ON');
@@ -162,23 +157,19 @@
     }
     const fmtMoney = (n)=> (isFinite(n)? (Number(n).toFixed(2).replace('.',',')) : '');
 
-    // --------- Validación EAN/UPC ----------
     function ean13Valid(s){ s=String(s).replace(/[^0-9]/g,''); if(s.length!==13) return false; const d=s.split('').map(n=>+n); const c=d[12]; let sum=0; for(let i=0;i<12;i++) sum+=d[i]*(i%2===0?1:3); return ((10-(sum%10))%10)===c; }
     function ean8Valid(s){ s=String(s).replace(/[^0-9]/g,''); if(s.length!==8) return false; const d=s.split('').map(n=>+n); const c=d[7]; let sum=0; for(let i=0;i<7;i++) sum+=d[i]*(i%2===0?3:1); return ((10-(sum%10))%10)===c; }
     function upcAValid(s){ s=String(s).replace(/[^0-9]/g,''); if(s.length!==12) return false; return ean13Valid('0'+s); }
     function validCode(code){ const s=String(code).replace(/[^0-9]/g,''); if(s.length===13) return {ok:ean13Valid(s),type:'EAN-13'}; if(s.length===8) return {ok:ean8Valid(s),type:'EAN-8'}; if(s.length===12) return {ok:upcAValid(s),type:'UPC-A'}; return {ok:false,type:'unknown'}; }
     function setEanHint(msg, ok){ const el=$('eanHint'); el.textContent=msg||''; el.style.color=ok?'#9fe29f':'#ffb3b3'; }
 
-    // --------- Cache local mínima ----------
     function cacheGet(ean){ try{ const raw=localStorage.getItem('pr-cache-'+ean); if(!raw) return null; const o=JSON.parse(raw); if(!o||!o.t||!o.d) return null; if((Date.now()-o.t)/1000>ttlSec) return null; return o.d; }catch(_){ return null; } }
     function cacheSet(ean,data){ try{ localStorage.setItem('pr-cache-'+ean, JSON.stringify({t:Date.now(),d:data})); }catch(_){ } }
 
-    // --------- Storage listas ----------
     function loadList(key){ try{ return JSON.parse(localStorage.getItem(key)||'[]')||[]; }catch(_){ return []; } }
     function saveList(key,arr){ try{ localStorage.setItem(key, JSON.stringify(arr)); }catch(_){ } }
     function getFromAnyList(id){ const a=loadList(K_RECENTS).find(x=>x.id===id); if(a) return a; return loadList(K_FAVS).find(x=>x.id===id)||null; }
 
-    // ---------- TAGS ----------
     function normalizeTags(arr){
       if(!Array.isArray(arr)) return [];
       const out=[]; for(const t of arr){
@@ -197,7 +188,6 @@
       return { bg, br, tx };
     }
 
-    // --------- Modelo de item ----------
     function normalizeItem(ean, resp){
       const p = resp?.product||{}; const m = resp?.meta||{};
       const id = m.asin || ean || p.asin || p.id || (p.affiliateLink||'').split('/api/go/')[1]?.split('?')[0] || null;
@@ -243,12 +233,11 @@
     function removeRecent(id){ const arr=loadList(K_RECENTS).filter(x=>x.id!==id); saveList(K_RECENTS,arr); renderRecents(); }
     function clearRecents(){ saveList(K_RECENTS,[]); renderRecents(); }
     function isFav(id){ return loadList(K_FAVS).some(x=>x.id===id); }
-    function toggleFav(item){ if(!item||!item.id) return; const arr=loadList(K_FAVS); const i=arr.findIndex(x=>x.id===id); if(i>=0) arr.splice(i,1); else arr.unshift(item); saveList(K_FAVS,arr); renderFavs(); renderRecents(); }
+    function toggleFav(item){ if(!item||!item.id) return; const arr=loadList(K_FAVS); const i=arr.findIndex(x=>x.id===item.id); if(i>=0) arr.splice(i,1); else arr.unshift(item); saveList(K_FAVS,arr); renderFavs(); renderRecents(); }
     function clearFavs(){ saveList(K_FAVS,[]); renderFavs(); renderRecents(); }
 
     function tsToText(ts){ try{ if(!ts) return ''; const d=new Date(ts); const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const hh=String(d.getHours()).padStart(2,'0'); const mi=String(d.getMinutes()).padStart(2,'0'); return `${dd}/${mm} ${hh}:${mi}`; }catch(_){ return ''; } }
 
-    // ---------- AMAZON deep-link helpers ----------
     function extractASIN(link){
       if (!link) return null;
       const m = String(link).match(/\/(?:dp|gp\/product)\/([A-Z0-9]{10})/i);
@@ -392,7 +381,15 @@
     }
     function ensureMedia(){ return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia); }
 
-    // BarcodeDetector loop (primero)
+    async function pickBackCameraDeviceId(){
+      try{
+        const devs = await navigator.mediaDevices.enumerateDevices();
+        const cams = devs.filter(d=>d.kind==='videoinput');
+        const back = cams.find(d=>/back|rear|environment/i.test(d.label)) || cams[1] || cams[0];
+        return back && back.deviceId ? back.deviceId : null;
+      }catch{ return null; }
+    }
+
     async function runBarcodeDetectorLoop(video, onCode) {
       if (!('BarcodeDetector' in window)) return false;
       const det = new BarcodeDetector({
@@ -432,7 +429,7 @@
     async function toggleTorch(){
       const track=currentStream?.getVideoTracks?.()[0];
       const caps=track?.getCapabilities?.();
-      if(!track || !caps || !caps.torch){ note('Este dispositivo no soporta linterna.'); return; }
+      if(!track || !caps || !caps.torch){ note('Este dispositivo/navegador no permite linterna en cámara.'); return; }
       try{
         torchOn=!torchOn;
         await track.applyConstraints({ advanced:[{ torch:torchOn }] });
@@ -443,10 +440,13 @@
     async function startScanner(){
       if(!ensureMedia()){ note('Este navegador no soporta cámara.'); return; }
 
-      // Pedimos permiso “pro-forma” para evitar bloqueos
+      // Pre-permiso
       note('Pidiendo permiso de cámara…');
       try{
-        const prov = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'environment' } }, audio:false });
+        const preId = await pickBackCameraDeviceId();
+        const preConstraints = preId ? { video:{ deviceId:{ exact:preId } }, audio:false }
+                                     : { video:{ facingMode:{ ideal:'environment' } }, audio:false };
+        const prov = await navigator.mediaDevices.getUserMedia(preConstraints);
         prov.getTracks().forEach(t=>t.stop());
       }catch(e){
         if(e && (e.name==='NotAllowedError'||e.name==='PermissionDeniedError')){ note('Permiso denegado. Actívalo en los ajustes del navegador.'); return; }
@@ -460,16 +460,34 @@
       video.style.width='100%'; video.style.height='100%'; video.style.objectFit='cover';
       cont.replaceChildren(video, (function(){ const m=document.createElement('div'); m.id='overlay'; return m;})());
 
-      // abrir stream
+      // Stream real (intentando trasera)
       note('Abriendo cámara…');
       try{
-        currentStream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'environment' } }, audio:false });
+        const backId = await pickBackCameraDeviceId();
+        const videoConstraints = backId ? { deviceId:{ exact: backId } }
+                                        : { facingMode:{ ideal:'environment' } };
+        currentStream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio:false });
         video.srcObject=currentStream;
         await video.play().catch(()=>{});
         hideNote();
       }catch(e){
         note('No se pudo abrir la cámara.'); return;
       }
+
+      // Estado del botón linterna
+      const torchBtn = $('btnTorch');
+      try{
+        const track = currentStream?.getVideoTracks?.()[0];
+        const caps = track?.getCapabilities?.();
+        const hasTorch = !!(caps && caps.torch);
+        if (!hasTorch){
+          if (torchBtn){ torchBtn.disabled = true; torchBtn.title = 'No disponible en este dispositivo/navegador'; }
+          note('Este dispositivo/navegador no permite linterna en cámara.');
+          setTimeout(hideNote, 1200);
+        } else {
+          if (torchBtn){ torchBtn.disabled = false; torchBtn.title = 'Activar/desactivar linterna'; }
+        }
+      }catch{}
 
       // Gestión común de resultados
       let justScanned=false, lastText='', lastAt=0;
@@ -488,19 +506,18 @@
 
       note('Escaneando…');
 
-      // Intento 1: BarcodeDetector
+      // 1) BarcodeDetector
       let stopBD = null;
       try {
         stopBD = await runBarcodeDetectorLoop(video, onScan);
         if (stopBD) {
           console.log('[PrecioReal] Usando BarcodeDetector');
-          // Para que stopScanner pare el loop BD:
           scannerReader = { reset: ()=>{ try{ stopBD(); }catch{} } };
           return;
         }
       } catch {}
 
-      // Intento 2: ZXing (fallback)
+      // 2) ZXing fallback
       note('Cargando motor ZXing…');
       const ok = await loadZXing();
       const ZX = window.ZXingBrowser || window.ZXing || null;
@@ -523,27 +540,6 @@
       });
     }
 
-    // Subir imagen para leer código (sigue usando BarcodeDetector si existe)
-    $('btnUpload').addEventListener('click', ()=> $('imgInput').click());
-    $('imgInput').addEventListener('change', async (ev)=>{
-      const f=ev.target.files && ev.target.files[0]; if(!f) return;
-      try{
-        const imgURL=URL.createObjectURL(f); const img=new Image();
-        img.onload=async ()=>{
-          try{
-            if('BarcodeDetector' in window){
-              const bmp=await createImageBitmap(img);
-              const det=new BarcodeDetector({ formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39','qr_code'] });
-              const codes=await det.detect(bmp); bmp.close&&bmp.close();
-              if(codes && codes.length){ const code=String(codes[0].rawValue||'').replace(/[^0-9Xx]/g,''); if(code){ beep(); await lookupAndRender(code); URL.revokeObjectURL(imgURL); return; } }
-              note('No se detectó código en la imagen.');
-            }else{ note('Este navegador no soporta lectura desde imagen.'); }
-          }catch(_){ note('Fallo al procesar la imagen.'); }
-          URL.revokeObjectURL(imgURL);
-        }; img.src=imgURL;
-      }catch(_){ note('No se pudo abrir la imagen.'); }
-    });
-
     // Test cámara
     $('btnTest').addEventListener('click', async ()=>{
       let txt='';
@@ -559,71 +555,28 @@
       await lookupAndRender(code);
     });
 
-    // Toggles
     renderToggles();
     $('btnToggleSound').addEventListener('click', ()=>{ settings.noSound=!settings.noSound; saveSettings(settings); renderToggles(); });
     $('btnToggleVibra').addEventListener('click', ()=>{ settings.noVibra=!settings.noVibra; saveSettings(settings); renderToggles(); });
     $('btnToggleContinuous').addEventListener('click', ()=>{ settings.continuous=!settings.continuous; saveSettings(settings); renderToggles(); });
 
-    // Pon tu Precio (al último “reciente”)
     $('btnSetPrice').addEventListener('click', ()=>{
       const rec=loadList(K_RECENTS)[0]||null; if(!rec){ alert('Escanea o busca un producto primero.'); return; }
       askAndSavePvp(rec.id);
     });
 
-    // Lote
-    function openBatch(){
-      if(document.getElementById('batchModal')) return;
-      const modal=document.createElement('div');
-      modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:9999';
-      modal.id='batchModal';
-      modal.innerHTML=`
-        <div style="background:#0d1423;border:1px solid #1a2434;border-radius:12px;padding:12px;width:min(680px,90vw)">
-          <h3 style="margin:0 0 8px 0;font-size:16px">Añadir por lote</h3>
-          <p class="muted" style="margin:4px 0 10px">Pega códigos separados por salto de línea, espacios o comas. Acepta EAN-13, UPC-A (12) y EAN-8.</p>
-          <textarea id="batchCodes" style="width:100%;min-height:190px;resize:vertical;border-radius:8px;border:1px solid #223352;background:#0c1322;color:#e7edf7;padding:10px" placeholder="Ejemplo:
-9788491296014
-740617300253
-8715946725963"></textarea>
-          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
-            <button class="btn secondary" id="batchCancel">Cancelar</button>
-            <button class="btn" id="batchRun">Procesar</button>
-          </div>
-        </div>`;
-      document.body.appendChild(modal);
-      const close=()=>modal.remove();
-      modal.addEventListener('click', e=>{ if(e.target===modal) close(); });
-      modal.querySelector('#batchCancel').addEventListener('click', close);
-      modal.querySelector('#batchRun').addEventListener('click', async ()=>{
-        const raw=modal.querySelector('#batchCodes').value||'';
-        const toks=raw.split(/[\s,;]+/).filter(Boolean);
-        const codes=[];
-        for(const t of toks){ const s=String(t).replace(/[^0-9]/g,''); if(!s) continue; const v=validCode(s); if(v.ok) codes.push(s); }
-        if(!codes.length){ alert('No hay códigos válidos.'); return; }
-        close();
-        for(let i=0;i<codes.length;i++){ note(`Procesando lote ${i+1}/${codes.length}…`); await lookupAndRender(codes[i]); }
-        note('Lote terminado'); setTimeout(hideNote, 1200);
-      });
-      modal.querySelector('#batchCodes').focus();
-    }
-    $('btnBatch').addEventListener('click', openBatch);
-
-    // Linterna / Parar / Iniciar
     $('btnTorch').addEventListener('click', toggleTorch);
     $('btnStop').addEventListener('click', stopScanner);
     $('btnScan').addEventListener('click', startScanner);
 
-    // Validación al escribir
     $('eanInput').addEventListener('input', ()=>{
       const s=$('eanInput').value.replace(/[^0-9]/g,''); if(!s){ setEanHint('',true); return; }
       const v=validCode(s); if(!v.ok) setEanHint('Código no válido (longitud o checksum).', false); else setEanHint(`Código válido (${v.type}).`, true);
     });
 
-    // Limpiar listas
     $('btnClearRecents').addEventListener('click', ()=>{ if(confirm('¿Vaciar lista de últimos escaneados?')) clearRecents(); });
     $('btnClearFavs').addEventListener('click', ()=>{ if(confirm('¿Vaciar favoritos?')) clearFavs(); });
 
-    // Render inicial
     renderRecents(); renderFavs();
   })();
   </script>
