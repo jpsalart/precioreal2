@@ -22,14 +22,18 @@
     .btn[disabled]{opacity:.5;cursor:not-allowed}
     .btn.danger{background:linear-gradient(180deg,#ff6464,#cc3030);color:#210000}
     .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center}
+    .row.top{display:flex;align-items:center;gap:8px;flex-wrap:nowrap} /* fila principal sin saltos */
     .row input{flex:1;min-width:180px;padding:12px;border-radius:12px;border:1px solid #223352;background:#0c1322;color:#e7edf7}
+
     #scanner{position:relative;aspect-ratio:3/2;background:#0d1423;border:1px dashed #223352;border-radius:12px;display:grid;place-items:center;overflow:hidden;margin-top:12px}
     #scanner video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
     #overlay{position:absolute;left:8px;right:8px;bottom:8px;background:rgba(0,0,0,.45);border:1px solid #223352;border-radius:8px;padding:6px 8px;font-size:12px;color:#cfe7ff;white-space:pre-line}
     .hint{font-size:12px;color:#9bb4d9;margin-top:6px}
     footer{margin:18px 0 8px;border-top:1px solid var(--bd);padding-top:12px;color:#a8b3c7;font-size:0.9rem;line-height:1.35}
+
     .bar{display:flex;justify-content:space-between;align-items:center;margin:8px 0 4px 0}
     .bar .title{font-size:18px;font-weight:900}
+
     .list-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
     .mini{position:relative;display:grid;grid-template-columns:72px 1fr;gap:10px;align-items:center;background:#0d1423;border:1px solid var(--bd);border-radius:10px;padding:10px}
     .mini .thumb{width:72px;height:72px;border-radius:8px;background:#101a2c;display:grid;place-items:center;overflow:hidden}
@@ -37,24 +41,39 @@
     .mini .title{font-size:16px;font-weight:800;line-height:1.25;max-height:2.6em;overflow:hidden}
     .mini .muted{font-size:12px}
     .mini .actions{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
-    .banner{display:flex;justify-content:center;align-items:center;width:100%;padding:12px 14px;border-radius:10px;background:#182339;border:1px solid #223352;color:#e7edf7;text-decoration:none;font-size:15px;font-weight:900;min-height:48px}
+
+    /* Botón “Ver en Amazon” con el amarillo de Amazon */
+    .banner{
+      display:flex;justify-content:center;align-items:center;width:100%;
+      padding:12px 14px;border-radius:10px;
+      background:#FFD814; border:1px solid #FCD200;
+      color:#0F1111; text-decoration:none; font-size:15px; font-weight:900; min-height:48px
+    }
+    .banner:hover{ background:#FCD200; }
+
     .pvpLineMini{font-size:14px;font-weight:800;margin-top:8px;color:#cfe2ff;text-align:right}
     .badgeManual{display:inline-block;margin-right:6px;padding:2px 6px;border-radius:999px;border:1px solid #2a3f66;background:#13203b;color:#cfe2ff;font-size:11px;font-weight:700;vertical-align:baseline}
     .pvpSub{font-size:11px;color:#9bb4d9;margin-top:4px;text-align:right;font-weight:500}
+
     .icon-btn{position:absolute;top:6px;left:6px;background:#172033;border:1px solid #284066;color:#c9d9f2;width:30px;height:30px;line-height:28px;text-align:center;border-radius:10px;cursor:pointer;font-weight:900;font-size:18px}
     .star{position:absolute;top:6px;right:6px;background:#172033;border:1px solid #284066;color:#f6e08f;width:36px;height:36px;line-height:34px;text-align:center;border-radius:12px;cursor:pointer;font-weight:900;font-size:20px}
     .star.off{color:#b0b0b0}
     .empty{color:#a8b3c7;font-size:13px}
     .toggles{display:flex;gap:8px;flex-wrap:wrap}
 
-    /* Botón Escáner un poco más pequeño que antes */
+    /* Botón Escáner un poco más pequeño (tu ajuste anterior) */
     #btnScan{ font-size:16px; padding:12px 16px; }
 
-    /* PvP input pill + plus */
-    .pvpRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .pill{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;border:1px solid #223352;background:#0c1322;color:#e7edf7;cursor:pointer;font-weight:900;font-size:15px}
-    .pill .hintSmall{font-size:13px;color:#9bb4d9;font-weight:700}
-    .btn.plus{width:46px;height:46px;display:inline-grid;place-items:center;font-size:22px;padding:0;border-radius:12px}
+    /* PvP + plus en una fila flexible */
+    .pvpRow{ display:flex; gap:8px; align-items:center; flex:1; min-width:0; }
+    .pill{ display:flex; align-items:center; gap:10px; padding:12px 14px;
+           border-radius:14px; border:1px solid #223352; background:#0c1322; color:#e7edf7;
+           cursor:pointer; font-weight:900; font-size:15px; flex:1; min-width:0; }
+    .pill .hintSmall{ margin-left:auto; white-space:nowrap; }
+    .tagIcon{ margin-right:8px; display:inline-block; }
+
+    .btn.plus{ width:40px; height:40px; display:inline-grid; place-items:center;
+               font-size:18px; padding:0; border-radius:12px }
 
     /* Drawer */
     #drawer{display:none;margin-top:10px}
@@ -89,15 +108,17 @@
       <div id="scanner"><div id="overlay">Pulsa “Escáner” y permite la cámara</div></div>
 
       <!-- MISMA FILA: Escáner + PvP + + -->
-      <div class="row">
+      <div class="row top">
         <button class="btn" id="btnScan">Escáner</button>
+
         <div class="pvpRow">
           <div class="pill" id="pvpPill" title="Introduce tu precio (solo local)">
-            <span>🏷️ PvP Tienda</span>
+            <span class="tagIcon">🏷️</span><span>PvP Tienda</span>
             <span id="pvpValue" class="hintSmall">—</span>
           </div>
           <button class="btn secondary plus" id="btnMore" title="Más opciones">+</button>
         </div>
+
         <button class="btn secondary" id="btnInstall" style="display:none">Instalar app</button>
       </div>
 
@@ -172,7 +193,7 @@
     function loadSettings(){ try{ return JSON.parse(localStorage.getItem(K_SETTINGS)||'{}')||{}; }catch(_){ return {}; } }
     function saveSettings(s){ try{ localStorage.setItem(K_SETTINGS, JSON.stringify(s)); }catch(_){ } }
 
-    // Sonido OFF por defecto
+    // Sonido OFF por defecto; vibración ON; escaneo continuo ON
     let settings = Object.assign({ noSound:true, noVibra:false, continuous:true }, loadSettings());
 
     function renderToggles(){
@@ -264,6 +285,7 @@
     function toggleFav(item){ if(!item||!item.id) return; const arr=loadList(K_FAVS); const i=arr.findIndex(x=>String(x.id)===String(item.id)); if(i>=0) arr.splice(i,1); else arr.unshift(item); saveList(K_FAVS,arr); renderFavs(); renderRecents(); }
     function clearFavs(){ saveList(K_FAVS,[]); renderFavs(); renderRecents(); }
 
+    // Amazon deep-link
     function extractASIN(link){
       if (!link) return null;
       const m = String(link).match(/\/(?:dp|gp\/product)\/([A-Z0-9]{10})/i);
@@ -295,6 +317,7 @@
       location.href = web;
     }
 
+    // Render tarjetas
     function renderList(containerId, emptyId, arr, source){
       const el=$(containerId), empty=$(emptyId);
       if(!arr.length){ el.innerHTML=''; empty.style.display='block'; return; }
@@ -304,7 +327,6 @@
         const img=item.image?`<img alt="Imagen" src="${item.image}">`:'—';
         const starOn=isFav(item.id);
         const disabled=item.affiliateLink?'':'disabled';
-
         const pvpBlock = (item.userPrice!=null) ? `
           <div class="pvpLineMini" data-action="price" title="Toca para editar">
             <span class="badgeManual">Manual</span> 🏷️ Precio anotado: ${fmtMoney(item.userPrice)} €
@@ -343,7 +365,7 @@
           </div>`;
       }).join('');
 
-      // Listener delegado en la tarjeta
+      // Delegado de eventos
       el.querySelectorAll('.mini').forEach(card=>{
         const id=card.getAttribute('data-id');
         const item=arr.find(x=>String(x.id)===String(id));
@@ -367,7 +389,7 @@
         }, { passive:false });
       });
 
-      // Listener directo a la cruz por si el delegado no captura en algunos navegadores
+      // Listener directo a la cruz
       el.querySelectorAll('.icon-btn').forEach(btn=>{
         btn.addEventListener('click', (ev)=>{
           ev.preventDefault(); ev.stopPropagation();
@@ -509,7 +531,7 @@
         note('No se pudo abrir la cámara.'); return;
       }
 
-      // Gestión común de resultados
+      // Gestión de resultados
       let justScanned=false, lastText='', lastAt=0;
       const COOLDOWN=1200;
       const onScan = (raw) => {
@@ -572,7 +594,7 @@
       }
     });
 
-    // >>>>>>> LISTENERS DE TOGGLES <<<<<<<
+    // Toggles
     $('btnToggleSound').addEventListener('click', ()=>{
       settings.noSound = !settings.noSound;
       saveSettings(settings);
@@ -589,16 +611,8 @@
       renderToggles();
     });
 
-    // Torch y Test (en drawer)
-    $('btnTorch').addEventListener('click', async ()=>{
-      const track=currentStream?.getVideoTracks?.()[0];
-      const caps=track?.getCapabilities?.();
-      if(!track || !caps || !caps.torch){ note('Este dispositivo/navegador no permite linterna en cámara.'); return; }
-      try{
-        await track.applyConstraints({ advanced:[{ torch:true }] });
-        setTimeout(async ()=>{ await track.applyConstraints({ advanced:[{ torch:false }] }); }, 300);
-      }catch(_){ note('No se pudo cambiar la linterna.'); }
-    });
+    // Torch y Test
+    $('btnTorch').addEventListener('click', toggleTorch);
     $('btnTest').addEventListener('click', async ()=>{
       let txt='';
       if(navigator.permissions && navigator.permissions.query){ try{ const p=await navigator.permissions.query({name:'camera'}); txt+='Permiso cámara: '+p.state+'\n'; }catch(_){} }
@@ -618,7 +632,7 @@
     const parsePrice = (buf)=>{
       let s = String(buf||'').replace(/[^\d,\.]/g,'').replace(/\./g,',');
       if(!s) return null;
-      if(!s.includes(',')) return Number(s); // entero
+      if(!s.includes(',')) return Number(s); // entero → válido
       const [intPart, decRaw=''] = s.split(',');
       const dec = (decRaw+'00').slice(0,2);
       return Number(intPart+'.'+dec);
@@ -633,7 +647,7 @@
     }
 
     function askAndSavePvp(id){
-      // ya no usamos prompt en este flujo; queda por si se llama desde tarjetas
+      // compat para toque en tarjetas (abre keypad del último)
       openKeypad();
     }
 
