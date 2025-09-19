@@ -20,6 +20,7 @@
     .btn.secondary{background:#182339;color:var(--text);border:1px solid #223352}
     .btn.ghost{background:transparent;border:1px dashed #2a3a5a;color:#9bb4d9}
     .btn[disabled]{opacity:.5;cursor:not-allowed}
+    .btn.danger{background:linear-gradient(180deg,#ff6464,#cc3030);color:#210000}
     .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
     .row input{flex:1;min-width:180px;padding:12px;border-radius:12px;border:1px solid #223352;background:#0c1322;color:#e7edf7}
     #scanner{position:relative;aspect-ratio:3/2;background:#0d1423;border:1px dashed #223352;border-radius:12px;display:grid;place-items:center;overflow:hidden;margin-top:12px}
@@ -45,12 +46,29 @@
     .star.off{color:#b0b0b0}
     .empty{color:#a8b3c7;font-size:13px}
     .toggles{display:flex;gap:8px;flex-wrap:wrap}
-    .link.big{font-size:18px;font-weight:900;padding:14px 16px;border-width:2px;width:100%;justify-content:center;min-height:48px}
-    .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
-    .chip{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;border:1px solid #2a3f66;background:#13203b;color:#cfe2ff;font-size:12px;font-weight:700;cursor:default}
-    .chip .x{cursor:pointer;font-weight:900;opacity:.85}
-    .chip.add{cursor:pointer;background:transparent;border:1px dashed #2a3a5a;color:#9bb4d9}
-    .chip.add:hover{border-style:solid;color:#cfe2ff}
+
+    /* PvP input pill + plus */
+    .pvpRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+    .pill{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:12px;border:1px solid #223352;background:#0c1322;color:#e7edf7;cursor:pointer;font-weight:800}
+    .pill .hintSmall{font-size:12px;color:#9bb4d9;font-weight:600}
+    .btn.plus{width:44px;height:44px;display:inline-grid;place-items:center;font-size:22px;padding:0;border-radius:12px}
+
+    /* Drawer */
+    #drawer{display:none;margin-top:10px}
+    #drawer.open{display:block}
+    .drawerBox{border:1px solid #223352;background:#0d1423;border-radius:12px;padding:12px}
+    .drawerGrid{display:grid;grid-template-columns:1fr;gap:12px}
+    @media (min-width:640px){ .drawerGrid{grid-template-columns:1fr 1fr;} }
+
+    /* Keypad modal */
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:9999}
+    .card{background:#0d1423;border:1px solid #1a2434;border-radius:12px;padding:12px;width:min(420px,92vw)}
+    .kDisplay{display:flex;justify-content:space-between;align-items:center;border:1px solid #223352;background:#0c1322;color:#e7edf7;border-radius:10px;padding:10px 12px;font-size:20px;font-weight:900}
+    .kGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+    .kBtn{padding:14px 0;border:1px solid #223352;background:#162338;color:#e7edf7;border-radius:10px;font-size:18px;font-weight:900;cursor:pointer}
+    .kRow{display:flex;gap:8px;margin-top:10px}
+    .kBtn.ok{background:linear-gradient(180deg,var(--brand),var(--brand2));color:#06121f;flex:1}
+    .kBtn.del{background:#2a1a1a}
   </style>
 </head>
 <body>
@@ -65,36 +83,48 @@
 
     <section class="panel">
       <b>Escanear con la cámara</b>
-      <div id="scanner"><div id="overlay">Pulsa “Iniciar escáner” y permite la cámara</div></div>
+      <div id="scanner"><div id="overlay">Pulsa “Escanear” y permite la cámara</div></div>
       <div class="row">
-        <button class="btn" id="btnScan">Iniciar escáner</button>
-        <button class="btn" id="btnSetPrice">Pon tu Precio</button>
-        <button class="btn secondary" id="btnStop">Parar</button>
+        <button class="btn" id="btnScan">📷 Escanear</button>
+        <!-- PvP pill + plus -->
+        <div class="pvpRow">
+          <div class="pill" id="pvpPill" title="Introduce tu precio (solo local)">
+            <span>🏷️ PvP Tienda</span>
+            <span id="pvpValue" class="hintSmall">—</span>
+          </div>
+          <button class="btn secondary plus" id="btnMore" title="Más opciones">+</button>
+        </div>
         <button class="btn secondary" id="btnTorch" title="Activar/desactivar linterna">Linterna</button>
         <button class="btn secondary" id="btnTest">Test cámara</button>
         <button class="btn secondary" id="btnInstall" style="display:none">Instalar app</button>
       </div>
-      <div class="row toggles">
-        <button class="btn secondary" id="btnToggleSound">Sonido: OFF</button>
-        <button class="btn secondary" id="btnToggleVibra">Vibración: ON</button>
-        <button class="btn secondary" id="btnToggleContinuous">Escáner continuo: ON</button>
+
+      <!-- Drawer (opciones + manual) -->
+      <div id="drawer" class="drawerBox">
+        <div class="drawerGrid">
+          <div>
+            <b>Opciones</b>
+            <div class="row toggles" style="margin-top:8px">
+              <button class="btn secondary" id="btnToggleSound">Sonido: OFF</button>
+              <button class="btn secondary" id="btnToggleVibra">Vibración: ON</button>
+              <button class="btn secondary" id="btnToggleContinuous">Escáner continuo: ON</button>
+            </div>
+          </div>
+          <div>
+            <b>Código manual</b>
+            <div class="row" style="margin-top:8px">
+              <input id="eanInput" inputmode="numeric" pattern="[0-9]*" placeholder="Ej.: 9788491296014" />
+              <button class="btn secondary" id="btnBuscar">Buscar</button>
+            </div>
+            <div class="hint" id="eanHint"></div>
+          </div>
+        </div>
       </div>
-      <div class="hint">Si la cámara no abre, introduce el EAN manualmente.</div>
+
+      <div class="hint">Consejo: apoya el móvil y apunta al código de barras.</div>
     </section>
 
-    <div id="a2hsTip" class="hint" style="display:none">
-      iOS: para instalar, toca <b>Compartir</b> → <b>Añadir a pantalla de inicio</b>.
-    </div>
-
-    <section class="panel">
-      <b>O introduce el código (EAN/ISBN/UPC)</b>
-      <div class="row">
-        <input id="eanInput" inputmode="numeric" pattern="[0-9]*" placeholder="Ej.: 9788491296014" />
-        <button class="btn secondary" id="btnBuscar">Buscar</button>
-      </div>
-      <div class="hint" id="eanHint"></div>
-    </section>
-
+    <!-- Últimos escaneados -->
     <section class="panel" id="panelRecents">
       <div class="bar">
         <div class="title">🕘 Últimos escaneados</div>
@@ -105,6 +135,7 @@
       <div id="tipRecents" class="empty" style="margin-top:10px">Consejo: Añádelo en tu carrito de Amazon para no perderlo.</div>
     </section>
 
+    <!-- Favoritos -->
     <section class="panel" id="panelFavs">
       <div class="bar">
         <div class="title" id="favTitle">Favoritos (0)</div>
@@ -233,10 +264,8 @@
     function removeRecent(id){ const arr=loadList(K_RECENTS).filter(x=>x.id!==id); saveList(K_RECENTS,arr); renderRecents(); }
     function clearRecents(){ saveList(K_RECENTS,[]); renderRecents(); }
     function isFav(id){ return loadList(K_FAVS).some(x=>x.id===id); }
-    function toggleFav(item){ if(!item||!item.id) return; const arr=loadList(K_FAVS); const i=arr.findIndex(x=>x.id===item.id); if(i>=0) arr.splice(i,1); else arr.unshift(item); saveList(K_FAVS,arr); renderFavs(); renderRecents(); }
+    function toggleFav(item){ if(!item||!item.id) return; const arr=loadList(K_FAVS); const i=arr.findIndex(x=>x.id===id); if(i>=0) arr.splice(i,1); else arr.unshift(item); saveList(K_FAVS,arr); renderFavs(); renderRecents(); }
     function clearFavs(){ saveList(K_FAVS,[]); renderFavs(); renderRecents(); }
-
-    function tsToText(ts){ try{ if(!ts) return ''; const d=new Date(ts); const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const hh=String(d.getHours()).padStart(2,'0'); const mi=String(d.getMinutes()).padStart(2,'0'); return `${dd}/${mm} ${hh}:${mi}`; }catch(_){ return ''; } }
 
     function extractASIN(link){
       if (!link) return null;
@@ -255,7 +284,6 @@
     function openAmazon(item){
       const web = buildWebLink(item);
       const asin = item.asin || extractASIN(web);
-      const domain = item.domain || 'amazon.es';
       if (isAndroidChrome() && asin){
         const pathAndQuery = web.replace(/^https?:\/\//i, '');
         const appIntent =
@@ -350,6 +378,8 @@
       const item = normalizeItem(ean, { product:p, meta:meta||{} });
       addRecent(item);
       note('Añadido a “Últimos escaneados”.'); setTimeout(hideNote, 900);
+      // Actualiza pill PvP con el del último
+      updatePvpPillText();
     }
 
     function askAndSavePvp(id){
@@ -359,15 +389,7 @@
       if(v===null) return;
       const num=Number(String(v).replace(',','.').replace(/[^\d.]/g,'')); if(!isFinite(num)){ alert('Precio no válido'); return; }
       updateItemPvp(id, Math.max(0,num));
-    }
-
-    async function lookupAndRender(ean){
-      const cached=cacheGet(ean); if(cached){ renderResult(cached.success,cached.product,ean,cached.meta); return; }
-      try{
-        const r=await fetch('/api/lookup?ean='+encodeURIComponent(ean));
-        const d=await r.json(); cacheSet(ean,d);
-        renderResult(d && d.success, d && d.product, ean, d && d.meta);
-      }catch(e){ note('No se pudo consultar el backend.'); }
+      updatePvpPillText();
     }
 
     // ---------- Cámara / Escáner ----------
@@ -437,6 +459,18 @@
       }catch(_){ note('No se pudo cambiar la linterna.'); }
     }
 
+    function setScanButtonActive(active){
+      const btn = $('btnScan');
+      if (!btn) return;
+      if (active){
+        btn.textContent = '⏹ Detener';
+        btn.classList.add('danger');
+      }else{
+        btn.textContent = '📷 Escanear';
+        btn.classList.remove('danger');
+      }
+    }
+
     async function startScanner(){
       if(!ensureMedia()){ note('Este navegador no soporta cámara.'); return; }
 
@@ -458,7 +492,7 @@
       video.setAttribute('playsinline',''); video.setAttribute('autoplay',''); video.setAttribute('muted','');
       video.muted=true; video.playsInline=true;
       video.style.width='100%'; video.style.height='100%'; video.style.objectFit='cover';
-      cont.replaceChildren(video, (function(){ const m=document.createElement('div'); m.id='overlay'; return m;})());
+      cont.replaceChildren(video, (function(){ const m=document.createElement('div'); m.id='overlay'; m.textContent='Apunta al código de barras · Mantén el móvil estable'; return m;})());
 
       // Stream real (intentando trasera)
       note('Abriendo cámara…');
@@ -482,8 +516,6 @@
         const hasTorch = !!(caps && caps.torch);
         if (!hasTorch){
           if (torchBtn){ torchBtn.disabled = true; torchBtn.title = 'No disponible en este dispositivo/navegador'; }
-          note('Este dispositivo/navegador no permite linterna en cámara.');
-          setTimeout(hideNote, 1200);
         } else {
           if (torchBtn){ torchBtn.disabled = false; torchBtn.title = 'Activar/desactivar linterna'; }
         }
@@ -500,22 +532,23 @@
           if (code===lastText && (now-lastAt)<COOLDOWN) return;
           lastText=code; lastAt=now; beep(); lookupAndRender(code);
         } else {
-          if (!justScanned) { justScanned=true; beep(); stopScanner(); lookupAndRender(code); }
+          if (!justScanned) { justScanned=true; beep(); stopScanner(); setScanButtonActive(false); lookupAndRender(code); }
         }
       };
 
-      note('Escaneando…');
-
       // 1) BarcodeDetector
       let stopBD = null;
-      try {
-        stopBD = await runBarcodeDetectorLoop(video, onScan);
-        if (stopBD) {
-          console.log('[PrecioReal] Usando BarcodeDetector');
-          scannerReader = { reset: ()=>{ try{ stopBD(); }catch{} } };
-          return;
-        }
-      } catch {}
+      if ('BarcodeDetector' in window){
+        try {
+          stopBD = await runBarcodeDetectorLoop(video, onScan);
+          if (stopBD) {
+            console.log('[PrecioReal] Usando BarcodeDetector');
+            scannerReader = { reset: ()=>{ try{ stopBD(); }catch{} } };
+            setScanButtonActive(true);
+            return;
+          }
+        } catch {}
+      }
 
       // 2) ZXing fallback
       note('Cargando motor ZXing…');
@@ -538,46 +571,141 @@
         console.error('decodeFromVideoDevice error', err);
         note('Fallo del motor de escaneo. Intenta de nuevo o usa modo manual.');
       });
+
+      setScanButtonActive(true);
     }
 
-    // Test cámara
+    // ---------- UI: botón escanear/Detener, torch, test ----------
+    $('btnScan').addEventListener('click', async ()=>{
+      if (currentStream){
+        stopScanner();
+        setScanButtonActive(false);
+      }else{
+        await startScanner();
+      }
+    });
+
+    $('btnTorch').addEventListener('click', toggleTorch);
+
     $('btnTest').addEventListener('click', async ()=>{
       let txt='';
       if(navigator.permissions && navigator.permissions.query){ try{ const p=await navigator.permissions.query({name:'camera'}); txt+='Permiso cámara: '+p.state+'\n'; }catch(_){} }
       try{ const s=await navigator.mediaDevices.getUserMedia({video:true,audio:false}); s.getTracks().forEach(t=>t.stop()); txt+='getUserMedia: ✅ OK\n'; }catch(e){ txt+='getUserMedia: ❌ '+(e.name||e.message)+'\n'; }
-      const devs=await navigator.mediaDevices.enumerateDevices(); const list=devs.filter(d=>d.kind==='videoinput'); txt+='Cámaras detectadas: '+list.length+'\n'; list.forEach((d,i)=> txt+='- ['+i+'] '+(d.label||'(sin etiqueta)')+'\n'); note(txt||'Test hecho');
+      const devs=await navigator.mediaDevices.enumerateDevices(); const list=devs.filter(d=>d.kind==='videoinput'); txt+='Cámaras detectadas: '+list.length+'\n'; list.forEach((d,i)=> txt+='- ['+i+'] '+(d.label||'(sin etiqueta)')+'\n');
+      const vib = (navigator.vibrate && navigator.vibrate(60)) ? '✅' : (('vibrate' in navigator)?'⚠️':'❌');
+      txt+='Vibración: '+vib+'\n';
+      note(txt||'Test hecho');
     });
 
-    // Buscar manual
+    // ---------- Drawer (+) ----------
+    $('btnMore').addEventListener('click', ()=>{
+      const d = $('drawer'); d.classList.toggle('open');
+    });
+
+    // ---------- PvP TIENDA (teclado numérico) ----------
+    function updatePvpPillText(){
+      const rec=loadList(K_RECENTS)[0]||null;
+      const el = $('pvpValue');
+      if (!el){ return; }
+      if (rec && rec.userPrice!=null){ el.textContent = fmtMoney(rec.userPrice)+' €'; }
+      else { el.textContent = '—'; }
+    }
+
+    function openKeypad(){
+      const rec=loadList(K_RECENTS)[0]||null;
+      if(!rec){ alert('Escanea o busca un producto primero.'); return; }
+
+      const modal=document.createElement('div');
+      modal.className='modal';
+      modal.innerHTML=`
+        <div class="card">
+          <div class="kDisplay"><span>🏷️ PvP Tienda</span><span id="kOut">${$('pvpValue').textContent || '—'}</span></div>
+          <div class="kGrid">
+            ${['1','2','3','4','5','6','7','8','9'].map(n=>`<button class="kBtn" data-k="${n}">${n}</button>`).join('')}
+            <button class="kBtn" data-k=",">,</button>
+            <button class="kBtn" data-k="0">0</button>
+            <button class="kBtn del" data-k="del">⌫</button>
+          </div>
+          <div class="kRow">
+            <button class="kBtn secondary" id="kCancel">Cancelar</button>
+            <button class="kBtn ok" id="kOk">Guardar</button>
+          </div>
+        </div>`;
+      document.body.appendChild(modal);
+
+      const out = modal.querySelector('#kOut');
+      let buffer = (function(){
+        const txt = $('pvpValue').textContent||'';
+        const m = txt.match(/[\d]+(?:,[\d]{0,2})?/);
+        return m ? m[0] : '';
+      })();
+
+      const setOut = ()=>{ out.textContent = buffer || '—'; };
+      setOut();
+
+      modal.addEventListener('click', (e)=>{
+        if(e.target===modal) modal.remove();
+      });
+
+      modal.querySelectorAll('.kBtn').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const k = btn.getAttribute('data-k');
+          if(k==='del'){ buffer = buffer.slice(0,-1); setOut(); return; }
+          if(k===','){ if(!buffer.includes(',')) buffer = buffer ? buffer+',' : '0,'; setOut(); return; }
+          // número
+          buffer += k;
+          // limitar a 2 decimales si hay coma
+          const parts = buffer.split(',');
+          if(parts[1] && parts[1].length>2){ parts[1]=parts[1].slice(0,2); buffer=parts.join(','); }
+          setOut();
+        });
+      });
+
+      modal.querySelector('#kCancel').addEventListener('click', ()=> modal.remove());
+      modal.querySelector('#kOk').addEventListener('click', ()=>{
+        if(!buffer){ updateItemPvp(rec.id, null); updatePvpPillText(); modal.remove(); return; }
+        const num = Number(buffer.replace(',','.'));
+        if(!isFinite(num)){ alert('Precio no válido'); return; }
+        updateItemPvp(rec.id, Math.max(0,num));
+        updatePvpPillText();
+        modal.remove();
+      });
+    }
+
+    $('pvpPill').addEventListener('click', openKeypad);
+
+    // ---------- Buscar manual ----------
     $('btnBuscar').addEventListener('click', async ()=>{
       const code=$('eanInput').value.replace(/[^0-9]/g,''); const v=validCode(code);
       if(!v.ok){ setEanHint('Código no válido.', false); return; }
       await lookupAndRender(code);
     });
 
-    renderToggles();
-    $('btnToggleSound').addEventListener('click', ()=>{ settings.noSound=!settings.noSound; saveSettings(settings); renderToggles(); });
-    $('btnToggleVibra').addEventListener('click', ()=>{ settings.noVibra=!settings.noVibra; saveSettings(settings); renderToggles(); });
-    $('btnToggleContinuous').addEventListener('click', ()=>{ settings.continuous=!settings.continuous; saveSettings(settings); renderToggles(); });
+    function renderTogglesAndPvp(){ renderToggles(); updatePvpPillText(); }
 
-    $('btnSetPrice').addEventListener('click', ()=>{
-      const rec=loadList(K_RECENTS)[0]||null; if(!rec){ alert('Escanea o busca un producto primero.'); return; }
-      askAndSavePvp(rec.id);
-    });
+    // ---------- Backend lookup ----------
+    async function lookupAndRender(ean){
+      const cached=cacheGet(ean); if(cached){ renderResult(cached.success,cached.product,ean,cached.meta); return; }
+      try{
+        const r=await fetch('/api/lookup?ean='+encodeURIComponent(ean));
+        const d=await r.json(); cacheSet(ean,d);
+        renderResult(d && d.success, d && d.product, ean, d && d.meta);
+      }catch(e){ note('No se pudo consultar el backend.'); }
+    }
 
-    $('btnTorch').addEventListener('click', toggleTorch);
-    $('btnStop').addEventListener('click', stopScanner);
-    $('btnScan').addEventListener('click', startScanner);
+    // ---------- Render inicial ----------
+    renderRecents(); renderFavs();
+    renderTogglesAndPvp();
 
-    $('eanInput').addEventListener('input', ()=>{
-      const s=$('eanInput').value.replace(/[^0-9]/g,''); if(!s){ setEanHint('',true); return; }
-      const v=validCode(s); if(!v.ok) setEanHint('Código no válido (longitud o checksum).', false); else setEanHint(`Código válido (${v.type}).`, true);
-    });
+    // ---------- Utilidades de listas (no cambian) ----------
+    function removeRecent(id){ const arr=loadList(K_RECENTS).filter(x=>x.id!==id); saveList(K_RECENTS,arr); renderRecents(); updatePvpPillText(); }
+    function clearRecents(){ saveList(K_RECENTS,[]); renderRecents(); updatePvpPillText(); }
 
+    // Eventos limpiar listas
     $('btnClearRecents').addEventListener('click', ()=>{ if(confirm('¿Vaciar lista de últimos escaneados?')) clearRecents(); });
     $('btnClearFavs').addEventListener('click', ()=>{ if(confirm('¿Vaciar favoritos?')) clearFavs(); });
 
-    renderRecents(); renderFavs();
+    // ---- (Funciones de favoritos y listas están más arriba sin cambios) ----
   })();
   </script>
 </body>
