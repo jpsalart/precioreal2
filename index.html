@@ -85,21 +85,20 @@
       <b>Escanear con la cámara</b>
       <div id="scanner"><div id="overlay">Pulsa “Escanear” y permite la cámara</div></div>
       <div class="row">
-        <button class="btn" id="btnScan">📷 Escanear</button>
+        <button class="btn" id="btnScan">Escanear</button>
         <!-- PvP pill + plus -->
         <div class="pvpRow">
           <div class="pill" id="pvpPill" title="Introduce tu precio (solo local)">
-            <span>🏷️ PvP Tienda</span>
+            <span>PvP Tienda</span>
             <span id="pvpValue" class="hintSmall">—</span>
           </div>
           <button class="btn secondary plus" id="btnMore" title="Más opciones">+</button>
         </div>
-        <button class="btn secondary" id="btnTorch" title="Activar/desactivar linterna">Linterna</button>
-        <button class="btn secondary" id="btnTest">Test cámara</button>
+        <!-- (Linterna / Test se mueven al drawer) -->
         <button class="btn secondary" id="btnInstall" style="display:none">Instalar app</button>
       </div>
 
-      <!-- Drawer (opciones + manual) -->
+      <!-- Drawer (opciones + manual + utilidades) -->
       <div id="drawer" class="drawerBox">
         <div class="drawerGrid">
           <div>
@@ -108,6 +107,10 @@
               <button class="btn secondary" id="btnToggleSound">Sonido: OFF</button>
               <button class="btn secondary" id="btnToggleVibra">Vibración: ON</button>
               <button class="btn secondary" id="btnToggleContinuous">Escáner continuo: ON</button>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <button class="btn secondary" id="btnTorch" title="Activar/desactivar linterna">Linterna</button>
+              <button class="btn secondary" id="btnTest">Test cámara</button>
             </div>
           </div>
           <div>
@@ -263,9 +266,6 @@
 
     function removeRecent(id){ const arr=loadList(K_RECENTS).filter(x=>x.id!==id); saveList(K_RECENTS,arr); renderRecents(); }
     function clearRecents(){ saveList(K_RECENTS,[]); renderRecents(); }
-    function isFav(id){ return loadList(K_FAVS).some(x=>x.id===id); }
-    function toggleFav(item){ if(!item||!item.id) return; const arr=loadList(K_FAVS); const i=arr.findIndex(x=>x.id===id); if(i>=0) arr.splice(i,1); else arr.unshift(item); saveList(K_FAVS,arr); renderFavs(); renderRecents(); }
-    function clearFavs(){ saveList(K_FAVS,[]); renderFavs(); renderRecents(); }
 
     function extractASIN(link){
       if (!link) return null;
@@ -378,17 +378,6 @@
       const item = normalizeItem(ean, { product:p, meta:meta||{} });
       addRecent(item);
       note('Añadido a “Últimos escaneados”.'); setTimeout(hideNote, 900);
-      // Actualiza pill PvP con el del último
-      updatePvpPillText();
-    }
-
-    function askAndSavePvp(id){
-      const old=getFromAnyList(id);
-      const pre=(old && old.userPrice!=null)? String(old.userPrice).replace('.',',') : '';
-      const v=prompt('Introduce tu precio (ej. 12,99). Se guarda solo en este dispositivo:', pre);
-      if(v===null) return;
-      const num=Number(String(v).replace(',','.').replace(/[^\d.]/g,'')); if(!isFinite(num)){ alert('Precio no válido'); return; }
-      updateItemPvp(id, Math.max(0,num));
       updatePvpPillText();
     }
 
@@ -463,10 +452,10 @@
       const btn = $('btnScan');
       if (!btn) return;
       if (active){
-        btn.textContent = '⏹ Detener';
+        btn.textContent = 'Detener';
         btn.classList.add('danger');
       }else{
-        btn.textContent = '📷 Escanear';
+        btn.textContent = 'Escanear';
         btn.classList.remove('danger');
       }
     }
@@ -509,15 +498,14 @@
       }
 
       // Estado del botón linterna
-      const torchBtn = $('btnTorch');
       try{
+        const torchBtn = $('btnTorch');
         const track = currentStream?.getVideoTracks?.()[0];
         const caps = track?.getCapabilities?.();
         const hasTorch = !!(caps && caps.torch);
-        if (!hasTorch){
-          if (torchBtn){ torchBtn.disabled = true; torchBtn.title = 'No disponible en este dispositivo/navegador'; }
-        } else {
-          if (torchBtn){ torchBtn.disabled = false; torchBtn.title = 'Activar/desactivar linterna'; }
+        if (torchBtn){
+          torchBtn.disabled = !hasTorch;
+          torchBtn.title = hasTorch ? 'Activar/desactivar linterna' : 'No disponible en este dispositivo/navegador';
         }
       }catch{}
 
@@ -575,7 +563,7 @@
       setScanButtonActive(true);
     }
 
-    // ---------- UI: botón escanear/Detener, torch, test ----------
+    // Botón único Escanear/Detener
     $('btnScan').addEventListener('click', async ()=>{
       if (currentStream){
         stopScanner();
@@ -585,8 +573,8 @@
       }
     });
 
+    // Torch y Test (en drawer)
     $('btnTorch').addEventListener('click', toggleTorch);
-
     $('btnTest').addEventListener('click', async ()=>{
       let txt='';
       if(navigator.permissions && navigator.permissions.query){ try{ const p=await navigator.permissions.query({name:'camera'}); txt+='Permiso cámara: '+p.state+'\n'; }catch(_){} }
@@ -597,12 +585,12 @@
       note(txt||'Test hecho');
     });
 
-    // ---------- Drawer (+) ----------
+    // Drawer (+)
     $('btnMore').addEventListener('click', ()=>{
       const d = $('drawer'); d.classList.toggle('open');
     });
 
-    // ---------- PvP TIENDA (teclado numérico) ----------
+    // PvP TIENDA (teclado numérico con enteros o dos decimales)
     function updatePvpPillText(){
       const rec=loadList(K_RECENTS)[0]||null;
       const el = $('pvpValue');
@@ -619,7 +607,7 @@
       modal.className='modal';
       modal.innerHTML=`
         <div class="card">
-          <div class="kDisplay"><span>🏷️ PvP Tienda</span><span id="kOut">${$('pvpValue').textContent || '—'}</span></div>
+          <div class="kDisplay"><span>PvP Tienda</span><span id="kOut">${$('pvpValue').textContent || '—'}</span></div>
           <div class="kGrid">
             ${['1','2','3','4','5','6','7','8','9'].map(n=>`<button class="kBtn" data-k="${n}">${n}</button>`).join('')}
             <button class="kBtn" data-k=",">,</button>
@@ -640,7 +628,15 @@
         return m ? m[0] : '';
       })();
 
-      const setOut = ()=>{ out.textContent = buffer || '—'; };
+      const setOut = ()=>{
+        if (!buffer) { out.textContent = '—'; return; }
+        // Mostrar con ,00 si no hay decimales
+        if (!buffer.includes(',')) out.textContent = buffer + ',00';
+        else {
+          const parts = buffer.split(',');
+          out.textContent = parts[0] + ',' + (parts[1].padEnd(2,'0').slice(0,2));
+        }
+      };
       setOut();
 
       modal.addEventListener('click', (e)=>{
@@ -650,8 +646,18 @@
       modal.querySelectorAll('.kBtn').forEach(btn=>{
         btn.addEventListener('click', ()=>{
           const k = btn.getAttribute('data-k');
-          if(k==='del'){ buffer = buffer.slice(0,-1); setOut(); return; }
-          if(k===','){ if(!buffer.includes(',')) buffer = buffer ? buffer+',' : '0,'; setOut(); return; }
+          if(k==='del'){
+            buffer = buffer.slice(0,-1);
+            // Si borramos la coma final sobrante, dejamos solo enteros
+            if (buffer.endsWith(',')) buffer = buffer.slice(0,-1);
+            setOut(); 
+            return; 
+          }
+          if(k===','){ 
+            if(!buffer.includes(',')) buffer = buffer ? buffer+',' : '0,';
+            setOut(); 
+            return; 
+          }
           // número
           buffer += k;
           // limitar a 2 decimales si hay coma
@@ -664,7 +670,15 @@
       modal.querySelector('#kCancel').addEventListener('click', ()=> modal.remove());
       modal.querySelector('#kOk').addEventListener('click', ()=>{
         if(!buffer){ updateItemPvp(rec.id, null); updatePvpPillText(); modal.remove(); return; }
-        const num = Number(buffer.replace(',','.'));
+        // Convertir a número: si no hay coma => entero
+        let num;
+        if (buffer.includes(',')){
+          const parts = buffer.split(',');
+          const dec = (parts[1]||'').padEnd(2,'0').slice(0,2);
+          num = Number(parts[0] + '.' + dec);
+        } else {
+          num = Number(buffer); // entero
+        }
         if(!isFinite(num)){ alert('Precio no válido'); return; }
         updateItemPvp(rec.id, Math.max(0,num));
         updatePvpPillText();
@@ -674,16 +688,14 @@
 
     $('pvpPill').addEventListener('click', openKeypad);
 
-    // ---------- Buscar manual ----------
+    // Buscar manual
     $('btnBuscar').addEventListener('click', async ()=>{
       const code=$('eanInput').value.replace(/[^0-9]/g,''); const v=validCode(code);
       if(!v.ok){ setEanHint('Código no válido.', false); return; }
       await lookupAndRender(code);
     });
 
-    function renderTogglesAndPvp(){ renderToggles(); updatePvpPillText(); }
-
-    // ---------- Backend lookup ----------
+    // Lookup backend
     async function lookupAndRender(ean){
       const cached=cacheGet(ean); if(cached){ renderResult(cached.success,cached.product,ean,cached.meta); return; }
       try{
@@ -693,19 +705,26 @@
       }catch(e){ note('No se pudo consultar el backend.'); }
     }
 
-    // ---------- Render inicial ----------
-    renderRecents(); renderFavs();
-    renderTogglesAndPvp();
+    // --- utilidades y validadores (sin cambios de lógica) ---
+    function removeRecent(id){ const arr=loadList(K_RECENTS).filter(x=>x.id!==id); saveList(K_RECENTS,arr); renderRecents(); }
+    function clearRecents(){ saveList(K_RECENTS,[]); renderRecents(); }
+    function isFav(id){ return loadList(K_FAVS).some(x=>x.id===id); }
+    function toggleFav(item){ if(!item||!item.id) return; const arr=loadList(K_FAVS); const i=arr.findIndex(x=>x.id===item.id); if(i>=0) arr.splice(i,1); else arr.unshift(item); saveList(K_FAVS,arr); renderFavs(); renderRecents(); }
+    function clearFavs(){ saveList(K_FAVS,[]); renderFavs(); renderRecents(); }
 
-    // ---------- Utilidades de listas (no cambian) ----------
-    function removeRecent(id){ const arr=loadList(K_RECENTS).filter(x=>x.id!==id); saveList(K_RECENTS,arr); renderRecents(); updatePvpPillText(); }
-    function clearRecents(){ saveList(K_RECENTS,[]); renderRecents(); updatePvpPillText(); }
-
-    // Eventos limpiar listas
     $('btnClearRecents').addEventListener('click', ()=>{ if(confirm('¿Vaciar lista de últimos escaneados?')) clearRecents(); });
     $('btnClearFavs').addEventListener('click', ()=>{ if(confirm('¿Vaciar favoritos?')) clearFavs(); });
 
-    // ---- (Funciones de favoritos y listas están más arriba sin cambios) ----
+    // Render inicial
+    renderRecents(); renderFavs(); renderToggles(); updatePvpPillText();
+
+    // --------- Validación EAN/UPC ----------
+    function ean13Valid(s){ s=String(s).replace(/[^0-9]/g,''); if(s.length!==13) return false; const d=s.split('').map(n=>+n); const c=d[12]; let sum=0; for(let i=0;i<12;i++) sum+=d[i]*(i%2===0?1:3); return ((10-(sum%10))%10)===c; }
+    function ean8Valid(s){ s=String(s).replace(/[^0-9]/g,''); if(s.length!==8) return false; const d=s.split('').map(n=>+n); const c=d[7]; let sum=0; for(let i=0;i<7;i++) sum+=d[i]*(i%2===0?3:1); return ((10-(sum%10))%10)===c; }
+    function upcAValid(s){ s=String(s).replace(/[^0-9]/g,''); if(s.length!==12) return false; return ean13Valid('0'+s); }
+    function validCode(code){ const s=String(code).replace(/[^0-9]/g,''); if(s.length===13) return {ok:ean13Valid(s),type:'EAN-13'}; if(s.length===8) return {ok:ean8Valid(s),type:'EAN-8'}; if(s.length===12) return {ok:upcAValid(s),type:'UPC-A'}; return {ok:false,type:'unknown'}; }
+    function setEanHint(msg, ok){ const el=$('eanHint'); el.textContent=msg||''; el.style.color=ok?'#9fe29f':'#ffb3b3'; }
+
   })();
   </script>
 </body>
