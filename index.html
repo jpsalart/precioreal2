@@ -27,12 +27,8 @@
     #overlay{position:absolute;left:8px;right:8px;bottom:8px;background:rgba(0,0,0,.45);border:1px solid #223352;border-radius:8px;padding:6px 8px;font-size:12px;color:#cfe7ff;white-space:pre-line}
     .hint{font-size:12px;color:#9bb4d9;margin-top:6px}
     footer{margin:18px 0 8px;border-top:1px solid var(--bd);padding-top:12px;color:#a8b3c7;font-size:0.9rem;line-height:1.35}
-
-    /* Panel headings más grandes */
     .bar{display:flex;justify-content:space-between;align-items:center;margin:8px 0 4px 0}
     .bar .title{font-size:18px;font-weight:900}
-
-    /* Tarjetas de listas */
     .list-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
     .mini{position:relative;display:grid;grid-template-columns:72px 1fr;gap:10px;align-items:center;background:#0d1423;border:1px solid var(--bd);border-radius:10px;padding:10px}
     .mini .thumb{width:72px;height:72px;border-radius:8px;background:#101a2c;display:grid;place-items:center;overflow:hidden}
@@ -41,24 +37,15 @@
     .mini .muted{font-size:12px}
     .mini .actions{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
     .banner{display:flex;justify-content:center;align-items:center;width:100%;padding:12px 14px;border-radius:10px;background:#182339;border:1px solid #223352;color:#e7edf7;text-decoration:none;font-size:15px;font-weight:900;min-height:48px}
-
-    /* Precio anotado (manual) */
     .pvpLineMini{font-size:14px;font-weight:800;margin-top:8px;color:#cfe2ff;text-align:right}
     .badgeManual{display:inline-block;margin-right:6px;padding:2px 6px;border-radius:999px;border:1px solid #2a3f66;background:#13203b;color:#cfe2ff;font-size:11px;font-weight:700;vertical-align:baseline}
     .pvpSub{font-size:11px;color:#9bb4d9;margin-top:4px;text-align:right;font-weight:500}
-
-    /* invertidos: ✕ a la izquierda, ⭐ a la derecha (más grande) */
     .icon-btn{position:absolute;top:6px;left:6px;background:#172033;border:1px solid #284066;color:#c9d9f2;width:24px;height:24px;line-height:22px;text-align:center;border-radius:8px;cursor:pointer;font-weight:900}
     .star{position:absolute;top:6px;right:6px;background:#172033;border:1px solid #284066;color:#f6e08f;width:36px;height:36px;line-height:34px;text-align:center;border-radius:12px;cursor:pointer;font-weight:900;font-size:20px}
     .star.off{color:#b0b0b0}
     .empty{color:#a8b3c7;font-size:13px}
-
-    /* Botones toggle */
     .toggles{display:flex;gap:8px;flex-wrap:wrap}
-
     .link.big{font-size:18px;font-weight:900;padding:14px 16px;border-width:2px;width:100%;justify-content:center;min-height:48px}
-
-    /* ---------- TAGS (Favoritos) ---------- */
     .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
     .chip{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;border:1px solid #2a3f66;background:#13203b;color:#cfe2ff;font-size:12px;font-weight:700;cursor:default}
     .chip .x{cursor:pointer;font-weight:900;opacity:.85}
@@ -100,7 +87,6 @@
       <div class="hint">Si la cámara no abre, puedes subir una foto del código o introducir el EAN manualmente.</div>
     </section>
 
-    <!-- Tip iOS para A2HS (opcional) -->
     <div id="a2hsTip" class="hint" style="display:none">
       iOS: para instalar, toca <b>Compartir</b> → <b>Añadir a pantalla de inicio</b>.
     </div>
@@ -114,7 +100,6 @@
       <div class="hint" id="eanHint"></div>
     </section>
 
-    <!-- Últimos escaneados -->
     <section class="panel" id="panelRecents">
       <div class="bar">
         <div class="title">🕘 Últimos escaneados</div>
@@ -125,7 +110,6 @@
       <div id="tipRecents" class="empty" style="margin-top:10px">Consejo: Añádelo en tu carrito de Amazon para no perderlo.</div>
     </section>
 
-    <!-- Favoritos -->
     <section class="panel" id="panelFavs">
       <div class="bar">
         <div class="title" id="favTitle">Favoritos (0)</div>
@@ -194,7 +178,7 @@
     function saveList(key,arr){ try{ localStorage.setItem(key, JSON.stringify(arr)); }catch(_){ } }
     function getFromAnyList(id){ const a=loadList(K_RECENTS).find(x=>x.id===id); if(a) return a; return loadList(K_FAVS).find(x=>x.id===id)||null; }
 
-    // ---------- TAGS utilidades ----------
+    // ---------- TAGS ----------
     function normalizeTags(arr){
       if(!Array.isArray(arr)) return [];
       const out=[]; for(const t of arr){
@@ -202,10 +186,9 @@
         if(!s) continue;
         if(!out.includes(s)) out.push(s);
       }
-      return out.slice(0,12); // límite razonable por ítem
+      return out.slice(0,12);
     }
     function colorForTag(tag){
-      // color determinista a partir del texto
       const s = String(tag||'');
       let h=0; for(let i=0;i<s.length;i++){ h = (h*31 + s.charCodeAt(i)) % 360; }
       const bg = `hsla(${h},70%,18%,.55)`;
@@ -242,7 +225,6 @@
       renderRecents(); renderFavs();
     }
 
-    // ---- TAGS: añadir/quitar en ambas listas ----
     function addTagTo(id, tag){
       const t = String(tag||'').trim(); if(!t) return;
       const apply=(key)=>{ const arr=loadList(key); const i=arr.findIndex(x=>x.id===id);
@@ -261,7 +243,7 @@
     function removeRecent(id){ const arr=loadList(K_RECENTS).filter(x=>x.id!==id); saveList(K_RECENTS,arr); renderRecents(); }
     function clearRecents(){ saveList(K_RECENTS,[]); renderRecents(); }
     function isFav(id){ return loadList(K_FAVS).some(x=>x.id===id); }
-    function toggleFav(item){ if(!item||!item.id) return; const arr=loadList(K_FAVS); const i=arr.findIndex(x=>x.id===item.id); if(i>=0) arr.splice(i,1); else arr.unshift(item); saveList(K_FAVS,arr); renderFavs(); renderRecents(); }
+    function toggleFav(item){ if(!item||!item.id) return; const arr=loadList(K_FAVS); const i=arr.findIndex(x=>x.id===id); if(i>=0) arr.splice(i,1); else arr.unshift(item); saveList(K_FAVS,arr); renderFavs(); renderRecents(); }
     function clearFavs(){ saveList(K_FAVS,[]); renderFavs(); renderRecents(); }
 
     function tsToText(ts){ try{ if(!ts) return ''; const d=new Date(ts); const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const hh=String(d.getHours()).padStart(2,'0'); const mi=String(d.getMinutes()).padStart(2,'0'); return `${dd}/${mm} ${hh}:${mi}`; }catch(_){ return ''; } }
@@ -279,14 +261,12 @@
     }
     function isAndroidChrome(){
       const ua = navigator.userAgent || '';
-      // Android + navegadores que soportan intent://
       return /Android/i.test(ua) && /(Chrome|EdgA|Chromium|SamsungBrowser|Brave)/i.test(ua);
     }
     function openAmazon(item){
-      const web = buildWebLink(item);            // ya incluye ?tag=...
+      const web = buildWebLink(item);
       const asin = item.asin || extractASIN(web);
       const domain = item.domain || 'amazon.es';
-    
       if (isAndroidChrome() && asin){
         const pathAndQuery = web.replace(/^https?:\/\//i, '');
         const appIntent =
@@ -294,7 +274,7 @@
           `#Intent;scheme=https;package=com.amazon.mShop.android.shopping;` +
           `S.browser_fallback_url=${encodeURIComponent(web)};end`;
         let jumped = false;
-        const timer = setTimeout(()=>{ if(!jumped) location.href = web; }, 1500);
+        setTimeout(()=>{ if(!jumped) location.href = web; }, 1500);
         try { location.href = appIntent; jumped = true; } catch(_) { location.href = web; }
         return;
       }
@@ -311,14 +291,12 @@
         const starOn=isFav(item.id);
         const disabled=item.affiliateLink?'':'disabled';
 
-        // Precio manual (igual que antes)
         const pvpBlock = (item.userPrice!=null) ? `
           <div class="pvpLineMini" data-action="price" title="Toca para editar">
             <span class="badgeManual">Manual</span> 🏷️ Precio anotado: ${fmtMoney(item.userPrice)} €
             <div class="pvpSub">Solo en este dispositivo · No es el precio de Amazon.</div>
           </div>` : '';
 
-        // TAGS (solo visibles/gestionables en Favoritos)
         let tagsBlock = '';
         if (source==='fav'){
           const tags = normalizeTags(item.tags||[]);
@@ -351,7 +329,6 @@
           </div>`;
       }).join('');
 
-      // Eventos tarjeta
       el.querySelectorAll('.mini').forEach(card=>{
         const id=card.getAttribute('data-id');
         const item=arr.find(x=>x.id===id);
@@ -404,7 +381,7 @@
       }catch(e){ note('No se pudo consultar el backend.'); }
     }
 
-    // ---------- ZXing + cámara ----------
+    // ---------- Cámara / Escáner ----------
     let currentStream=null, torchOn=false, scannerReader=null;
 
     function stopScanner(){
@@ -413,8 +390,33 @@
       currentStream=null; scannerReader=null; torchOn=false;
       note('Escáner detenido'); setTimeout(hideNote, 800);
     }
-
     function ensureMedia(){ return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia); }
+
+    // BarcodeDetector loop (primero)
+    async function runBarcodeDetectorLoop(video, onCode) {
+      if (!('BarcodeDetector' in window)) return false;
+      const det = new BarcodeDetector({
+        formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39','qr_code']
+      });
+      let stop = false;
+      const tick = async () => {
+        if (stop) return;
+        try {
+          const codes = await det.detect(video);
+          if (codes && codes.length) {
+            const code = String(codes[0].rawValue || '').replace(/[^0-9Xx]/g, '');
+            if (code) onCode(code);
+          }
+        } catch {}
+        if ('requestVideoFrameCallback' in video) {
+          video.requestVideoFrameCallback(tick);
+        } else {
+          setTimeout(tick, 80);
+        }
+      };
+      tick();
+      return () => { stop = true; };
+    }
 
     function loadZXing(){
       if (window.ZXingBrowser || window.ZXing) return Promise.resolve(true);
@@ -440,17 +442,8 @@
 
     async function startScanner(){
       if(!ensureMedia()){ note('Este navegador no soporta cámara.'); return; }
-      note('Cargando ZXing…');
-      const ok = await loadZXing();
-      const ZX = window.ZXingBrowser || window.ZXing || null;
-      const ReaderCtor = ZX && ZX.BrowserMultiFormatReader ? ZX.BrowserMultiFormatReader : null;
-      if(!ok || !ReaderCtor){ note('ZXing no disponible. Usa la búsqueda manual.'); return; }
 
-      try{
-        const r=await fetch('/api/zxing.js', { cache:'no-store' });
-        console.log('X-Precioreal-ZXing:', r.headers.get('X-Precioreal-ZXing')||'(sin cabecera)');
-      }catch(_){}
-
+      // Pedimos permiso “pro-forma” para evitar bloqueos
       note('Pidiendo permiso de cámara…');
       try{
         const prov = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'environment' } }, audio:false });
@@ -472,36 +465,65 @@
       try{
         currentStream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'environment' } }, audio:false });
         video.srcObject=currentStream;
-        await video.play().catch(()=>{}); // por si el autoplay se bloquea
+        await video.play().catch(()=>{});
         hideNote();
       }catch(e){
         note('No se pudo abrir la cámara.'); return;
       }
 
-      // lector global y decodificación continua/única
-      scannerReader = new ReaderCtor();
+      // Gestión común de resultados
       let justScanned=false, lastText='', lastAt=0;
       const COOLDOWN=1200;
+      const onScan = (raw) => {
+        const code = String(raw||'').replace(/[^0-9Xx]/g,'');
+        if (!code) return;
+        const now = Date.now();
+        if (settings.continuous) {
+          if (code===lastText && (now-lastAt)<COOLDOWN) return;
+          lastText=code; lastAt=now; beep(); lookupAndRender(code);
+        } else {
+          if (!justScanned) { justScanned=true; beep(); stopScanner(); lookupAndRender(code); }
+        }
+      };
 
       note('Escaneando…');
-      scannerReader.decodeFromVideoDevice(null, video, (result)=>{
-        if(!result || !result.getText) return;
-        const raw=result.getText()||''; const code=raw.replace(/[^0-9Xx]/g,''); if(!code) return;
 
-        const now=Date.now();
-        if(settings.continuous){
-          if(code===lastText && (now-lastAt)<COOLDOWN) return;
-          lastText=code; lastAt=now; beep(); lookupAndRender(code);
-        }else{
-          if(!justScanned){ justScanned=true; beep(); stopScanner(); lookupAndRender(code); }
+      // Intento 1: BarcodeDetector
+      let stopBD = null;
+      try {
+        stopBD = await runBarcodeDetectorLoop(video, onScan);
+        if (stopBD) {
+          console.log('[PrecioReal] Usando BarcodeDetector');
+          // Para que stopScanner pare el loop BD:
+          scannerReader = { reset: ()=>{ try{ stopBD(); }catch{} } };
+          return;
         }
+      } catch {}
+
+      // Intento 2: ZXing (fallback)
+      note('Cargando motor ZXing…');
+      const ok = await loadZXing();
+      const ZX = window.ZXingBrowser || window.ZXing || null;
+      const ReaderCtor = ZX && ZX.BrowserMultiFormatReader ? ZX.BrowserMultiFormatReader : null;
+      if(!ok || !ReaderCtor){ note('ZXing no disponible. Usa la búsqueda manual.'); return; }
+
+      try{
+        const r=await fetch('/api/zxing.js', { cache:'no-store' });
+        console.log('X-Precioreal-ZXing:', r.headers.get('X-Precioreal-ZXing')||'(sin cabecera)');
+      }catch{}
+
+      scannerReader = new ReaderCtor();
+      scannerReader.decodeFromVideoDevice(null, video, (result)=>{
+        const raw = result && result.getText ? result.getText() : '';
+        if (!raw) return;
+        onScan(raw);
       }).catch(err=>{
         console.error('decodeFromVideoDevice error', err);
         note('Fallo del motor de escaneo. Intenta de nuevo o usa modo manual.');
       });
     }
 
-    // Subir imagen para leer código
+    // Subir imagen para leer código (sigue usando BarcodeDetector si existe)
     $('btnUpload').addEventListener('click', ()=> $('imgInput').click());
     $('imgInput').addEventListener('change', async (ev)=>{
       const f=ev.target.files && ev.target.files[0]; if(!f) return;
@@ -549,7 +571,7 @@
       askAndSavePvp(rec.id);
     });
 
-    // Lote (modal rápido)
+    // Lote
     function openBatch(){
       if(document.getElementById('batchModal')) return;
       const modal=document.createElement('div');
@@ -586,13 +608,9 @@
     }
     $('btnBatch').addEventListener('click', openBatch);
 
-    // Linterna
+    // Linterna / Parar / Iniciar
     $('btnTorch').addEventListener('click', toggleTorch);
-
-    // Parar
     $('btnStop').addEventListener('click', stopScanner);
-
-    // Iniciar
     $('btnScan').addEventListener('click', startScanner);
 
     // Validación al escribir
@@ -611,4 +629,3 @@
   </script>
 </body>
 </html>
-
