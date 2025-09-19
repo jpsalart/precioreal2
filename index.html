@@ -21,7 +21,7 @@
     .btn.ghost{background:transparent;border:1px dashed #2a3a5a;color:#9bb4d9}
     .btn[disabled]{opacity:.5;cursor:not-allowed}
     .btn.danger{background:linear-gradient(180deg,#ff6464,#cc3030);color:#210000}
-    .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+    .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center}
     .row input{flex:1;min-width:180px;padding:12px;border-radius:12px;border:1px solid #223352;background:#0c1322;color:#e7edf7}
     #scanner{position:relative;aspect-ratio:3/2;background:#0d1423;border:1px dashed #223352;border-radius:12px;display:grid;place-items:center;overflow:hidden;margin-top:12px}
     #scanner video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
@@ -41,17 +41,17 @@
     .pvpLineMini{font-size:14px;font-weight:800;margin-top:8px;color:#cfe2ff;text-align:right}
     .badgeManual{display:inline-block;margin-right:6px;padding:2px 6px;border-radius:999px;border:1px solid #2a3f66;background:#13203b;color:#cfe2ff;font-size:11px;font-weight:700;vertical-align:baseline}
     .pvpSub{font-size:11px;color:#9bb4d9;margin-top:4px;text-align:right;font-weight:500}
-    .icon-btn{position:absolute;top:6px;left:6px;background:#172033;border:1px solid #284066;color:#c9d9f2;width:24px;height:24px;line-height:22px;text-align:center;border-radius:8px;cursor:pointer;font-weight:900}
+    .icon-btn{position:absolute;top:6px;left:6px;background:#172033;border:1px solid #284066;color:#c9d9f2;width:30px;height:30px;line-height:28px;text-align:center;border-radius:10px;cursor:pointer;font-weight:900;font-size:18px}
     .star{position:absolute;top:6px;right:6px;background:#172033;border:1px solid #284066;color:#f6e08f;width:36px;height:36px;line-height:34px;text-align:center;border-radius:12px;cursor:pointer;font-weight:900;font-size:20px}
     .star.off{color:#b0b0b0}
     .empty{color:#a8b3c7;font-size:13px}
     .toggles{display:flex;gap:8px;flex-wrap:wrap}
 
-    /* Botón Escáner más grande */
-    #btnScan{ font-size:18px; padding:14px 18px; }
+    /* Botón Escáner un poco más pequeño que antes */
+    #btnScan{ font-size:16px; padding:12px 16px; }
 
-    /* PvP input pill + plus (más grande) */
-    .pvpRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+    /* PvP input pill + plus */
+    .pvpRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     .pill{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;border:1px solid #223352;background:#0c1322;color:#e7edf7;cursor:pointer;font-weight:900;font-size:15px}
     .pill .hintSmall{font-size:13px;color:#9bb4d9;font-weight:700}
     .btn.plus{width:46px;height:46px;display:inline-grid;place-items:center;font-size:22px;padding:0;border-radius:12px}
@@ -87,9 +87,10 @@
     <section class="panel">
       <b>Escanear con la cámara</b>
       <div id="scanner"><div id="overlay">Pulsa “Escáner” y permite la cámara</div></div>
+
+      <!-- MISMA FILA: Escáner + PvP + + -->
       <div class="row">
         <button class="btn" id="btnScan">Escáner</button>
-        <!-- PvP pill + plus -->
         <div class="pvpRow">
           <div class="pill" id="pvpPill" title="Introduce tu precio (solo local)">
             <span>🏷️ PvP Tienda</span>
@@ -97,7 +98,6 @@
           </div>
           <button class="btn secondary plus" id="btnMore" title="Más opciones">+</button>
         </div>
-        <!-- (Linterna / Test se mueven al drawer) -->
         <button class="btn secondary" id="btnInstall" style="display:none">Instalar app</button>
       </div>
 
@@ -210,7 +210,7 @@
     function saveList(key,arr){ try{ localStorage.setItem(key, JSON.stringify(arr)); }catch(_){ } }
     function getFromAnyList(id){ const a=loadList(K_RECENTS).find(x=>x.id===id); if(a) return a; return loadList(K_FAVS).find(x=>x.id===id)||null; }
 
-    // Tags (igual)
+    // Tags
     function normalizeTags(arr){ if(!Array.isArray(arr)) return []; const out=[]; for(const t of arr){ const s=String(t||'').trim(); if(!s) continue; if(!out.includes(s)) out.push(s); } return out.slice(0,12); }
     function colorForTag(tag){ const s = String(tag||''); let h=0; for(let i=0;i<s.length;i++){ h = (h*31 + s.charCodeAt(i)) % 360; } const bg = `hsla(${h},70%,18%,.55)`; const br = `hsla(${h},70%,38%,.95)`; const tx = `hsla(${h},95%,90%,1)`; return { bg, br, tx }; }
 
@@ -222,7 +222,8 @@
       return { id, ean: ean||null, asin: m.asin||null, domain: m.domain||null,
                title: p.title||('Código '+(ean||'desconocido')), image: p.image||null,
                category: p.category||'', affiliateLink: p.affiliateLink||null,
-               userPrice: prev.userPrice||null, userPriceAt: prev.userPriceAt||null,
+               userPrice: prev.userPrice!=null ? prev.userPrice : null,
+               userPriceAt: prev.userPriceAt||null,
                tags: normalizeTags(prev.tags || p.tags || []),
                ts: Date.now() };
     }
@@ -257,10 +258,10 @@
       renderRecents(); renderFavs();
     }
 
-    function removeRecent(id){ const arr=loadList(K_RECENTS).filter(x=>x.id!==id); saveList(K_RECENTS,arr); renderRecents(); }
+    function removeRecent(id){ const arr=loadList(K_RECENTS).filter(x=>String(x.id)!==String(id)); saveList(K_RECENTS,arr); renderRecents(); }
     function clearRecents(){ saveList(K_RECENTS,[]); renderRecents(); }
-    function isFav(id){ return loadList(K_FAVS).some(x=>x.id===id); }
-    function toggleFav(item){ if(!item||!item.id) return; const arr=loadList(K_FAVS); const i=arr.findIndex(x=>x.id===item.id); if(i>=0) arr.splice(i,1); else arr.unshift(item); saveList(K_FAVS,arr); renderFavs(); renderRecents(); }
+    function isFav(id){ return loadList(K_FAVS).some(x=>String(x.id)===String(id)); }
+    function toggleFav(item){ if(!item||!item.id) return; const arr=loadList(K_FAVS); const i=arr.findIndex(x=>String(x.id)===String(item.id)); if(i>=0) arr.splice(i,1); else arr.unshift(item); saveList(K_FAVS,arr); renderFavs(); renderRecents(); }
     function clearFavs(){ saveList(K_FAVS,[]); renderFavs(); renderRecents(); }
 
     function extractASIN(link){
@@ -342,14 +343,15 @@
           </div>`;
       }).join('');
 
+      // Listener delegado en la tarjeta
       el.querySelectorAll('.mini').forEach(card=>{
         const id=card.getAttribute('data-id');
-        const item=arr.find(x=>x.id===id);
+        const item=arr.find(x=>String(x.id)===String(id));
         card.addEventListener('click', (ev)=>{
           const act=ev.target?.getAttribute?.('data-action'); 
           if(!act) return;
           ev.preventDefault(); ev.stopPropagation();
-          if(act==='remove'){ source==='recents'?removeRecent(id):(saveList(K_FAVS,loadList(K_FAVS).filter(x=>x.id!==id)),renderFavs(),renderRecents()); }
+          if(act==='remove'){ source==='recents'?removeRecent(id):(saveList(K_FAVS,loadList(K_FAVS).filter(x=>String(x.id)!==String(id))),renderFavs(),renderRecents()); }
           if(act==='star'){ toggleFav(item); }
           if(act==='open'){ openAmazon(item); }
           if(act==='price'){ askAndSavePvp(id); }
@@ -364,10 +366,22 @@
           }
         }, { passive:false });
       });
+
+      // Listener directo a la cruz por si el delegado no captura en algunos navegadores
+      el.querySelectorAll('.icon-btn').forEach(btn=>{
+        btn.addEventListener('click', (ev)=>{
+          ev.preventDefault(); ev.stopPropagation();
+          const card = btn.closest('.mini');
+          const id = card?.getAttribute('data-id');
+          if(!id) return;
+          if(containerId==='recents') removeRecent(id);
+          else { saveList(K_FAVS,loadList(K_FAVS).filter(x=>String(x.id)!==String(id))); renderFavs(); renderRecents(); }
+        }, { passive:false });
+      });
     }
 
-    function renderRecents(){ renderList('recents','recentsEmpty', loadList(K_RECENTS), 'recent'); }
-    function renderFavs(){ const arr=loadList(K_FAVS); renderList('favs','favsEmpty', arr, 'fav'); const t=$('favTitle'); if(t) t.textContent='Favoritos ('+arr.length+')'; }
+    function renderRecents(){ renderList('recents','recentsEmpty', loadList(K_RECENTS), 'recents'); }
+    function renderFavs(){ const arr=loadList(K_FAVS); renderList('favs','favsEmpty', arr, 'favs'); const t=$('favTitle'); if(t) t.textContent='Favoritos ('+arr.length+')'; }
 
     function renderResult(ok, p, ean, meta){
       if(!ok){ note('No encontrado para '+ean); return; }
@@ -385,6 +399,7 @@
       try{ currentStream && currentStream.getTracks().forEach(t=>t.stop()); }catch(_){}
       currentStream=null; scannerReader=null; torchOn=false;
       note('Escáner detenido'); setTimeout(hideNote, 800);
+      setScanButtonActive(false);
     }
     function ensureMedia(){ return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia); }
 
@@ -485,25 +500,14 @@
         const backId = await pickBackCameraDeviceId();
         const videoConstraints = backId ? { deviceId:{ exact: backId } }
                                         : { facingMode:{ ideal:'environment' } };
-        currentStream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio:false });
+        const current = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio:false });
+        currentStream = current;
         video.srcObject=currentStream;
         await video.play().catch(()=>{});
         hideNote();
       }catch(e){
         note('No se pudo abrir la cámara.'); return;
       }
-
-      // Estado del botón linterna
-      try{
-        const torchBtn = $('btnTorch');
-        const track = currentStream?.getVideoTracks?.()[0];
-        const caps = track?.getCapabilities?.();
-        const hasTorch = !!(caps && caps.torch);
-        if (torchBtn){
-          torchBtn.disabled = !hasTorch;
-          torchBtn.title = hasTorch ? 'Activar/desactivar linterna' : 'No disponible en este dispositivo/navegador';
-        }
-      }catch{}
 
       // Gestión común de resultados
       let justScanned=false, lastText='', lastAt=0;
@@ -516,7 +520,7 @@
           if (code===lastText && (now-lastAt)<COOLDOWN) return;
           lastText=code; lastAt=now; beep(); lookupAndRender(code);
         } else {
-          if (!justScanned) { justScanned=true; beep(); stopScanner(); setScanButtonActive(false); lookupAndRender(code); }
+          if (!justScanned) { justScanned=true; beep(); stopScanner(); lookupAndRender(code); }
         }
       };
 
@@ -563,13 +567,12 @@
     $('btnScan').addEventListener('click', async ()=>{
       if (currentStream){
         stopScanner();
-        setScanButtonActive(false);
       }else{
         await startScanner();
       }
     });
 
-    // >>>>>>> LISTENERS DE TOGGLES (arreglado) <<<<<<<
+    // >>>>>>> LISTENERS DE TOGGLES <<<<<<<
     $('btnToggleSound').addEventListener('click', ()=>{
       settings.noSound = !settings.noSound;
       saveSettings(settings);
@@ -587,7 +590,15 @@
     });
 
     // Torch y Test (en drawer)
-    $('btnTorch').addEventListener('click', toggleTorch);
+    $('btnTorch').addEventListener('click', async ()=>{
+      const track=currentStream?.getVideoTracks?.()[0];
+      const caps=track?.getCapabilities?.();
+      if(!track || !caps || !caps.torch){ note('Este dispositivo/navegador no permite linterna en cámara.'); return; }
+      try{
+        await track.applyConstraints({ advanced:[{ torch:true }] });
+        setTimeout(async ()=>{ await track.applyConstraints({ advanced:[{ torch:false }] }); }, 300);
+      }catch(_){ note('No se pudo cambiar la linterna.'); }
+    });
     $('btnTest').addEventListener('click', async ()=>{
       let txt='';
       if(navigator.permissions && navigator.permissions.query){ try{ const p=await navigator.permissions.query({name:'camera'}); txt+='Permiso cámara: '+p.state+'\n'; }catch(_){} }
@@ -603,13 +614,27 @@
       const d = $('drawer'); d.classList.toggle('open');
     });
 
-    // PvP TIENDA (teclado numérico con enteros o dos decimales)
+    // ---------- PvP TIENDA ----------
+    const parsePrice = (buf)=>{
+      let s = String(buf||'').replace(/[^\d,\.]/g,'').replace(/\./g,',');
+      if(!s) return null;
+      if(!s.includes(',')) return Number(s); // entero
+      const [intPart, decRaw=''] = s.split(',');
+      const dec = (decRaw+'00').slice(0,2);
+      return Number(intPart+'.'+dec);
+    };
+
     function updatePvpPillText(){
       const rec=loadList(K_RECENTS)[0]||null;
       const el = $('pvpValue');
       if (!el){ return; }
       if (rec && rec.userPrice!=null){ el.textContent = fmtMoney(rec.userPrice)+' €'; }
       else { el.textContent = '—'; }
+    }
+
+    function askAndSavePvp(id){
+      // ya no usamos prompt en este flujo; queda por si se llama desde tarjetas
+      openKeypad();
     }
 
     function openKeypad(){
@@ -643,9 +668,11 @@
 
       const normalizeDisplay = (buf)=>{
         if (!buf) return '—';
-        if (!buf.includes(',')) return buf + ',00';
-        const parts = buf.split(',');
-        return parts[0] + ',' + (parts[1].padEnd(2,'0').slice(0,2));
+        if (buf.includes(',')){
+          const parts = buf.split(',');
+          return parts[0] + ',' + (parts[1].padEnd(2,'0').slice(0,2));
+        }
+        return buf + ',00';
       };
       const setOut = ()=>{ out.textContent = normalizeDisplay(buffer); };
       setOut();
@@ -668,7 +695,6 @@
             setOut(); 
             return; 
           }
-          // número
           buffer += k;
           const parts = buffer.split(',');
           if(parts[1] && parts[1].length>2){ parts[1]=parts[1].slice(0,2); buffer=parts.join(','); }
@@ -678,18 +704,10 @@
 
       modal.querySelector('#kCancel').addEventListener('click', ()=> modal.remove());
       modal.querySelector('#kOk').addEventListener('click', ()=>{
-        if(!buffer){ updateItemPvp(rec.id, null); updatePvpPillText(); modal.remove(); return; }
-        let num;
-        if (buffer.includes(',')){
-          const parts = buffer.split(',');
-          const dec = (parts[1]||'').padEnd(2,'0').slice(0,2);
-          num = Number(parts[0] + '.' + dec);
-        } else {
-          num = Number(buffer);
-        }
-        if(!isFinite(num)){ alert('Precio no válido'); return; }
-        updateItemPvp(rec.id, Math.max(0,num));
-        updatePvpPillText();
+        const num = parsePrice(buffer);
+        if(num==null || !isFinite(num)){ alert('Precio no válido'); return; }
+        const rec=loadList(K_RECENTS)[0]||null;
+        if(rec){ updateItemPvp(rec.id, Math.max(0,num)); updatePvpPillText(); }
         modal.remove();
       });
     }
