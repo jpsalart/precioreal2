@@ -14,10 +14,6 @@
       --control-h:48px;
       --accent:#69b8ff;
       --done:#2ecc71;
-      /* tono más oscuro para CTA Amazon */
-      --cta1:#2a6fb8;
-      --cta2:#1c4f86;
-      --ctaBorder:#143c67;
     }
     *{box-sizing:border-box}
     body{margin:0;font-family:system-ui,Segoe UI,Roboto,Inter,Arial,sans-serif;background:var(--bg);color:var(--text)}
@@ -52,12 +48,11 @@
     .mini .muted{font-size:12px}
     .mini .actions{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
 
-    /* CTA Amazon (más oscuro) */
     .banner{
       display:flex;justify-content:center;align-items:center;width:100%;
       padding:14px 16px;border-radius:10px;
-      background:linear-gradient(180deg,var(--cta1),var(--cta2));
-      border:1px solid var(--ctaBorder);
+      background:linear-gradient(180deg,var(--brand),var(--brand2));
+      border:1px solid #204870;
       color:#06121f;text-decoration:none;font-size:18px;font-weight:900;min-height:52px
     }
 
@@ -191,18 +186,17 @@
       <div class="hint">Primero añade siempre el precio antes de apuntar un código de barras.</div>
     </section>
 
-    <!-- Comparar -->
+    <!-- Comparador -->
     <section class="panel" id="panelRecents">
       <div class="bar">
-        <div class="title">🔎 Comparar</div>
+        <div class="title">🔎 Comparador</div>
         <div style="display:flex; gap:8px; align-items:center">
-          <button class="btn ghost" id="btnClearRecFilters">Limpiar filtros (0)</button>
-          <button class="btn ghost" id="btnCollapseRecents" title="Minimizar/expandir">–</button>
+          <button class="btn ghost" id="btnClearRecFilters">Limpiar filtros</button>
           <button class="btn ghost" id="btnClearRecents">Vaciar lista</button>
         </div>
       </div>
 
-      <div class="hint" id="recIntro" style="margin-bottom:6px">
+      <div class="hint" style="margin-bottom:6px">
         Artículos escaneados y sus precios; podrás <b>compararlos en Amazon</b>. Filtra por tienda y añádelos a la lista con <b>★</b>.
       </div>
 
@@ -218,7 +212,7 @@
       <div class="bar">
         <div class="title" id="favTitle">Lista de la compra (0)</div>
         <div style="display:flex; gap:8px; align-items:center">
-          <button class="btn ghost" id="btnClearFavFilters">Limpiar filtros (0)</button>
+          <button class="btn ghost" id="btnClearFavFilters">Limpiar filtros</button>
           <button class="btn ghost" id="btnToggleBought">Comprados</button>
         </div>
       </div>
@@ -230,7 +224,7 @@
       <div id="favFilterBar"></div>
 
       <div id="favs" class="list-grid"></div>
-      <div id="favsEmpty" class="empty" style="display:none">Añade productos desde el Comparar para construir tu lista.</div>
+      <div id="favsEmpty" class="empty" style="display:none">Añade productos desde el Comparador para construir tu lista.</div>
     </section>
 
     <footer>
@@ -254,7 +248,6 @@
     const K_REC_FILTER = 'pr-rec-filter-v1';
     const K_FAV_SHOW_DONE = 'pr-fav-show-done-v1';
     const K_TAG_FREQ = 'pr-tag-freq-v1';
-    const K_REC_COLLAPSED = 'pr-rec-collapsed-v1';
 
     const loadJSON=(k,def)=>{ try{ return JSON.parse(localStorage.getItem(k)||JSON.stringify(def)); }catch(_){ return def; } };
     const saveJSON=(k,v)=>{ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(_){ } };
@@ -264,8 +257,7 @@
     let favFilters = loadJSON(K_FAV_FILTER, []);
     let recFilters = loadJSON(K_REC_FILTER, []);
     let favShowOnlyDone = loadJSON(K_FAV_SHOW_DONE, false);
-    let tagFreq = loadJSON(K_TAG_FREQ, {});
-    let recCollapsed = !!loadJSON(K_REC_COLLAPSED, false);
+    let tagFreq = loadJSON(K_TAG_FREQ, {}); // {tag: count}
 
     const renderToggles=()=>{
       $('btnToggleSound').textContent = 'Sonido: ' + (settings.noSound ? 'OFF' : 'ON');
@@ -414,7 +406,6 @@
         const img=item.image?`<img alt="Imagen" src="${item.image}">`:'—';
         const inFav=isFav(item.id);
         const disabled=item.affiliateLink?'':'disabled';
-        const btnLabel = (source==='favs') ? '🛒 Comprar en Amazon' : '🛒 Ver en Amazon';
 
         const pvpBlock = (item.userPrice!=null)
           ? `<div class="pvpLineMini" data-action="price" data-id="${item.id}" title="Toca para editar">
@@ -426,6 +417,7 @@
                <span class="pvpAdd" data-action="price" data-id="${item.id}">➕ Añadir precio</span>
              </div>`;
 
+        // TAGS (en ambos listados)
         const tags = normalizeTags(item.tags||[]);
         const chips = tags.map(t=>{
           const c = colorForTag(t);
@@ -455,7 +447,7 @@
               <div class="title">${safeTitle}</div>
               <div class="muted">${item.category||'—'}</div>
               <div class="actions" style="margin-top:14px">
-                <a class="banner ${disabled}" href="${item.affiliateLink||'#'}" data-action="open">${btnLabel}</a>
+                <a class="banner ${disabled}" href="${item.affiliateLink||'#'}" data-action="open">🛒 Ver en Amazon</a>
               </div>
               ${pvpBlock}
               ${tagsBlock}
@@ -472,7 +464,7 @@
           if(!act) return;
           ev.preventDefault(); ev.stopPropagation();
           if(act==='remove'){ 
-            if(containerId==='recents') removeRecent(id);
+            if(source==='recents') removeRecent(id);
             else { saveList(K_FAVS,loadList(K_FAVS).filter(x=>String(x.id)!==String(id))); renderFavs(); renderRecents(); }
           }
           if(act==='star'){ toggleFav(item); }
@@ -505,6 +497,7 @@
     function openTagPicker(id, context){
       const allUsed = collectAllTags();
       const popular = topTags(12).filter(t=> allUsed.includes(t));
+      // En COMPARADOR no mostramos predefinidas; solo populares + usadas.
       const quick = (context==='recents') ? [] : ['🏠 Casa','⚡ Urgente','🎂 Cumpleaños','🎁 Regalo'];
       const unique = Array.from(new Set([ ...quick, ...popular, ...allUsed ])).filter(Boolean);
 
@@ -566,17 +559,10 @@
       recFilters = recFilters.filter(t => set.has(t));
       if (before.length !== recFilters.length) saveJSON(K_REC_FILTER, recFilters);
     }
-    function updateFilterCounters(){
-      const recBtn = $('btnClearRecFilters');
-      const favBtn = $('btnClearFavFilters');
-      if (recBtn) recBtn.textContent = `Limpiar filtros (${recFilters.length})`;
-      if (favBtn) favBtn.textContent = `Limpiar filtros (${favFilters.length})`;
-    }
     function renderRecFilterBar(){
       const bar = $('recFilterBar');
       const tags = collectRecTags();
       pruneRecFilters(tags);
-      updateFilterCounters();
       if(!tags.length){ bar.innerHTML=''; return; }
       bar.innerHTML = tags.map(t=>{
         const c = colorForTag(t);
@@ -590,23 +576,12 @@
           const i = recFilters.indexOf(t);
           if(i>=0) recFilters.splice(i,1); else recFilters.push(t);
           saveJSON(K_REC_FILTER, recFilters);
-          updateFilterCounters();
           renderRecents();
         });
       });
     }
     const applyRecFilter=(items)=> !recFilters.length ? items :
       items.filter(it=> recFilters.every(f=> normalizeTags(it.tags||[]).includes(f)));
-
-    // Colapso Comparar
-    function setRecCollapsed(v){
-      recCollapsed = !!v;
-      saveJSON(K_REC_COLLAPSED, recCollapsed);
-      const toToggle = ['recIntro','recFilterBar','recents','recentsEmpty','tipRecents'];
-      toToggle.forEach(id=>{ const el=$(id); if(el) el.style.display = recCollapsed ? 'none' : (id==='recentsEmpty'?'block':''); });
-      const btn = $('btnCollapseRecents');
-      if (btn) btn.textContent = recCollapsed ? '+' : '–';
-    }
 
     function renderRecents(){
       const all = loadList(K_RECENTS);
@@ -622,8 +597,6 @@
         }
       }
       renderList('recents','recentsEmpty', filtered, 'recents');
-      // respetar colapso
-      setRecCollapsed(recCollapsed);
     }
 
     // ---------- Filtros: Favoritos ----------
@@ -636,7 +609,6 @@
     function renderFavFilterBar(){
       const bar = $('favFilterBar');
       const tags = collectFavTags();
-      updateFilterCounters();
       if(!tags.length){ bar.innerHTML=''; return; }
       bar.innerHTML = tags.map(t=>{
         const c = colorForTag(t);
@@ -650,7 +622,6 @@
           const i = favFilters.indexOf(t);
           if(i>=0) favFilters.splice(i,1); else favFilters.push(t);
           saveJSON(K_FAV_FILTER, favFilters);
-          updateFilterCounters();
           renderFavs();
         });
       });
@@ -677,7 +648,7 @@
       if(!shouldAdd){ note('No encontrado para '+ean); return; }
       const item = normalizeItem(ean, { product:p||{}, meta:meta||{} });
       addRecent(item);
-      note('Añadido al Comparar.'); setTimeout(hideNote, 900);
+      note('Añadido al Comparador.'); setTimeout(hideNote, 900);
       updatePvpPillText();
     }
 
@@ -687,4 +658,343 @@
     const IDLE_MS = 10*60*1000;
 
     const clearIdleTimer=()=>{ if (idleTimer){ clearTimeout(idleTimer); idleTimer = null; } };
-    const armIdleTimer=
+    const armIdleTimer=()=>{ clearIdleTimer(); idleTimer = setTimeout(()=>{ note('Escáner detenido por inactividad (10 min).'); stopScanner(); }, IDLE_MS); };
+
+    function stopScanner(){
+      try{ scannerReader && scannerReader.reset && scannerReader.reset(); }catch(_){}
+      try{ currentStream && currentStream.getTracks().forEach(t=>t.stop()); }catch(_){}
+      currentStream=null; scannerReader=null; torchOn=false;
+      clearIdleTimer();
+      note('Escáner detenido'); setTimeout(hideNote, 800);
+      setScanButtonActive(false);
+    }
+    const ensureMedia=()=> !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+
+    async function pickBackCameraDeviceId(){
+      try{
+        const devs = await navigator.mediaDevices.enumerateDevices();
+        const cams = devs.filter(d=>d.kind==='videoinput');
+        const back = cams.find(d=>/back|rear|environment/i.test(d.label)) || cams[1] || cams[0];
+        return back && back.deviceId ? back.deviceId : null;
+      }catch{ return null; }
+    }
+
+    async function runBarcodeDetectorLoop(video, onCode) {
+      if (!('BarcodeDetector' in window)) return false;
+      const det = new BarcodeDetector({
+        formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39','qr_code']
+      });
+      let stop = false;
+      const tick = async () => {
+        if (stop) return;
+        try {
+          const codes = await det.detect(video);
+          if (codes && codes.length) {
+            const code = String(codes[0].rawValue || '').replace(/[^0-9Xx]/g, '');
+            if (code) onCode(code);
+          }
+        } catch {}
+        if ('requestVideoFrameCallback' in video) {
+          video.requestVideoFrameCallback(() => tick());
+        } else {
+          setTimeout(tick, 80);
+        }
+      };
+      tick();
+      return () => { stop = true; };
+    }
+
+    function loadZXing(){
+      if (window.ZXingBrowser || window.ZXing) return Promise.resolve(true);
+      return new Promise(resolve=>{
+        const s=document.createElement('script');
+        s.src='/api/zxing.js'; s.async=true;
+        s.onload=()=>resolve(!!(window.ZXingBrowser||window.ZXing));
+        s.onerror=()=>resolve(false);
+        document.head.appendChild(s);
+      });
+    }
+
+    async function toggleTorch(){
+      const track=currentStream?.getVideoTracks?.()[0];
+      const caps=track?.getCapabilities?.();
+      if(!track || !caps || !caps.torch){ note('Este dispositivo/navegador no permite linterna en cámara.'); return; }
+      try{
+        torchOn=!torchOn;
+        await track.applyConstraints({ advanced:[{ torch:torchOn }] });
+        note(torchOn?'Linterna: ON':'Linterna: OFF'); setTimeout(hideNote, 800);
+      }catch(_){ note('No se pudo cambiar la linterna.'); }
+    }
+
+    function setScanButtonActive(active){
+      const btn = $('btnScan');
+      if (!btn) return;
+      if (active){
+        btn.textContent = 'Detener';
+        btn.classList.add('danger');
+      }else{
+        btn.textContent = 'Escáner';
+        btn.classList.remove('danger');
+      }
+    }
+
+    async function startScanner(){
+      if(!ensureMedia()){ note('Este navegador no soporta cámara.'); return; }
+
+      note('Pidiendo permiso de cámara…');
+      try{
+        const preId = await pickBackCameraDeviceId();
+        const preConstraints = preId ? { video:{ deviceId:{ exact:preId } }, audio:false }
+                                     : { video:{ facingMode:{ ideal:'environment' } }, audio:false };
+        const prov = await navigator.mediaDevices.getUserMedia(preConstraints);
+        prov.getTracks().forEach(t=>t.stop());
+      }catch(e){
+        if(e && (e.name==='NotAllowedError'||e.name==='PermissionDeniedError')){ note('Permiso denegado. Actívalo en los ajustes del navegador.'); return; }
+        if(e && (e.name==='NotFoundError'||e.name==='DevicesNotFoundError')){ note('No hay cámara disponible.'); return; }
+      }
+
+      const cont=$('scanner');
+      const video=document.createElement('video');
+      video.setAttribute('playsinline',''); video.setAttribute('autoplay',''); video.setAttribute('muted','');
+      video.muted=true; video.playsInline=true;
+      video.style.width='100%'; video.style.height='100%'; video.style.objectFit='cover';
+      cont.replaceChildren(video, (function(){ const m=document.createElement('div'); m.id='overlay'; m.textContent='Apunta al código de barras · Mantén el móvil estable'; return m;})());
+
+      note('Abriendo cámara…');
+      try{
+        const backId = await pickBackCameraDeviceId();
+        const videoConstraints = backId ? { deviceId:{ exact: backId } } : { facingMode:{ ideal:'environment' } };
+        const current = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio:false });
+        currentStream = current;
+        video.srcObject=currentStream;
+        await video.play().catch(()=>{});
+        hideNote();
+      }catch(e){
+        note('No se pudo abrir la cámara.'); return;
+      }
+
+      let justScanned=false, lastText='', lastAt=0;
+      const COOLDOWN=1200;
+      const onScan = (raw) => {
+        const code = String(raw||'').replace(/[^0-9Xx]/g,'');
+        if (!code) return;
+        armIdleTimer();
+        const now = Date.now();
+        if (settings.continuous) {
+          if (code===lastText && (now-lastAt)<COOLDOWN) return;
+          lastText=code; lastAt=now; beep(); lookupAndRender(code);
+        } else {
+          if (!justScanned) { justScanned=true; beep(); stopScanner(); lookupAndRender(code); }
+        }
+      };
+
+      // 1) BarcodeDetector
+      let stopBD = null;
+      if ('BarcodeDetector' in window){
+        try {
+          stopBD = await runBarcodeDetectorLoop(video, onScan);
+          if (stopBD) {
+            console.log('[PrecioReal] Usando BarcodeDetector');
+            scannerReader = { reset: ()=>{ try{ stopBD(); }catch{} } };
+            setScanButtonActive(true);
+            armIdleTimer();
+            return;
+          }
+        } catch {}
+      }
+
+      // 2) ZXing
+      note('Cargando motor ZXing…');
+      const ok = await loadZXing();
+      const ZX = window.ZXingBrowser || window.ZXing || null;
+      const ReaderCtor = ZX && ZX.BrowserMultiFormatReader ? ZX.BrowserMultiFormatReader : null;
+      if(!ok || !ReaderCtor){ note('ZXing no disponible. Usa la búsqueda manual.'); return; }
+
+      try{
+        const r=await fetch('/api/zxing.js', { cache:'no-store' });
+        console.log('X-Precioreal-ZXing:', r.headers.get('X-Precioreal-ZXing')||'(sin cabecera)');
+      }catch{}
+
+      scannerReader = new ReaderCtor();
+      scannerReader.decodeFromVideoDevice(null, video, (result)=>{
+        const raw = result && result.getText ? result.getText() : '';
+        if (!raw) return;
+        onScan(raw);
+      }).catch(err=>{
+        console.error('decodeFromVideoDevice error', err);
+        note('Fallo del motor de escaneo. Intenta de nuevo o usa modo manual.');
+      });
+
+      setScanButtonActive(true);
+      armIdleTimer();
+    }
+
+    // Botón único Escáner/Detener
+    $('btnScan').addEventListener('click', async ()=>{
+      if (currentStream){
+        stopScanner();
+      }else{
+        await startScanner();
+      }
+    });
+
+    // Toggles
+    $('btnToggleSound').addEventListener('click', ()=>{ settings.noSound=!settings.noSound; saveSettings(); renderToggles(); });
+    $('btnToggleVibra').addEventListener('click', ()=>{ settings.noVibra=!settings.noVibra; saveSettings(); renderToggles(); });
+    $('btnToggleContinuous').addEventListener('click', ()=>{ settings.continuous=!settings.continuous; saveSettings(); renderToggles(); });
+    $('btnToggleApp').addEventListener('click', ()=>{ settings.openInApp=!settings.openInApp; saveSettings(); renderToggles(); });
+
+    // Torch y Test
+    $('btnTorch').addEventListener('click', toggleTorch);
+    $('btnTest').addEventListener('click', async ()=>{
+      let txt='';
+      if(navigator.permissions && navigator.permissions.query){ try{ const p=await navigator.permissions.query({name:'camera'}); txt+='Permiso cámara: '+p.state+'\n'; }catch(_){} }
+      try{ const s=await navigator.mediaDevices.getUserMedia({video:true,audio:false}); s.getTracks().forEach(t=>t.stop()); txt+='getUserMedia: ✅ OK\n'; }catch(e){ txt+='getUserMedia: ❌ '+(e.name||e.message)+'\n'; }
+      const devs=await navigator.mediaDevices.enumerateDevices(); const list=devs.filter(d=>d.kind==='videoinput'); txt+='Cámaras detectadas: '+list.length+'\n'; list.forEach((d,i)=> txt+='- ['+i+'] '+(d.label||'(sin etiqueta)')+'\n');
+      const vib = (navigator.vibrate && navigator.vibrate(60)) ? '✅' : (('vibrate' in navigator)?'⚠️':'❌');
+      txt+='Vibración: '+vib+'\n';
+      note(txt||'Test hecho');
+    });
+
+    // Drawer (+)
+    $('btnMore').addEventListener('click', ()=>{ $('drawer').classList.toggle('open'); });
+
+    // -------- PvP ----------
+    const fmtDisplay = (buf)=>{
+      let s = String(buf||'').replace(/[^\d,\.]/g,'').replace(/\./g,',');
+      if(!s) return '';
+      if(!s.includes(',')) return s+',00';
+      const [i,d=''] = s.split(',');
+      return i+','+(d+'00').slice(0,2);
+    };
+    const parsePrice = (buf)=>{
+      let s = String(buf||'').replace(/[^\d,\.]/g,'').replace(/\./g,',');
+      if(!s) return null;
+      if(!s.includes(',')) return Number(s);
+      const [intPart, decRaw=''] = s.split(',');
+      const dec = (decRaw+'00').slice(0,2);
+      return Number(intPart+'.'+dec);
+    };
+
+    function updatePvpPillText(){
+      const rec=loadList(K_RECENTS)[0]||null;
+      const el = $('pvpValue');
+      if (!el){ return; }
+      if (rec && rec.userPrice!=null){ el.textContent = fmtMoney(rec.userPrice)+'€'; }
+      else { el.textContent = '—'; }
+    }
+
+    function askAndSavePvp(id){
+      openKeypad(id);
+    }
+
+    function openKeypad(idForItem){
+      // Si no llega id, toma el último reciente
+      let itemId = idForItem || (loadList(K_RECENTS)[0]||{}).id;
+      if(!itemId){ alert('Escanea o busca un producto primero.'); return; }
+
+      const modal=document.createElement('div');
+      modal.className='modal';
+      modal.innerHTML=`
+        <div class="card">
+          <div class="kDisplay"><span>🏷️ PvP Tienda</span><span id="kOut">${$('pvpValue').textContent || '—'}</span></div>
+          <div class="kGrid">
+            ${['1','2','3','4','5','6','7','8','9'].map(n=>`<button class="kBtn" data-k="${n}">${n}</button>`).join('')}
+            <button class="kBtn" data-k=",">,</button>
+            <button class="kBtn" data-k="0">0</button>
+            <button class="kBtn del" data-k="del">⌫</button>
+          </div>
+          <div class="kRow">
+            <button class="btn secondary" id="kCancel">Cancelar</button>
+            <button class="btn ok" id="kOk">Guardar</button>
+          </div>
+        </div>`;
+      document.body.appendChild(modal);
+
+      const out = modal.querySelector('#kOut');
+      let buffer = '';
+
+      const setOut = ()=>{ out.textContent = buffer ? fmtDisplay(buffer) : '—'; };
+      setOut();
+
+      modal.addEventListener('click', (e)=>{ if(e.target===modal) modal.remove(); });
+
+      modal.querySelectorAll('.kBtn').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const k = btn.getAttribute('data-k');
+          if(k==='del'){
+            buffer = buffer.slice(0,-1);
+            if (buffer.endsWith(',')) buffer = buffer.slice(0,-1);
+            setOut(); 
+            return; 
+          }
+          if(k===','){ 
+            if(!buffer.includes(',')) buffer = buffer ? buffer+',' : '0,';
+            setOut(); 
+            return; 
+          }
+          buffer += k;
+          const parts = buffer.split(',');
+          if(parts[1] && parts[1].length>2){ parts[1]=parts[1].slice(0,2); buffer=parts.join(','); }
+          setOut();
+        });
+      });
+
+      modal.querySelector('#kCancel').addEventListener('click', ()=> modal.remove());
+      modal.querySelector('#kOk').addEventListener('click', ()=>{
+        const num = parsePrice(buffer);
+        if(num==null || !isFinite(num)){ alert('Precio no válido'); return; }
+        updateItemPvp(itemId, Math.max(0,num));
+        updatePvpPillText();
+        modal.remove();
+      });
+    }
+
+    $('pvpPill').addEventListener('click', ()=> openKeypad());
+
+    // Buscar manual
+    $('btnBuscar').addEventListener('click', async ()=>{
+      const code=$('eanInput').value.replace(/[^0-9]/g,''); const v=validCode(code);
+      if(!v.ok){ setEanHint('Código no válido.', false); return; }
+      await lookupAndRender(code);
+    });
+
+    // Lookup backend (más tolerante)
+    async function lookupAndRender(ean){
+      const cached=cacheGet(ean); if(cached){ renderResult(cached.success,cached.product,ean,cached.meta); return; }
+      try{
+        const r=await fetch('/api/lookup?ean='+encodeURIComponent(ean));
+        const d=await r.json(); cacheSet(ean,d);
+        renderResult(!!(d && (d.success!==false)), d && d.product, ean, d && d.meta);
+      }catch(e){ note('No se pudo consultar el backend.'); }
+    }
+
+    // Limpiar comparador y filtros
+    $('btnClearRecents').addEventListener('click', ()=>{ if(confirm('¿Vaciar listado del comparador?')) clearRecents(); });
+    $('btnClearRecFilters').addEventListener('click', ()=>{
+      recFilters = [];
+      saveJSON(K_REC_FILTER, recFilters);
+      renderRecents();
+    });
+
+    // Limpiar filtros en Favoritos
+    $('btnClearFavFilters').addEventListener('click', ()=>{
+      favFilters = [];
+      saveJSON(K_FAV_FILTER, favFilters);
+      renderFavs();
+    });
+
+    // Mostrar solo comprados
+    $('btnToggleBought').addEventListener('click', ()=>{
+      favShowOnlyDone = !favShowOnlyDone;
+      saveJSON(K_FAV_SHOW_DONE, favShowOnlyDone);
+      renderFavs();
+    });
+
+    // UI inicial
+    renderRecents(); renderFavs(); renderToggles(); updatePvpPillText();
+
+  })();
+  </script>
+</body>
+</html>
