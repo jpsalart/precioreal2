@@ -46,7 +46,6 @@
     .mini .muted{font-size:12px}
     .mini .actions{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
 
-    /* CTA: tipografía grande + gradiente cromático */
     .banner{
       display:flex;justify-content:center;align-items:center;width:100%;
       padding:14px 16px;border-radius:10px;
@@ -103,8 +102,8 @@
     .chip.add{cursor:pointer;background:transparent;border:1px dashed #2a3a5a;color:#9bb4d9}
     .chip.add:hover{border-style:solid;color:#cfe2ff}
 
-    /* Barra de filtros en Favoritos */
-    #favFilterBar{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 4px}
+    /* Barras de filtros */
+    #recFilterBar, #favFilterBar{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 4px}
     .chip.filter{cursor:pointer; user-select:none}
     .chip.filter.active{outline:2px solid #7cc8ff}
     .chip.clear{border-style:dashed;background:transparent;color:#9bb4d9;cursor:pointer}
@@ -169,29 +168,33 @@
       <div class="hint">Consejo: apoya el móvil y apunta al código de barras.</div>
     </section>
 
-    <!-- Últimos escaneados -->
+    <!-- Comparador de Precios (antes: Últimos escaneados) -->
     <section class="panel" id="panelRecents">
       <div class="bar">
-        <div class="title">🕘 Últimos escaneados</div>
+        <div class="title">🔎 Comparador de Precios</div>
         <button class="btn ghost" id="btnClearRecents">Vaciar lista</button>
       </div>
+
+      <!-- Filtros por etiquetas (Comparador) -->
+      <div id="recFilterBar"></div>
+
       <div id="recents" class="list-grid"></div>
-      <div id="recentsEmpty" class="empty" style="display:none">Aquí verás tus últimos escaneos.</div>
-      <div id="tipRecents" class="empty" style="margin-top:10px">Consejo: Añádelo en tu carrito de Amazon para no perderlo.</div>
+      <div id="recentsEmpty" class="empty" style="display:none">Aquí verás los artículos que escanees/busques.</div>
+      <div id="tipRecents" class="empty" style="margin-top:10px">Consejo: añade etiquetas (p. ej. tienda, 🏠 Casa, ⚡ Urgente) para organizar.</div>
     </section>
 
-    <!-- Favoritos -->
+    <!-- Lista de la compra (antes: Favoritos) -->
     <section class="panel" id="panelFavs">
       <div class="bar">
-        <div class="title" id="favTitle">Favoritos (0)</div>
-        <button class="btn ghost" id="btnClearFavs">Vaciar favoritos</button>
+        <div class="title" id="favTitle">Lista de la compra (0)</div>
+        <button class="btn ghost" id="btnClearFavs">Vaciar lista</button>
       </div>
 
-      <!-- Barra de filtros por etiquetas -->
+      <!-- Barra de filtros por etiquetas (Lista de la compra) -->
       <div id="favFilterBar"></div>
 
       <div id="favs" class="list-grid"></div>
-      <div id="favsEmpty" class="empty" style="display:none">⭐ Añade los productos que quieras guardar.</div>
+      <div id="favsEmpty" class="empty" style="display:none">⭐ Añade elementos para construir tu lista de la compra.</div>
     </section>
 
     <footer>
@@ -212,21 +215,23 @@
     const K_FAVS = 'pr-favs-v1';
     const K_SETTINGS = 'pr-settings-v1';
     const K_FAV_FILTER = 'pr-fav-filter-v1';
+    const K_REC_FILTER = 'pr-rec-filter-v1';
 
-    function loadJSON(k,def){ try{ return JSON.parse(localStorage.getItem(k)||JSON.stringify(def)); }catch(_){ return def; } }
-    function saveJSON(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(_){ } }
+    const loadJSON=(k,def)=>{ try{ return JSON.parse(localStorage.getItem(k)||JSON.stringify(def)); }catch(_){ return def; } };
+    const saveJSON=(k,v)=>{ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(_){ } };
 
-    // Sonido OFF; vibración ON; escaneo continuo ON; abrir en app OFF
+    // ajustes por defecto
     let settings = Object.assign({ noSound:true, noVibra:false, continuous:true, openInApp:false }, loadJSON(K_SETTINGS,{}));
-    let favFilters = loadJSON(K_FAV_FILTER, []); // array de tags activos (AND)
+    let favFilters = loadJSON(K_FAV_FILTER, []);
+    let recFilters = loadJSON(K_REC_FILTER, []);
 
-    function renderToggles(){
+    const renderToggles=()=>{
       $('btnToggleSound').textContent = 'Sonido: ' + (settings.noSound ? 'OFF' : 'ON');
       $('btnToggleVibra').textContent = 'Vibración: ' + (settings.noVibra ? 'OFF' : 'ON');
       $('btnToggleContinuous').textContent = 'Escáner continuo: ' + (settings.continuous ? 'ON' : 'OFF');
       $('btnToggleApp').textContent = 'Abrir en app: ' + (settings.openInApp ? 'ON' : 'OFF');
-    }
-    function saveSettings(){ saveJSON(K_SETTINGS, settings); }
+    };
+    const saveSettings=()=> saveJSON(K_SETTINGS, settings);
 
     function beep(){
       try{
@@ -239,9 +244,9 @@
       }catch(_){}
       try{ if (!settings.noVibra){ navigator.vibrate && navigator.vibrate(80); } }catch(_){}
     }
-    const fmtMoney = (n)=> (isFinite(n)? (Number(n).toFixed(2).replace('.',',')) : '');
+    const fmtMoney=(n)=> (isFinite(n)? (Number(n).toFixed(2).replace('.',',')) : '');
 
-    // Validadores
+    // Validación
     function ean13Valid(s){ s=String(s).replace(/[^0-9]/g,''); if(s.length!==13) return false; const d=s.split('').map(n=>+n); const c=d[12]; let sum=0; for(let i=0;i<12;i++) sum+=d[i]*(i%2===0?1:3); return ((10-(sum%10))%10)===c; }
     function ean8Valid(s){ s=String(s).replace(/[^0-9]/g,''); if(s.length!==8) return false; const d=s.split('').map(n=>+n); const c=d[7]; let sum=0; for(let i=0;i<7;i++) sum+=d[i]*(i%2===0?3:1); return ((10-(sum%10))%10)===c; }
     function upcAValid(s){ s=String(s).replace(/[^0-9]/g,''); if(s.length!==12) return false; return ean13Valid('0'+s); }
@@ -257,11 +262,11 @@
     const saveList=(key,arr)=> saveJSON(key,arr);
     function getFromAnyList(id){ const a=loadList(K_RECENTS).find(x=>String(x.id)===String(id)); if(a) return a; return loadList(K_FAVS).find(x=>String(x.id)===String(id))||null; }
 
-    // Tags helpers
+    // Tags
     function normalizeTags(arr){ if(!Array.isArray(arr)) return []; const out=[]; for(const t of arr){ const s=String(t||'').trim(); if(!s) continue; if(!out.includes(s)) out.push(s); } return out.slice(0,24); }
     function colorForTag(tag){ const s = String(tag||''); let h=0; for(let i=0;i<s.length;i++){ h = (h*31 + s.charCodeAt(i)) % 360; } const bg = `hsla(${h},70%,18%,.55)`; const br = `hsla(${h},70%,38%,.95)`; const tx = `hsla(${h},95%,90%,1)`; return { bg, br, tx }; }
 
-    // Modelo de item
+    // Modelo
     function normalizeItem(ean, resp){
       const p = resp?.product||{}; const m = resp?.meta||{};
       const id = m.asin || ean || p.asin || p.id || (p.affiliateLink||'').split('/api/go/')[1]?.split('?')[0] || null;
@@ -295,7 +300,7 @@
       const apply=(key)=>{ const arr=loadList(key); const i=arr.findIndex(x=>String(x.id)===String(id));
         if(i>=0){ const tags=normalizeTags(arr[i].tags||[]); if(!tags.includes(t)) tags.push(t); arr[i].tags=tags; saveList(key,arr); } };
       apply(K_RECENTS); apply(K_FAVS);
-      renderFavs(); renderRecents(); // refresca listas y filtros
+      renderFavs(); renderRecents();
     }
     function removeTagFrom(id, tag){
       const t = String(tag||'').trim(); if(!t) return;
@@ -311,10 +316,10 @@
     function toggleFav(item){ if(!item||!item.id) return; const arr=loadList(K_FAVS); const i=arr.findIndex(x=>String(x.id)===String(item.id)); if(i>=0) arr.splice(i,1); else arr.unshift(item); saveList(K_FAVS,arr); renderFavs(); renderRecents(); }
     function clearFavs(){ saveList(K_FAVS,[]); renderFavs(); renderRecents(); }
 
-    // Amazon link (con toggle abrir en app)
-    function extractASIN(link){ if (!link) return null; const m = String(link).match(/\/(?:dp|gp\/product)\/([A-Z0-9]{10})/i); return m ? m[1].toUpperCase() : null; }
-    function buildWebLink(item){ const domain = item?.domain || 'amazon.es'; const asin = item?.asin || extractASIN(item?.affiliateLink) || ''; return item?.affiliateLink || `https://www.${domain}/dp/${asin}`; }
-    function isAndroidChrome(){ const ua = navigator.userAgent || ''; return /Android/i.test(ua) && /(Chrome|EdgA|Chromium|SamsungBrowser|Brave)/i.test(ua); }
+    // Amazon link
+    const extractASIN=(link)=>{ if (!link) return null; const m = String(link).match(/\/(?:dp|gp\/product)\/([A-Z0-9]{10})/i); return m ? m[1].toUpperCase() : null; };
+    const buildWebLink=(item)=>{ const domain = item?.domain || 'amazon.es'; const asin = item?.asin || extractASIN(item?.affiliateLink) || ''; return item?.affiliateLink || `https://www.${domain}/dp/${asin}`; };
+    const isAndroidChrome=()=>{ const ua = navigator.userAgent || ''; return /Android/i.test(ua) && /(Chrome|EdgA|Chromium|SamsungBrowser|Brave)/i.test(ua); };
     function openAmazon(item){
       const web = buildWebLink(item);
       const asin = item.asin || extractASIN(web);
@@ -329,7 +334,7 @@
       location.href = web;
     }
 
-    // ---------- Render tarjetas ----------
+    // Render tarjetas
     function renderList(containerId, emptyId, arr, source){
       const el=$(containerId), empty=$(emptyId);
       if(!arr.length){ el.innerHTML=''; empty.style.display='block'; return; }
@@ -344,9 +349,9 @@
             <span class="badgeManual">Manual</span> 🏷️ Precio anotado: ${fmtMoney(item.userPrice)}€
           </div>` : '';
 
-        // Tags dentro de Favoritos (editable)
+        // Ahora mostramos TAGS tanto en recents como en favs
         let tagsBlock = '';
-        if (source==='favs'){
+        if (source==='recents' || source==='favs'){
           const tags = normalizeTags(item.tags||[]);
           const chips = tags.map(t=>{
             const c = colorForTag(t);
@@ -363,7 +368,7 @@
         return `
           <div class="mini" data-id="${item.id}">
             <div class="icon-btn" title="Quitar" data-action="remove">✕</div>
-            <div class="star ${starOn?'':'off'}" title="${starOn?'Quitar de favoritos':'Añadir a favoritos'}" data-action="star">★</div>
+            <div class="star ${starOn?'':'off'}" title="${starOn?'Quitar de la lista de la compra':'Añadir a la lista de la compra'}" data-action="star">★</div>
             <div class="thumb">${img}</div>
             <div>
               <div class="title">${safeTitle}</div>
@@ -393,7 +398,7 @@
           if(act==='open'){ openAmazon(item); }
           if(act==='price'){ askAndSavePvp(id); }
           if(act==='tag-add'){
-            const t = prompt('Nueva etiqueta (ej.: supermercado, regalo, urgente, tienda…):','');
+            const t = prompt('Nueva etiqueta (ej.: 🏠 Casa, ⚡ Urgente, 🎂 Cumpleaños, 🎁 Regalo, tienda…):','');
             if(t!=null){ addTagTo(id, t); }
           }
           if(act==='tag-remove'){
@@ -404,7 +409,7 @@
         }, { passive:false });
       });
 
-      // Listener directo a la cruz
+      // Botón cruz directo
       el.querySelectorAll('.icon-btn').forEach(btn=>{
         btn.addEventListener('click', (ev)=>{
           ev.preventDefault(); ev.stopPropagation();
@@ -417,9 +422,51 @@
       });
     }
 
-    function renderRecents(){ renderList('recents','recentsEmpty', loadList(K_RECENTS), 'recents'); }
+    // ---------- Filtros: Recents ----------
+    function collectRecTags(){
+      const items = loadList(K_RECENTS);
+      const set = new Set();
+      items.forEach(it=> (normalizeTags(it.tags||[])).forEach(t=>set.add(t)));
+      return Array.from(set).sort((a,b)=> a.localeCompare(b));
+    }
+    function renderRecFilterBar(){
+      const bar = $('recFilterBar');
+      const tags = collectRecTags();
+      if(!tags.length){ bar.innerHTML=''; return; }
+      bar.innerHTML = [
+        `<span class="chip clear" id="recFilterClear" title="Limpiar filtros">Limpiar filtro</span>`,
+        ...tags.map(t=>{
+          const c = colorForTag(t);
+          const style = `background:${c.bg};border-color:${c.br};color:${c.tx}`;
+          const active = recFilters.includes(t) ? 'active' : '';
+          return `<span class="chip filter ${active}" data-tag="${t}" style="${style}">${t}</span>`;
+        })
+      ].join('');
 
-    // ---------- Filtros de Favoritos ----------
+      bar.querySelector('#recFilterClear')?.addEventListener('click', ()=>{
+        recFilters = []; saveJSON(K_REC_FILTER, recFilters); renderRecents();
+      });
+      bar.querySelectorAll('.chip.filter').forEach(ch=>{
+        ch.addEventListener('click', ()=>{
+          const t = ch.getAttribute('data-tag');
+          const i = recFilters.indexOf(t);
+          if(i>=0) recFilters.splice(i,1); else recFilters.push(t);
+          saveJSON(K_REC_FILTER, recFilters);
+          renderRecents();
+        });
+      });
+    }
+    const applyRecFilter=(items)=> !recFilters.length ? items :
+      items.filter(it=> recFilters.every(f=> normalizeTags(it.tags||[]).includes(f)));
+
+    function renderRecents(){
+      const all = loadList(K_RECENTS);
+      renderRecFilterBar();
+      const filtered = applyRecFilter(all);
+      renderList('recents','recentsEmpty', filtered, 'recents');
+    }
+
+    // ---------- Filtros: Favoritos (Lista de la compra) ----------
     function collectFavTags(){
       const items = loadList(K_FAVS);
       const set = new Set();
@@ -453,27 +500,23 @@
         });
       });
     }
-    function applyFavFilter(items){
-      if(!favFilters.length) return items;
-      return items.filter(it=>{
-        const tags = normalizeTags(it.tags||[]);
-        return favFilters.every(f=> tags.includes(f));
-      });
-    }
+    const applyFavFilter=(items)=> !favFilters.length ? items :
+      items.filter(it=> favFilters.every(f=> normalizeTags(it.tags||[]).includes(f)));
 
     function renderFavs(){
       const all = loadList(K_FAVS);
       renderFavFilterBar();
       const filtered = applyFavFilter(all);
       renderList('favs','favsEmpty', filtered, 'favs');
-      const t=$('favTitle'); if(t) t.textContent='Favoritos ('+all.length+')';
+      const t=$('favTitle'); if(t) t.textContent='Lista de la compra ('+all.length+')';
     }
 
+    // Resultado lookup
     function renderResult(ok, p, ean, meta){
       if(!ok){ note('No encontrado para '+ean); return; }
       const item = normalizeItem(ean, { product:p, meta:meta||{} });
       addRecent(item);
-      note('Añadido a “Últimos escaneados”.'); setTimeout(hideNote, 900);
+      note('Añadido al Comparador.'); setTimeout(hideNote, 900);
       updatePvpPillText();
     }
 
@@ -628,7 +671,7 @@
         } catch {}
       }
 
-      // 2) ZXing fallback
+      // 2) ZXing
       note('Cargando motor ZXing…');
       const ok = await loadZXing();
       const ZX = window.ZXingBrowser || window.ZXing || null;
@@ -796,10 +839,10 @@
     }
 
     // Limpiar listas
-    $('btnClearRecents').addEventListener('click', ()=>{ if(confirm('¿Vaciar lista de últimos escaneados?')) clearRecents(); });
-    $('btnClearFavs').addEventListener('click', ()=>{ if(confirm('¿Vaciar favoritos?')) clearFavs(); });
+    $('btnClearRecents').addEventListener('click', ()=>{ if(confirm('¿Vaciar listado del comparador?')) clearRecents(); });
+    $('btnClearFavs').addEventListener('click', ()=>{ if(confirm('¿Vaciar lista de la compra?')) clearFavs(); });
 
-    // Render inicial
+    // UI inicial
     renderRecents(); renderFavs(); renderToggles(); updatePvpPillText();
 
   })();
