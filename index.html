@@ -8,13 +8,7 @@
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#0b0f14">
   <style>
-    :root{
-      --bg:#0b0f14; --panel:#121824; --text:#e7edf7; --muted:#a8b3c7;
-      --brand:#3aa1ff; --brand2:#1e78d5; --bd:#1a2434; --ok:#9fe29f; --bad:#ffb3b3;
-      --control-h:48px;
-      --accent:#69b8ff;
-      --done:#2ecc71;
-    }
+    :root{ --bg:#0b0f14; --panel:#121824; --text:#e7edf7; --muted:#a8b3c7; --brand:#3aa1ff; --brand2:#1e78d5; --bd:#1a2434; --ok:#9fe29f; --bad:#ffb3b3; }
     *{box-sizing:border-box}
     body{margin:0;font-family:system-ui,Segoe UI,Roboto,Inter,Arial,sans-serif;background:var(--bg);color:var(--text)}
     .wrap{max-width:820px;margin:0 auto;padding:16px}
@@ -22,24 +16,23 @@
     .logo{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;background:linear-gradient(135deg,var(--brand),#7cc8ff);color:#041423;font-weight:900}
     h1{font-size:18px;margin:0}.muted{color:var(--muted)}
     .panel{background:var(--panel);border:1px solid var(--bd);border-radius:14px;padding:14px;margin:16px 0}
-    .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 16px;border:0;border-radius:12px;cursor:pointer;background:linear-gradient(180deg,var(--brand),var(--brand2));color:#06121f;font-weight:800;min-height:var(--control-h)}
+    .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 16px;border:0;border-radius:12px;cursor:pointer;background:linear-gradient(180deg,var(--brand),var(--brand2));color:#06121f;font-weight:800}
     .btn.secondary{background:#182339;color:var(--text);border:1px solid #223352}
     .btn.ghost{background:transparent;border:1px dashed #2a3a5a;color:#9bb4d9}
     .btn[disabled]{opacity:.5;cursor:not-allowed}
-    .btn.danger{background:linear-gradient(180deg,#ffb84d,#ff8c00);color:#1f1200}
-    .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center}
-    .row.top{display:flex;align-items:center;gap:8px;flex-wrap:nowrap}
+    .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
     .row input{flex:1;min-width:180px;padding:12px;border-radius:12px;border:1px solid #223352;background:#0c1322;color:#e7edf7}
-
     #scanner{position:relative;aspect-ratio:3/2;background:#0d1423;border:1px dashed #223352;border-radius:12px;display:grid;place-items:center;overflow:hidden;margin-top:12px}
     #scanner video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
     #overlay{position:absolute;left:8px;right:8px;bottom:8px;background:rgba(0,0,0,.45);border:1px solid #223352;border-radius:8px;padding:6px 8px;font-size:12px;color:#cfe7ff;white-space:pre-line}
     .hint{font-size:12px;color:#9bb4d9;margin-top:6px}
     footer{margin:18px 0 8px;border-top:1px solid var(--bd);padding-top:12px;color:#a8b3c7;font-size:0.9rem;line-height:1.35}
 
-    .bar{display:flex;justify-content:space-between;align-items:center;margin:8px 0 6px}
+    /* Panel headings más grandes */
+    .bar{display:flex;justify-content:space-between;align-items:center;margin:8px 0 4px 0}
     .bar .title{font-size:18px;font-weight:900}
 
+    /* Tarjetas de listas */
     .list-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
     .mini{position:relative;display:grid;grid-template-columns:72px 1fr;gap:10px;align-items:center;background:#0d1423;border:1px solid var(--bd);border-radius:10px;padding:10px}
     .mini .thumb{width:72px;height:72px;border-radius:8px;background:#101a2c;display:grid;place-items:center;overflow:hidden}
@@ -47,84 +40,30 @@
     .mini .title{font-size:16px;font-weight:800;line-height:1.25;max-height:2.6em;overflow:hidden}
     .mini .muted{font-size:12px}
     .mini .actions{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+    .banner{display:flex;justify-content:center;align-items:center;width:100%;padding:12px 14px;border-radius:10px;background:#182339;border:1px solid #223352;color:#e7edf7;text-decoration:none;font-size:15px;font-weight:900;min-height:48px}
 
-    .banner{
-      display:flex;justify-content:center;align-items:center;width:100%;
-      padding:14px 16px;border-radius:10px;
-      background:linear-gradient(180deg,var(--brand),var(--brand2));
-      border:1px solid #204870;
-      color:#06121f;text-decoration:none;font-size:18px;font-weight:900;min-height:52px
-    }
-
-    .pvpLineMini{
-      font-size:14px;font-weight:800;margin-top:8px;color:#cfe2ff;
-      text-align:right; white-space:nowrap; display:flex; align-items:center; justify-content:flex-end; gap:6px;
-    }
-    .pvpAdd{font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:6px; padding:4px 8px; border-radius:8px; border:1px dashed #2a3a5a; color:#9bb4d9}
-    .pvpAdd:hover{border-style:solid;color:#cfe2ff}
+    /* Precio anotado (manual) */
+    .pvpLineMini{font-size:14px;font-weight:800;margin-top:8px;color:#cfe2ff;text-align:right}
     .badgeManual{display:inline-block;margin-right:6px;padding:2px 6px;border-radius:999px;border:1px solid #2a3f66;background:#13203b;color:#cfe2ff;font-size:11px;font-weight:700;vertical-align:baseline}
+    .pvpSub{font-size:11px;color:#9bb4d9;margin-top:4px;text-align:right;font-weight:500}
 
-    /* Cerrar y estado */
-    .icon-btn{position:absolute;top:6px;left:6px;background:#172033;border:1px solid #284066;color:#c9d9f2;width:36px;height:36px;line-height:34px;text-align:center;border-radius:12px;cursor:pointer;font-weight:900;font-size:20px}
+    /* invertidos: ✕ a la izquierda, ⭐ a la derecha (más grande) */
+    .icon-btn{position:absolute;top:6px;left:6px;background:#172033;border:1px solid #284066;color:#c9d9f2;width:24px;height:24px;line-height:22px;text-align:center;border-radius:8px;cursor:pointer;font-weight:900}
     .star{position:absolute;top:6px;right:6px;background:#172033;border:1px solid #284066;color:#f6e08f;width:36px;height:36px;line-height:34px;text-align:center;border-radius:12px;cursor:pointer;font-weight:900;font-size:20px}
     .star.off{color:#b0b0b0}
-    .check{position:absolute;top:6px;right:6px;width:36px;height:36px;border-radius:12px;border:1px solid #284066;background:#172033;color:#9fe29f;display:grid;place-items:center;font-size:18px;cursor:pointer}
-    .check.done{background:rgba(46,204,113,.15);border-color:#1e8f56;color:#2ecc71}
-
     .empty{color:#a8b3c7;font-size:13px}
+
+    /* Botones toggle */
     .toggles{display:flex;gap:8px;flex-wrap:wrap}
 
-    #btnScan{ font-size:20px; padding:12px 16px; min-height:var(--control-h); }
+    .link.big{font-size:18px;font-weight:900;padding:14px 16px;border-width:2px;width:100%;justify-content:center;min-height:48px}
 
-    /* PvP + plus */
-    .pvpRow{ display:flex; gap:8px; align-items:center; flex:1; min-width:0; }
-    .pill{
-      display:flex; align-items:center; gap:10px; padding:12px 14px;
-      border-radius:14px; border:1px solid #223352; background:#0c1322; color:#e7edf7;
-      cursor:pointer; font-weight:900; flex:1 1 auto; min-width:0;
-      min-height:var(--control-h);
-    }
-    .pill .tagIcon{ margin-right:10px; font-size:18px }
-    .pill .label{ font-size:16px; }
-    .pill .value{ margin-left:auto; white-space:nowrap; font-size:18px; font-weight:900; overflow:visible; text-overflow:clip; flex:0 0 auto; }
-
-    .btn.plus{ width:32px; height:var(--control-h); display:inline-grid; place-items:center; font-size:18px; padding:0; border-radius:12px }
-
-    /* Drawer */
-    #drawer{display:none;margin-top:10px}
-    #drawer.open{display:block}
-    .drawerBox{border:1px solid #223352;background:#0d1423;border-radius:12px;padding:12px}
-    .drawerGrid{display:grid;grid-template-columns:1fr;gap:12px}
-    @media (min-width:640px){ .drawerGrid{grid-template-columns:1fr 1fr;} }
-
-    /* Keypad modal */
-    .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:9999}
-    .card{background:#0d1423;border:1px solid #1a2434;border-radius:12px;padding:12px;width:min(420px,92vw)}
-    .kDisplay{display:flex;justify-content:space-between;align-items:center;border:1px solid #223352;background:#0c1322;color:#e7edf7;border-radius:10px;padding:10px 12px;font-size:20px;font-weight:900}
-    .kGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
-    .kBtn{padding:14px 0;border:1px solid #223352;background:#162338;color:#e7edf7;border-radius:10px;font-size:18px;font-weight:900;cursor:pointer}
-    .kRow{display:flex;gap:8px;margin-top:10px}
-    .kBtn.ok{background:linear-gradient(180deg,var(--brand),var(--brand2));color:#06121f;flex:1}
-    .kBtn.del{background:#2a1a1a}
-
-    /* ---------- TAGS (más grandes) ---------- */
-    .tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
-    .chip{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;border:1px solid #2a3f66;background:#13203b;color:#cfe2ff;font-size:14px;font-weight:700;cursor:default}
-    .chip .x{cursor:pointer;font-weight:900;opacity:.9}
+    /* ---------- TAGS (Favoritos) ---------- */
+    .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+    .chip{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;border:1px solid #2a3f66;background:#13203b;color:#cfe2ff;font-size:12px;font-weight:700;cursor:default}
+    .chip .x{cursor:pointer;font-weight:900;opacity:.85}
     .chip.add{cursor:pointer;background:transparent;border:1px dashed #2a3a5a;color:#9bb4d9}
     .chip.add:hover{border-style:solid;color:#cfe2ff}
-
-    /* Barras de filtros */
-    #recFilterBar, #favFilterBar{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 4px}
-    .chip.filter{cursor:pointer; user-select:none}
-    .chip.filter.active{outline:2px solid var(--accent)}
-
-    /* Tag picker */
-    .tagpicker{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:10000}
-    .tagpicker .box{background:#0d1423;border:1px solid #1a2434;border-radius:12px;padding:12px;width:min(520px,92vw)}
-    .tagpicker h3{margin:0 0 8px 0;font-size:16px}
-    .rowInline{display:flex;gap:8px;align-items:center;margin-top:8px}
-    .rowInline input{flex:1;min-width:0}
   </style>
 </head>
 <body>
@@ -139,92 +78,61 @@
 
     <section class="panel">
       <b>Escanear con la cámara</b>
-      <div id="scanner"><div id="overlay">Pulsa “Escáner” y permite la cámara</div></div>
-
-      <div class="row top">
-        <button class="btn" id="btnScan">Escáner</button>
-
-        <div class="pvpRow">
-          <div class="pill" id="pvpPill" title="Introduce tu precio (solo local)">
-            <span class="tagIcon">🏷️</span>
-            <span class="label">PvP Tienda</span>
-            <span id="pvpValue" class="value">—</span>
-          </div>
-          <button class="btn secondary plus" id="btnMore" title="Más opciones">+</button>
-        </div>
-
+      <div id="scanner"><div id="overlay">Pulsa “Iniciar escáner” y permite la cámara</div></div>
+      <div class="row">
+        <button class="btn" id="btnScan">Iniciar escáner</button>
+        <button class="btn" id="btnSetPrice">Pon tu Precio</button>
+        <button class="btn secondary" id="btnStop">Parar</button>
+        <button class="btn secondary" id="btnTorch">Linterna</button>
+        <button class="btn secondary" id="btnTest">Test cámara</button>
+        <button class="btn secondary" id="btnBatch">Añadir por lote</button>
         <button class="btn secondary" id="btnInstall" style="display:none">Instalar app</button>
       </div>
-
-      <!-- Drawer -->
-      <div id="drawer" class="drawerBox">
-        <div class="drawerGrid">
-          <div>
-            <b>Opciones</b>
-            <div class="row toggles" style="margin-top:8px">
-              <button class="btn secondary" id="btnToggleSound">Sonido: OFF</button>
-              <button class="btn secondary" id="btnToggleVibra">Vibración: ON</button>
-              <button class="btn secondary" id="btnToggleContinuous">Escáner continuo: ON</button>
-              <button class="btn secondary" id="btnToggleApp">Abrir en app: OFF</button>
-            </div>
-            <div class="row" style="margin-top:8px">
-              <button class="btn secondary" id="btnTorch" title="Activar/desactivar linterna">Linterna</button>
-              <button class="btn secondary" id="btnTest">Test cámara</button>
-            </div>
-          </div>
-          <div>
-            <b>Código manual</b>
-            <div class="row" style="margin-top:8px">
-              <input id="eanInput" inputmode="numeric" pattern="[0-9]*" placeholder="Ej.: 9788491296014" />
-              <button class="btn secondary" id="btnBuscar">Buscar</button>
-            </div>
-            <div class="hint" id="eanHint"></div>
-          </div>
-        </div>
+      <div class="row toggles">
+        <button class="btn secondary" id="btnToggleSound">Sonido: ON</button>
+        <button class="btn secondary" id="btnToggleVibra">Vibración: ON</button>
+        <button class="btn secondary" id="btnToggleContinuous">Escáner continuo: ON</button>
       </div>
-
-      <div class="hint">Primero añade siempre el precio antes de apuntar un código de barras.</div>
+      <div class="row">
+        <input id="imgInput" type="file" accept="image/*" style="display:none">
+        <button class="btn secondary" id="btnUpload">Subir foto (leer código)</button>
+      </div>
+      <div class="hint">Si la cámara no abre, puedes subir una foto del código o introducir el EAN manualmente.</div>
     </section>
 
-    <!-- Comparador -->
+    <!-- Tip iOS para A2HS (opcional) -->
+    <div id="a2hsTip" class="hint" style="display:none">
+      iOS: para instalar, toca <b>Compartir</b> → <b>Añadir a pantalla de inicio</b>.
+    </div>
+
+    <section class="panel">
+      <b>O introduce el código (EAN/ISBN/UPC)</b>
+      <div class="row">
+        <input id="eanInput" inputmode="numeric" pattern="[0-9]*" placeholder="Ej.: 9788491296014" />
+        <button class="btn secondary" id="btnBuscar">Buscar</button>
+      </div>
+      <div class="hint" id="eanHint"></div>
+    </section>
+
+    <!-- Últimos escaneados -->
     <section class="panel" id="panelRecents">
       <div class="bar">
-        <div class="title">🔎 Comparador</div>
-        <div style="display:flex; gap:8px; align-items:center">
-          <button class="btn ghost" id="btnClearRecFilters">Limpiar filtros</button>
-          <button class="btn ghost" id="btnClearRecents">Vaciar lista</button>
-        </div>
+        <div class="title">🕘 Últimos escaneados</div>
+        <button class="btn ghost" id="btnClearRecents">Vaciar lista</button>
       </div>
-
-      <div class="hint" style="margin-bottom:6px">
-        Artículos escaneados y sus precios; podrás <b>compararlos en Amazon</b>. Filtra por tienda y añádelos a la lista con <b>★</b>.
-      </div>
-
-      <div id="recFilterBar"></div>
-
       <div id="recents" class="list-grid"></div>
-      <div id="recentsEmpty" class="empty" style="display:none">Aún no hay artículos. Escanea o busca un código.</div>
-      <div id="tipRecents" class="empty" style="margin-top:10px">Consejo: usa etiquetas como “Carrefour”, “Fnac”, “MediaMarkt”. Crea una etiqueta con el nombre de la tienda o supermercado.</div>
+      <div id="recentsEmpty" class="empty" style="display:none">Aquí verás tus últimos escaneos.</div>
+      <div id="tipRecents" class="empty" style="margin-top:10px">Consejo: Añádelo en tu carrito de Amazon para no perderlo.</div>
     </section>
 
-    <!-- Lista de la compra -->
+    <!-- Favoritos -->
     <section class="panel" id="panelFavs">
       <div class="bar">
-        <div class="title" id="favTitle">Lista de la compra (0)</div>
-        <div style="display:flex; gap:8px; align-items:center">
-          <button class="btn ghost" id="btnClearFavFilters">Limpiar filtros</button>
-          <button class="btn ghost" id="btnToggleBought">Comprados</button>
-        </div>
+        <div class="title" id="favTitle">Favoritos (0)</div>
+        <button class="btn ghost" id="btnClearFavs">Vaciar favoritos</button>
       </div>
-
-      <div class="hint" style="margin-bottom:6px">
-        Guarda aquí tus favoritos. Añade <b>etiquetas</b> (tienda/tipo) y <b>márcalos como comprados</b> cuando los tengas.
-      </div>
-
-      <div id="favFilterBar"></div>
-
       <div id="favs" class="list-grid"></div>
-      <div id="favsEmpty" class="empty" style="display:none">Añade productos desde el Comparador para construir tu lista.</div>
+      <div id="favsEmpty" class="empty" style="display:none">⭐ Añade los productos que quieras guardar.</div>
     </section>
 
     <footer>
@@ -236,37 +144,60 @@
   (function(){
     'use strict';
 
+    // ---------- helpers ----------
     const $ = id => document.getElementById(id);
     const note = (m)=>{ const o=$('overlay'); if(o){o.textContent=m;o.style.display='block';} console.log('[PrecioReal]', m); };
     const hideNote = ()=>{ const o=$('overlay'); if(o) o.style.display='none'; };
-    const ttlSec = 1800;
+    const ttlSec = 1800; // 30 min cache local
     const MAX_RECENTS = 20;
     const K_RECENTS = 'pr-recent-v1';
     const K_FAVS = 'pr-favs-v1';
     const K_SETTINGS = 'pr-settings-v1';
-    const K_FAV_FILTER = 'pr-fav-filter-v1';
-    const K_REC_FILTER = 'pr-rec-filter-v1';
-    const K_FAV_SHOW_DONE = 'pr-fav-show-done-v1';
-    const K_TAG_FREQ = 'pr-tag-freq-v1';
 
-    const loadJSON=(k,def)=>{ try{ return JSON.parse(localStorage.getItem(k)||JSON.stringify(def)); }catch(_){ return def; } };
-    const saveJSON=(k,v)=>{ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(_){ } };
+    // --- Cola offline: "Abrir luego" ---
+    const K_QUEUE = 'pr-queue-v1';
+    function queueLoad(){ try{ return JSON.parse(localStorage.getItem(K_QUEUE)||'[]')||[]; }catch(_){ return []; } }
+    function queueSave(arr){ try{ localStorage.setItem(K_QUEUE, JSON.stringify(arr)); }catch(_){} }
+    function queueEnqueue(ean){
+      const s = String(ean||'').replace(/[^0-9]/g,''); if(!s) return;
+      const q = queueLoad();
+      if(!q.some(x=>x && x.ean===s)){
+        q.push({ ean:s, t: Date.now() });
+        if(q.length>50) q.shift();
+        queueSave(q);
+      }
+      note('Sin conexión. Guardado para abrir luego.'); setTimeout(hideNote, 1200);
+    }
+    async function queueProcess(){
+      if(!navigator.onLine) return;
+      let q = queueLoad();
+      if(!q.length) return;
+      note(`Procesando cola offline (${q.length})…`);
+      const remaining = [];
+      for(const item of q){
+        try{
+          await lookupAndRender(item.ean);
+        }catch(_){
+          remaining.push(item);
+        }
+      }
+      queueSave(remaining);
+      note(remaining.length ? `Quedan ${remaining.length} pendientes.` : 'Cola procesada.');
+      setTimeout(hideNote, 1200);
+    }
+    window.addEventListener('online', queueProcess);
+    document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) queueProcess(); });
 
-    // ajustes por defecto
-    let settings = Object.assign({ noSound:true, noVibra:false, continuous:true, openInApp:false }, loadJSON(K_SETTINGS,{}));
-    let favFilters = loadJSON(K_FAV_FILTER, []);
-    let recFilters = loadJSON(K_REC_FILTER, []);
-    let favShowOnlyDone = loadJSON(K_FAV_SHOW_DONE, false);
-    let tagFreq = loadJSON(K_TAG_FREQ, {}); // {tag: count}
+    function loadSettings(){ try{ return JSON.parse(localStorage.getItem(K_SETTINGS)||'{}')||{}; }catch(_){ return {}; } }
+    function saveSettings(s){ try{ localStorage.setItem(K_SETTINGS, JSON.stringify(s)); }catch(_){ } }
+    // continuo ON por defecto
+    let settings = Object.assign({ noSound:false, noVibra:false, continuous:true }, loadSettings());
 
-    const renderToggles=()=>{
+    function renderToggles(){
       $('btnToggleSound').textContent = 'Sonido: ' + (settings.noSound ? 'OFF' : 'ON');
       $('btnToggleVibra').textContent = 'Vibración: ' + (settings.noVibra ? 'OFF' : 'ON');
       $('btnToggleContinuous').textContent = 'Escáner continuo: ' + (settings.continuous ? 'ON' : 'OFF');
-      $('btnToggleApp').textContent = 'Abrir en app: ' + (settings.openInApp ? 'ON' : 'OFF');
-      $('btnToggleBought').textContent = favShowOnlyDone ? 'Ver todos' : 'Comprados';
-    };
-    const saveSettings=()=> saveJSON(K_SETTINGS, settings);
+    }
 
     function beep(){
       try{
@@ -279,124 +210,129 @@
       }catch(_){}
       try{ if (!settings.noVibra){ navigator.vibrate && navigator.vibrate(80); } }catch(_){}
     }
-    const fmtMoney=(n)=> (isFinite(n)? (Number(n).toFixed(2).replace('.',',')) : '');
+    const fmtMoney = (n)=> (isFinite(n)? (Number(n).toFixed(2).replace('.',',')) : '');
 
-    // Validación
+    // --------- Validación EAN/UPC ----------
     function ean13Valid(s){ s=String(s).replace(/[^0-9]/g,''); if(s.length!==13) return false; const d=s.split('').map(n=>+n); const c=d[12]; let sum=0; for(let i=0;i<12;i++) sum+=d[i]*(i%2===0?1:3); return ((10-(sum%10))%10)===c; }
     function ean8Valid(s){ s=String(s).replace(/[^0-9]/g,''); if(s.length!==8) return false; const d=s.split('').map(n=>+n); const c=d[7]; let sum=0; for(let i=0;i<7;i++) sum+=d[i]*(i%2===0?3:1); return ((10-(sum%10))%10)===c; }
     function upcAValid(s){ s=String(s).replace(/[^0-9]/g,''); if(s.length!==12) return false; return ean13Valid('0'+s); }
     function validCode(code){ const s=String(code).replace(/[^0-9]/g,''); if(s.length===13) return {ok:ean13Valid(s),type:'EAN-13'}; if(s.length===8) return {ok:ean8Valid(s),type:'EAN-8'}; if(s.length===12) return {ok:upcAValid(s),type:'UPC-A'}; return {ok:false,type:'unknown'}; }
     function setEanHint(msg, ok){ const el=$('eanHint'); el.textContent=msg||''; el.style.color=ok?'#9fe29f':'#ffb3b3'; }
 
-    // Cache local
-    const cacheGet=(ean)=>{ try{ const raw=localStorage.getItem('pr-cache-'+ean); if(!raw) return null; const o=JSON.parse(raw); if(!o||!o.t||!o.d) return null; if((Date.now()-o.t)/1000>ttlSec) return null; return o.d; }catch(_){ return null; } };
-    const cacheSet=(ean,data)=>{ try{ localStorage.setItem('pr-cache-'+ean, JSON.stringify({t:Date.now(),d:data})); }catch(_){ } };
+    // --------- Cache local mínima ----------
+    function cacheGet(ean){ try{ const raw=localStorage.getItem('pr-cache-'+ean); if(!raw) return null; const o=JSON.parse(raw); if(!o||!o.t||!o.d) return null; if((Date.now()-o.t)/1000>ttlSec) return null; return o.d; }catch(_){ return null; } }
+    function cacheSet(ean,data){ try{ localStorage.setItem('pr-cache-'+ean, JSON.stringify({t:Date.now(),d:data})); }catch(_){ } }
 
-    // Listas
-    const loadList=(key)=> loadJSON(key,[]);
-    const saveList=(key,arr)=> saveJSON(key,arr);
-    function getFromAnyList(id){ const a=loadList(K_RECENTS).find(x=>String(x.id)===String(id)); if(a) return a; return loadList(K_FAVS).find(x=>String(x.id)===String(id))||null; }
+    // --------- Storage listas ----------
+    function loadList(key){ try{ return JSON.parse(localStorage.getItem(key)||'[]')||[]; }catch(_){ return []; } }
+    function saveList(key,arr){ try{ localStorage.setItem(key, JSON.stringify(arr)); }catch(_){ } }
+    function getFromAnyList(id){ const a=loadList(K_RECENTS).find(x=>x.id===id); if(a) return a; return loadList(K_FAVS).find(x=>x.id===id)||null; }
 
-    // Tags
-    function normalizeTags(arr){ if(!Array.isArray(arr)) return []; const out=[]; for(const t of arr){ const s=String(t||'').trim(); if(!s) continue; if(!out.includes(s)) out.push(s); } return out.slice(0,24); }
-    function colorForTag(tag){ const s = String(tag||''); let h=0; for(let i=0;i<s.length;i++){ h = (h*31 + s.charCodeAt(i)) % 360; } const bg = `hsla(${h},70%,18%,.55)`; const br = `hsla(${h},70%,38%,.95)`; const tx = `hsla(${h},95%,90%,1)`; return { bg, br, tx }; }
-    function collectAllTags(){
-      const set = new Set();
-      [K_RECENTS, K_FAVS].forEach(k=>{
-        (loadList(k)||[]).forEach(it=> normalizeTags(it.tags||[]).forEach(t=> set.add(t)));
-      });
-      return Array.from(set).sort((a,b)=> a.localeCompare(b));
+    // ---------- TAGS utilidades ----------
+    function normalizeTags(arr){
+      if(!Array.isArray(arr)) return [];
+      const out=[]; for(const t of arr){
+        const s=String(t||'').trim();
+        if(!s) continue;
+        if(!out.includes(s)) out.push(s);
+      }
+      return out.slice(0,12); // límite razonable por ítem
     }
-    function incTagFreq(tag){
-      const t = String(tag||'').trim(); if(!t) return;
-      tagFreq[t] = (tagFreq[t]||0) + 1;
-      saveJSON(K_TAG_FREQ, tagFreq);
-    }
-    function topTags(limit=12){
-      return Object.entries(tagFreq)
-        .sort((a,b)=> b[1]-a[1])
-        .slice(0,limit)
-        .map(([t])=>t);
+    function colorForTag(tag){
+      const s = String(tag||'');
+      let h=0; for(let i=0;i<s.length;i++){ h = (h*31 + s.charCodeAt(i)) % 360; }
+      const bg = `hsla(${h},70%,18%,.55)`;
+      const br = `hsla(${h},70%,38%,.95)`;
+      const tx = `hsla(${h},95%,90%,1)`;
+      return { bg, br, tx };
     }
 
-    // Modelo
+    // --------- Modelo de item ----------
     function normalizeItem(ean, resp){
       const p = resp?.product||{}; const m = resp?.meta||{};
-      const id = m.asin || ean || p.asin || p.id || (p.affiliateLink||'').split('/api/go/')[1]?.split('?')[0] || ean || null;
+      const id = m.asin || ean || p.asin || p.id || (p.affiliateLink||'').split('/api/go/')[1]?.split('?')[0] || null;
       const prev = getFromAnyList(id) || {};
       return { id, ean: ean||null, asin: m.asin||null, domain: m.domain||null,
                title: p.title||('Código '+(ean||'desconocido')), image: p.image||null,
                category: p.category||'', affiliateLink: p.affiliateLink||null,
-               userPrice: (prev.userPrice!=null)? prev.userPrice : null,
-               userPriceAt: prev.userPriceAt||null,
+               userPrice: prev.userPrice||null, userPriceAt: prev.userPriceAt||null,
                tags: normalizeTags(prev.tags || p.tags || []),
-               completed: !!prev.completed,
                ts: Date.now() };
     }
 
     function addRecent(item){
       if(!item||!item.id) return;
-      const arr=loadList(K_RECENTS); const idx=arr.findIndex(x=>String(x.id)===String(item.id));
+      const arr=loadList(K_RECENTS); const idx=arr.findIndex(x=>x.id===item.id);
       if(idx>=0) arr.splice(idx,1);
       arr.unshift(item); if(arr.length>MAX_RECENTS) arr.length=MAX_RECENTS;
       saveList(K_RECENTS, arr); renderRecents();
     }
 
     function updateItemPvp(id, pvp){
-      const apply=(key)=>{ const arr=loadList(key); const i=arr.findIndex(x=>String(x.id)===String(id));
+      const apply=(key)=>{ const arr=loadList(key); const i=arr.findIndex(x=>x.id===id);
         if(i>=0){ arr[i].userPrice=pvp; arr[i].userPriceAt=(pvp!=null)?Date.now():null; saveList(key,arr); } };
       apply(K_RECENTS); apply(K_FAVS);
       renderRecents(); renderFavs();
     }
 
+    // ---- TAGS: añadir/quitar en ambas listas ----
     function addTagTo(id, tag){
       const t = String(tag||'').trim(); if(!t) return;
-      const apply=(key)=>{ const arr=loadList(key); const i=arr.findIndex(x=>String(x.id)===String(id));
+      const apply=(key)=>{ const arr=loadList(key); const i=arr.findIndex(x=>x.id===id);
         if(i>=0){ const tags=normalizeTags(arr[i].tags||[]); if(!tags.includes(t)) tags.push(t); arr[i].tags=tags; saveList(key,arr); } };
       apply(K_RECENTS); apply(K_FAVS);
-      incTagFreq(t);
-      renderFavs(); renderRecents();
+      renderRecents(); renderFavs();
     }
     function removeTagFrom(id, tag){
       const t = String(tag||'').trim(); if(!t) return;
-      const apply=(key)=>{ const arr=loadList(key); const i=arr.findIndex(x=>String(x.id)===String(id));
+      const apply=(key)=>{ const arr=loadList(key); const i=arr.findIndex(x=>x.id===id);
         if(i>=0){ const tags=normalizeTags(arr[i].tags||[]).filter(x=>x!==t); arr[i].tags=tags; saveList(key,arr); } };
       apply(K_RECENTS); apply(K_FAVS);
-      renderFavs(); renderRecents();
+      renderRecents(); renderFavs();
     }
 
-    function removeRecent(id){ const arr=loadList(K_RECENTS).filter(x=>String(x.id)!==String(id)); saveList(K_RECENTS,arr); renderRecents(); }
+    function removeRecent(id){ const arr=loadList(K_RECENTS).filter(x=>x.id!==id); saveList(K_RECENTS,arr); renderRecents(); }
     function clearRecents(){ saveList(K_RECENTS,[]); renderRecents(); }
-    function isFav(id){ return loadList(K_FAVS).some(x=>String(x.id)===String(id)); }
-    function toggleFav(item){ if(!item||!item.id) return; const arr=loadList(K_FAVS); const i=arr.findIndex(x=>String(x.id)===String(item.id)); if(i>=0) arr.splice(i,1); else arr.unshift(item); saveList(K_FAVS,arr); renderFavs(); renderRecents(); }
+    function isFav(id){ return loadList(K_FAVS).some(x=>x.id===id); }
+    function toggleFav(item){ if(!item||!item.id) return; const arr=loadList(K_FAVS); const i=arr.findIndex(x=>x.id===item.id); if(i>=0) arr.splice(i,1); else arr.unshift(item); saveList(K_FAVS,arr); renderFavs(); renderRecents(); }
     function clearFavs(){ saveList(K_FAVS,[]); renderFavs(); renderRecents(); }
 
-    function toggleCompleted(id){
-      const apply=(key)=>{ const arr=loadList(key); const i=arr.findIndex(x=>String(x.id)===String(id));
-        if(i>=0){ arr[i].completed = !arr[i].completed; saveList(key,arr); } };
-      apply(K_FAVS);
-      renderFavs();
-    }
+    function tsToText(ts){ try{ if(!ts) return ''; const d=new Date(ts); const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const hh=String(d.getHours()).padStart(2,'0'); const mi=String(d.getMinutes()).padStart(2,'0'); return `${dd}/${mm} ${hh}:${mi}`; }catch(_){ return ''; } }
 
-    // Amazon link
-    const extractASIN=(link)=>{ if (!link) return null; const m = String(link).match(/\/(?:dp|gp\/product)\/([A-Z0-9]{10})/i); return m ? m[1].toUpperCase() : null; };
-    const buildWebLink=(item)=>{ const domain = item?.domain || 'amazon.es'; const asin = item?.asin || extractASIN(item?.affiliateLink) || ''; return item?.affiliateLink || `https://www.${domain}/dp/${asin}`; };
-    const isAndroidChrome=()=>{ const ua = navigator.userAgent || ''; return /Android/i.test(ua) && /(Chrome|EdgA|Chromium|SamsungBrowser|Brave)/i.test(ua); };
+    // ---------- AMAZON deep-link helpers ----------
+    function extractASIN(link){
+      if (!link) return null;
+      const m = String(link).match(/\/(?:dp|gp\/product)\/([A-Z0-9]{10})/i);
+      return m ? m[1].toUpperCase() : null;
+    }
+    function buildWebLink(item){
+      const domain = item?.domain || 'amazon.es';
+      const asin = item?.asin || extractASIN(item?.affiliateLink) || '';
+      return item?.affiliateLink || `https://www.${domain}/dp/${asin}`;
+    }
+    function isAndroidChrome(){
+      const ua = navigator.userAgent || '';
+      return /Android/i.test(ua) && /(Chrome|EdgA|Chromium|SamsungBrowser|Brave)/i.test(ua);
+    }
     function openAmazon(item){
       const web = buildWebLink(item);
       const asin = item.asin || extractASIN(web);
+
+      // Intento abrir app sólo si Android+Chrome (el resto va a web)
       if (settings.openInApp && isAndroidChrome() && asin){
         const pathAndQuery = web.replace(/^https?:\/\//i, '');
-        const appIntent = `intent://${pathAndQuery}#Intent;scheme=https;package=com.amazon.mShop.android.shopping;S.browser_fallback_url=${encodeURIComponent(web)};end`;
+        const appIntent =
+          `intent://${pathAndQuery}` +
+          `#Intent;scheme=https;package=com.amazon.mShop.android.shopping;` +
+          `S.browser_fallback_url=${encodeURIComponent(web)};end`;
         let jumped = false;
-        setTimeout(()=>{ if(!jumped) location.href = web; }, 1200);
+        setTimeout(()=>{ if(!jumped) location.href = web; }, 1500);
         try { location.href = appIntent; jumped = true; } catch(_) { location.href = web; }
         return;
       }
       location.href = web;
     }
 
-    // Render tarjetas
     function renderList(containerId, emptyId, arr, source){
       const el=$(containerId), empty=$(emptyId);
       if(!arr.length){ el.innerHTML=''; empty.style.display='block'; return; }
@@ -404,44 +340,33 @@
       el.innerHTML = arr.map(item=>{
         const safeTitle=(item.title||'Producto').replace(/</g,'&lt;');
         const img=item.image?`<img alt="Imagen" src="${item.image}">`:'—';
-        const inFav=isFav(item.id);
+        const starOn=isFav(item.id);
         const disabled=item.affiliateLink?'':'disabled';
 
-        const pvpBlock = (item.userPrice!=null)
-          ? `<div class="pvpLineMini" data-action="price" data-id="${item.id}" title="Toca para editar">
-               <span class="badgeManual">Manual</span>
-               <span>🏷️ Precio anotado:</span>
-               <span>${fmtMoney(item.userPrice)}€</span>
-             </div>`
-          : `<div class="pvpLineMini" title="Añadir precio">
-               <span class="pvpAdd" data-action="price" data-id="${item.id}">➕ Añadir precio</span>
-             </div>`;
+        const pvpBlock = (item.userPrice!=null) ? `
+          <div class="pvpLineMini" data-action="price" title="Toca para editar">
+            <span class="badgeManual">Manual</span> 🏷️ Precio anotado: ${fmtMoney(item.userPrice)} €
+          </div>` : '';
 
-        // TAGS (en ambos listados)
-        const tags = normalizeTags(item.tags||[]);
-        const chips = tags.map(t=>{
-          const c = colorForTag(t);
-          const style = `background:${c.bg};border-color:${c.br};color:${c.tx}`;
-          return `<span class="chip" data-action="tag-remove" data-tag="${t}" style="${style}" title="Quitar etiqueta">${t}<span class="x">×</span></span>`;
-        }).join('');
-        const tagsBlock = `
-          <div class="tags" data-id="${item.id}">
-            ${chips}
-            <span class="chip add" data-action="tag-add" data-source="${source}">+ etiqueta</span>
-          </div>`;
-
-        let stateBtn = '';
-        if (source==='recents'){
-          stateBtn = `<div class="star ${inFav?'':'off'}" title="${inFav?'Quitar de la lista de la compra':'Añadir a la lista de la compra'}" data-action="star">★</div>`;
-        } else if (source==='favs'){
-          const done = item.completed;
-          stateBtn = `<div class="check ${done?'done':''}" title="${done?'Marcado como comprado':'Marcar como comprado'}" data-action="toggle-done">${done?'✓':'☐'}</div>`;
+        let tagsBlock = '';
+        if (source==='fav'){
+          const tags = normalizeTags(item.tags||[]);
+          const chips = tags.map(t=>{
+            const c = colorForTag(t);
+            const style = `background:${c.bg};border-color:${c.br};color:${c.tx}`;
+            return `<span class="chip" data-action="tag-remove" data-tag="${t}" style="${style}" title="Quitar etiqueta">${t}<span class="x">×</span></span>`;
+          }).join('');
+          tagsBlock = `
+            <div class="tags" data-id="${item.id}">
+              ${chips}
+              <span class="chip add" data-action="tag-add">+ etiqueta</span>
+            </div>`;
         }
 
         return `
           <div class="mini" data-id="${item.id}">
             <div class="icon-btn" title="Quitar" data-action="remove">✕</div>
-            ${stateBtn}
+            <div class="star ${starOn?'':'off'}" title="${starOn?'Quitar de favoritos':'Añadir a favoritos'}" data-action="star">★</div>
             <div class="thumb">${img}</div>
             <div>
               <div class="title">${safeTitle}</div>
@@ -458,20 +383,19 @@
       // Eventos tarjeta
       el.querySelectorAll('.mini').forEach(card=>{
         const id=card.getAttribute('data-id');
-        const item=arr.find(x=>String(x.id)===String(id));
+        const item=arr.find(x=>x.id===id);
         card.addEventListener('click', (ev)=>{
           const act=ev.target?.getAttribute?.('data-action'); 
           if(!act) return;
           ev.preventDefault(); ev.stopPropagation();
-          if(act==='remove'){ 
-            if(source==='recents') removeRecent(id);
-            else { saveList(K_FAVS,loadList(K_FAVS).filter(x=>String(x.id)!==String(id))); renderFavs(); renderRecents(); }
-          }
+          if(act==='remove'){ source==='recents'?removeRecent(id):(saveList(K_FAVS,loadList(K_FAVS).filter(x=>x.id!==id)),renderFavs(),renderRecents()); }
           if(act==='star'){ toggleFav(item); }
           if(act==='open'){ openAmazon(item); }
-          if(act==='price'){ askAndSavePvp(ev.target.getAttribute('data-id') || id); }
-          if(act==='toggle-done'){ toggleCompleted(id); }
-          if(act==='tag-add'){ openTagPicker(id, ev.target.getAttribute('data-source')||''); }
+          if(act==='price'){ askAndSavePvp(id); }
+          if(act==='tag-add'){
+            const t = prompt('Nueva etiqueta (ej.: supermercado, tienda, Fnac, Carrefour):','');
+            if(t!=null){ addTagTo(id, t); }
+          }
           if(act==='tag-remove'){
             const t = ev.target?.getAttribute?.('data-tag') || ev.target?.parentElement?.getAttribute?.('data-tag');
             if(!t) return;
@@ -479,230 +403,61 @@
           }
         }, { passive:false });
       });
-
-      // Botón cruz directo
-      el.querySelectorAll('.icon-btn').forEach(btn=>{
-        btn.addEventListener('click', (ev)=>{
-          ev.preventDefault(); ev.stopPropagation();
-          const card = btn.closest('.mini');
-          const id = card?.getAttribute('data-id');
-          if(!id) return;
-          if(containerId==='recents') removeRecent(id);
-          else { saveList(K_FAVS,loadList(K_FAVS).filter(x=>String(x.id)!==String(id))); renderFavs(); renderRecents(); }
-        }, { passive:false });
-      });
     }
 
-    // ---------- Tag Picker ----------
-    function openTagPicker(id, context){
-      const allUsed = collectAllTags();
-      const popular = topTags(12).filter(t=> allUsed.includes(t));
-      // En COMPARADOR no mostramos predefinidas; solo populares + usadas.
-      const quick = (context==='recents') ? [] : ['🏠 Casa','⚡ Urgente','🎂 Cumpleaños','🎁 Regalo'];
-      const unique = Array.from(new Set([ ...quick, ...popular, ...allUsed ])).filter(Boolean);
+    function renderRecents(){ renderList('recents','recentsEmpty', loadList(K_RECENTS), 'recent'); }
+    function renderFavs(){ const arr=loadList(K_FAVS); renderList('favs','favsEmpty', arr, 'fav'); const t=$('favTitle'); if(t) t.textContent='Favoritos ('+arr.length+')'; }
 
-      const modal = document.createElement('div');
-      modal.className = 'tagpicker';
-      modal.innerHTML = `
-        <div class="box">
-          <h3>${context==='recents' ? 'Crea una etiqueta con el nombre de la tienda o supermercado' : 'Elige o crea una etiqueta'}</h3>
-          <div class="tags" id="tpList">
-            ${unique.length ? unique.map(t=>{
-              const c = colorForTag(t); const style = `background:${c.bg};border-color:${c.br};color:${c.tx}`;
-              return `<span class="chip" data-t="${t}" style="${style}">${t}</span>`;
-            }).join('') : '<div class="muted">Aún no tienes etiquetas.</div>'}
-          </div>
-          <div class="rowInline">
-            <input id="tpInput" placeholder='Ej.: Carrefour, Fnac, MediaMarkt, Alcampo…'>
-            <button class="btn secondary" id="tpCancel">Cancelar</button>
-            <button class="btn" id="tpSave">Añadir</button>
-          </div>
-        </div>`;
-      document.body.appendChild(modal);
-
-      const close = ()=> modal.remove();
-      modal.addEventListener('click', (e)=>{ if(e.target===modal) close(); });
-
-      modal.querySelectorAll('#tpList .chip').forEach(ch=>{
-        ch.addEventListener('click', ()=>{
-          const tag = ch.getAttribute('data-t')||'';
-          addTagTo(id, tag);
-          close();
-        });
-      });
-
-      modal.querySelector('#tpCancel').addEventListener('click', close);
-      modal.querySelector('#tpSave').addEventListener('click', ()=>{
-        const v = (modal.querySelector('#tpInput').value||'').trim();
-        if(!v) return;
-        addTagTo(id, v);
-        close();
-      });
-
-      const input = modal.querySelector('#tpInput');
-      input.addEventListener('keydown', (e)=>{
-        if(e.key==='Enter'){ e.preventDefault(); modal.querySelector('#tpSave').click(); }
-      });
-      input.focus();
-    }
-
-    // ---------- Filtros: Recents ----------
-    function collectRecTags(){
-      const items = loadList(K_RECENTS);
-      const set = new Set();
-      items.forEach(it=> (normalizeTags(it.tags||[])).forEach(t=>set.add(t)));
-      return Array.from(set).sort((a,b)=> a.localeCompare(b));
-    }
-    function pruneRecFilters(validTags){
-      const set = new Set(validTags);
-      const before = recFilters.slice();
-      recFilters = recFilters.filter(t => set.has(t));
-      if (before.length !== recFilters.length) saveJSON(K_REC_FILTER, recFilters);
-    }
-    function renderRecFilterBar(){
-      const bar = $('recFilterBar');
-      const tags = collectRecTags();
-      pruneRecFilters(tags);
-      if(!tags.length){ bar.innerHTML=''; return; }
-      bar.innerHTML = tags.map(t=>{
-        const c = colorForTag(t);
-        const style = `background:${c.bg};border-color:${c.br};color:${c.tx}`;
-        const active = recFilters.includes(t) ? 'active' : '';
-        return `<span class="chip filter ${active}" data-tag="${t}" style="${style}">${t}</span>`;
-      }).join('');
-      bar.querySelectorAll('.chip.filter').forEach(ch=>{
-        ch.addEventListener('click', ()=>{
-          const t = ch.getAttribute('data-tag');
-          const i = recFilters.indexOf(t);
-          if(i>=0) recFilters.splice(i,1); else recFilters.push(t);
-          saveJSON(K_REC_FILTER, recFilters);
-          renderRecents();
-        });
-      });
-    }
-    const applyRecFilter=(items)=> !recFilters.length ? items :
-      items.filter(it=> recFilters.every(f=> normalizeTags(it.tags||[]).includes(f)));
-
-    function renderRecents(){
-      const all = loadList(K_RECENTS);
-      renderRecFilterBar();
-      const filtered = applyRecFilter(all);
-
-      const emptyHint = $('recentsEmpty');
-      if (emptyHint) {
-        if (!filtered.length && all.length && recFilters.length){
-          emptyHint.textContent = 'No hay resultados con los filtros actuales. Pulsa “Limpiar filtros”.';
-        } else {
-          emptyHint.textContent = 'Aún no hay artículos. Escanea o busca un código.';
-        }
-      }
-      renderList('recents','recentsEmpty', filtered, 'recents');
-    }
-
-    // ---------- Filtros: Favoritos ----------
-    function collectFavTags(){
-      const items = loadList(K_FAVS);
-      const set = new Set();
-      items.forEach(it=> (normalizeTags(it.tags||[])).forEach(t=>set.add(t)));
-      return Array.from(set).sort((a,b)=> a.localeCompare(b));
-    }
-    function renderFavFilterBar(){
-      const bar = $('favFilterBar');
-      const tags = collectFavTags();
-      if(!tags.length){ bar.innerHTML=''; return; }
-      bar.innerHTML = tags.map(t=>{
-        const c = colorForTag(t);
-        const style = `background:${c.bg};border-color:${c.br};color:${c.tx}`;
-        const active = favFilters.includes(t) ? 'active' : '';
-        return `<span class="chip filter ${active}" data-tag="${t}" style="${style}">${t}</span>`;
-      }).join('');
-      bar.querySelectorAll('.chip.filter').forEach(ch=>{
-        ch.addEventListener('click', ()=>{
-          const t = ch.getAttribute('data-tag');
-          const i = favFilters.indexOf(t);
-          if(i>=0) favFilters.splice(i,1); else favFilters.push(t);
-          saveJSON(K_FAV_FILTER, favFilters);
-          renderFavs();
-        });
-      });
-    }
-    const applyFavFilter=(items)=> {
-      let arr = items;
-      if (favShowOnlyDone) arr = arr.filter(it=> !!it.completed);
-      if (!favFilters.length) return arr;
-      return arr.filter(it=> favFilters.every(f=> normalizeTags(it.tags||[]).includes(f)));
-    };
-
-    function renderFavs(){
-      const all = loadList(K_FAVS);
-      renderFavFilterBar();
-      const filtered = applyFavFilter(all);
-      renderList('favs','favsEmpty', filtered, 'favs');
-      const t=$('favTitle'); if(t) t.textContent='Lista de la compra ('+all.length+')';
-      renderToggles();
-    }
-
-    // Resultado lookup
     function renderResult(ok, p, ean, meta){
-      const shouldAdd = !!(ok || p || meta);
-      if(!shouldAdd){ note('No encontrado para '+ean); return; }
-      const item = normalizeItem(ean, { product:p||{}, meta:meta||{} });
+      if(!ok){ note('No encontrado para '+ean); return; }
+      const item = normalizeItem(ean, { product:p, meta:meta||{} });
       addRecent(item);
-      note('Añadido al Comparador.'); setTimeout(hideNote, 900);
-      updatePvpPillText();
+      note('Añadido a “Últimos escaneados”.'); setTimeout(hideNote, 900);
     }
 
-    // ---------- Cámara / Escáner ----------
-    let currentStream=null, torchOn=false, scannerReader=null;
-    let idleTimer=null;
-    const IDLE_MS = 10*60*1000;
+    function askAndSavePvp(id){
+      const old=getFromAnyList(id);
+      const pre=(old && old.userPrice!=null)? String(old.userPrice).replace('.',',') : '';
+      const v=prompt('Introduce tu precio (ej. 12,99). Se guarda solo en este dispositivo:', pre);
+      if(v===null) return;
+      // Permite enteros (auto ,00) y coma como separador
+      const normalized = String(v).trim().replace(',', '.').replace(/[^\d.]/g,'');
+      if(normalized === ''){ alert('Precio no válido'); return; }
+      const num = Number(normalized);
+      if(!isFinite(num)){ alert('Precio no válido'); return; }
+      updateItemPvp(id, Math.max(0, Math.round(num*100)/100));
+    }
 
-    const clearIdleTimer=()=>{ if (idleTimer){ clearTimeout(idleTimer); idleTimer = null; } };
-    const armIdleTimer=()=>{ clearIdleTimer(); idleTimer = setTimeout(()=>{ note('Escáner detenido por inactividad (10 min).'); stopScanner(); }, IDLE_MS); };
+    async function lookupAndRender(ean){
+      const cached=cacheGet(ean); if(cached){ renderResult(cached.success,cached.product,ean,cached.meta); return; }
+      try{
+        const r=await fetch('/api/lookup?ean='+encodeURIComponent(ean));
+        if(!r.ok) throw new Error('HTTP '+r.status);
+        const d=await r.json(); cacheSet(ean,d);
+        renderResult(d && d.success, d && d.product, ean, d && d.meta);
+      }catch(e){
+        // Encolar si es problema de red o 5xx
+        const msg = String(e||'');
+        if(!navigator.onLine || /NetworkError|Failed to fetch|HTTP 5\d\d/i.test(msg)){
+          queueEnqueue(ean);
+        }else{
+          note('No se pudo consultar el backend.'); setTimeout(hideNote, 1200);
+        }
+        throw e;
+      }
+    }
+
+    // ---------- ZXing + cámara ----------
+    let currentStream=null, torchOn=false, scannerReader=null;
 
     function stopScanner(){
       try{ scannerReader && scannerReader.reset && scannerReader.reset(); }catch(_){}
       try{ currentStream && currentStream.getTracks().forEach(t=>t.stop()); }catch(_){}
       currentStream=null; scannerReader=null; torchOn=false;
-      clearIdleTimer();
       note('Escáner detenido'); setTimeout(hideNote, 800);
-      setScanButtonActive(false);
-    }
-    const ensureMedia=()=> !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
-
-    async function pickBackCameraDeviceId(){
-      try{
-        const devs = await navigator.mediaDevices.enumerateDevices();
-        const cams = devs.filter(d=>d.kind==='videoinput');
-        const back = cams.find(d=>/back|rear|environment/i.test(d.label)) || cams[1] || cams[0];
-        return back && back.deviceId ? back.deviceId : null;
-      }catch{ return null; }
     }
 
-    async function runBarcodeDetectorLoop(video, onCode) {
-      if (!('BarcodeDetector' in window)) return false;
-      const det = new BarcodeDetector({
-        formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39','qr_code']
-      });
-      let stop = false;
-      const tick = async () => {
-        if (stop) return;
-        try {
-          const codes = await det.detect(video);
-          if (codes && codes.length) {
-            const code = String(codes[0].rawValue || '').replace(/[^0-9Xx]/g, '');
-            if (code) onCode(code);
-          }
-        } catch {}
-        if ('requestVideoFrameCallback' in video) {
-          video.requestVideoFrameCallback(() => tick());
-        } else {
-          setTimeout(tick, 80);
-        }
-      };
-      tick();
-      return () => { stop = true; };
-    }
+    function ensureMedia(){ return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia); }
 
     function loadZXing(){
       if (window.ZXingBrowser || window.ZXing) return Promise.resolve(true);
@@ -718,7 +473,7 @@
     async function toggleTorch(){
       const track=currentStream?.getVideoTracks?.()[0];
       const caps=track?.getCapabilities?.();
-      if(!track || !caps || !caps.torch){ note('Este dispositivo/navegador no permite linterna en cámara.'); return; }
+      if(!track || !caps || !caps.torch){ note('Este dispositivo no soporta linterna.'); return; }
       try{
         torchOn=!torchOn;
         await track.applyConstraints({ advanced:[{ torch:torchOn }] });
@@ -726,27 +481,22 @@
       }catch(_){ note('No se pudo cambiar la linterna.'); }
     }
 
-    function setScanButtonActive(active){
-      const btn = $('btnScan');
-      if (!btn) return;
-      if (active){
-        btn.textContent = 'Detener';
-        btn.classList.add('danger');
-      }else{
-        btn.textContent = 'Escáner';
-        btn.classList.remove('danger');
-      }
-    }
-
     async function startScanner(){
       if(!ensureMedia()){ note('Este navegador no soporta cámara.'); return; }
+      note('Cargando ZXing…');
+      const ok = await loadZXing();
+      const ZX = window.ZXingBrowser || window.ZXing || null;
+      const ReaderCtor = ZX && ZX.BrowserMultiFormatReader ? ZX.BrowserMultiFormatReader : null;
+      if(!ok || !ReaderCtor){ note('ZXing no disponible. Usa la búsqueda manual.'); return; }
+
+      try{
+        const r=await fetch('/api/zxing.js', { cache:'no-store' });
+        console.log('X-Precioreal-ZXing:', r.headers.get('X-Precioreal-ZXing')||'(sin cabecera)');
+      }catch(_){}
 
       note('Pidiendo permiso de cámara…');
       try{
-        const preId = await pickBackCameraDeviceId();
-        const preConstraints = preId ? { video:{ deviceId:{ exact:preId } }, audio:false }
-                                     : { video:{ facingMode:{ ideal:'environment' } }, audio:false };
-        const prov = await navigator.mediaDevices.getUserMedia(preConstraints);
+        const prov = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'environment' } }, audio:false });
         prov.getTracks().forEach(t=>t.stop());
       }catch(e){
         if(e && (e.name==='NotAllowedError'||e.name==='PermissionDeniedError')){ note('Permiso denegado. Actívalo en los ajustes del navegador.'); return; }
@@ -758,199 +508,70 @@
       video.setAttribute('playsinline',''); video.setAttribute('autoplay',''); video.setAttribute('muted','');
       video.muted=true; video.playsInline=true;
       video.style.width='100%'; video.style.height='100%'; video.style.objectFit='cover';
-      cont.replaceChildren(video, (function(){ const m=document.createElement('div'); m.id='overlay'; m.textContent='Apunta al código de barras · Mantén el móvil estable'; return m;})());
+      cont.replaceChildren(video, (function(){ const m=document.createElement('div'); m.id='overlay'; return m;})());
 
+      // abrir stream
       note('Abriendo cámara…');
       try{
-        const backId = await pickBackCameraDeviceId();
-        const videoConstraints = backId ? { deviceId:{ exact: backId } } : { facingMode:{ ideal:'environment' } };
-        const current = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio:false });
-        currentStream = current;
+        currentStream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'environment' } }, audio:false });
         video.srcObject=currentStream;
-        await video.play().catch(()=>{});
+        await video.play().catch(()=>{}); // por si el autoplay se bloquea
         hideNote();
       }catch(e){
         note('No se pudo abrir la cámara.'); return;
       }
 
+      // lector global y decodificación continua/única
+      scannerReader = new ReaderCtor();
       let justScanned=false, lastText='', lastAt=0;
       const COOLDOWN=1200;
-      const onScan = (raw) => {
-        const code = String(raw||'').replace(/[^0-9Xx]/g,'');
-        if (!code) return;
-        armIdleTimer();
-        const now = Date.now();
-        if (settings.continuous) {
-          if (code===lastText && (now-lastAt)<COOLDOWN) return;
-          lastText=code; lastAt=now; beep(); lookupAndRender(code);
-        } else {
-          if (!justScanned) { justScanned=true; beep(); stopScanner(); lookupAndRender(code); }
-        }
-      };
 
-      // 1) BarcodeDetector
-      let stopBD = null;
-      if ('BarcodeDetector' in window){
-        try {
-          stopBD = await runBarcodeDetectorLoop(video, onScan);
-          if (stopBD) {
-            console.log('[PrecioReal] Usando BarcodeDetector');
-            scannerReader = { reset: ()=>{ try{ stopBD(); }catch{} } };
-            setScanButtonActive(true);
-            armIdleTimer();
-            return;
-          }
-        } catch {}
-      }
-
-      // 2) ZXing
-      note('Cargando motor ZXing…');
-      const ok = await loadZXing();
-      const ZX = window.ZXingBrowser || window.ZXing || null;
-      const ReaderCtor = ZX && ZX.BrowserMultiFormatReader ? ZX.BrowserMultiFormatReader : null;
-      if(!ok || !ReaderCtor){ note('ZXing no disponible. Usa la búsqueda manual.'); return; }
-
-      try{
-        const r=await fetch('/api/zxing.js', { cache:'no-store' });
-        console.log('X-Precioreal-ZXing:', r.headers.get('X-Precioreal-ZXing')||'(sin cabecera)');
-      }catch{}
-
-      scannerReader = new ReaderCtor();
+      note('Escaneando…');
       scannerReader.decodeFromVideoDevice(null, video, (result)=>{
-        const raw = result && result.getText ? result.getText() : '';
-        if (!raw) return;
-        onScan(raw);
+        if(!result || !result.getText) return;
+        const raw=result.getText()||''; const code=raw.replace(/[^0-9Xx]/g,''); if(!code) return;
+
+        const now=Date.now();
+        if(settings.continuous){
+          if(code===lastText && (now-lastAt)<COOLDOWN) return;
+          lastText=code; lastAt=now; beep(); lookupAndRender(code);
+        }else{
+          if(!justScanned){ justScanned=true; beep(); stopScanner(); lookupAndRender(code); }
+        }
       }).catch(err=>{
         console.error('decodeFromVideoDevice error', err);
         note('Fallo del motor de escaneo. Intenta de nuevo o usa modo manual.');
       });
-
-      setScanButtonActive(true);
-      armIdleTimer();
     }
 
-    // Botón único Escáner/Detener
-    $('btnScan').addEventListener('click', async ()=>{
-      if (currentStream){
-        stopScanner();
-      }else{
-        await startScanner();
-      }
+    // Subir imagen para leer código
+    $('btnUpload').addEventListener('click', ()=> $('imgInput').click());
+    $('imgInput').addEventListener('change', async (ev)=>{
+      const f=ev.target.files && ev.target.files[0]; if(!f) return;
+      try{
+        const imgURL=URL.createObjectURL(f); const img=new Image();
+        img.onload=async ()=>{
+          try{
+            if('BarcodeDetector' in window){
+              const bmp=await createImageBitmap(img);
+              const det=new BarcodeDetector({ formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39','qr_code'] });
+              const codes=await det.detect(bmp); bmp.close&&bmp.close();
+              if(codes && codes.length){ const code=String(codes[0].rawValue||'').replace(/[^0-9Xx]/g,''); if(code){ beep(); await lookupAndRender(code); URL.revokeObjectURL(imgURL); return; } }
+              note('No se detectó código en la imagen.');
+            }else{ note('Este navegador no soporta lectura desde imagen.'); }
+          }catch(_){ note('Fallo al procesar la imagen.'); }
+          URL.revokeObjectURL(imgURL);
+        }; img.src=imgURL;
+      }catch(_){ note('No se pudo abrir la imagen.'); }
     });
 
-    // Toggles
-    $('btnToggleSound').addEventListener('click', ()=>{ settings.noSound=!settings.noSound; saveSettings(); renderToggles(); });
-    $('btnToggleVibra').addEventListener('click', ()=>{ settings.noVibra=!settings.noVibra; saveSettings(); renderToggles(); });
-    $('btnToggleContinuous').addEventListener('click', ()=>{ settings.continuous=!settings.continuous; saveSettings(); renderToggles(); });
-    $('btnToggleApp').addEventListener('click', ()=>{ settings.openInApp=!settings.openInApp; saveSettings(); renderToggles(); });
-
-    // Torch y Test
-    $('btnTorch').addEventListener('click', toggleTorch);
+    // Test cámara
     $('btnTest').addEventListener('click', async ()=>{
       let txt='';
       if(navigator.permissions && navigator.permissions.query){ try{ const p=await navigator.permissions.query({name:'camera'}); txt+='Permiso cámara: '+p.state+'\n'; }catch(_){} }
       try{ const s=await navigator.mediaDevices.getUserMedia({video:true,audio:false}); s.getTracks().forEach(t=>t.stop()); txt+='getUserMedia: ✅ OK\n'; }catch(e){ txt+='getUserMedia: ❌ '+(e.name||e.message)+'\n'; }
-      const devs=await navigator.mediaDevices.enumerateDevices(); const list=devs.filter(d=>d.kind==='videoinput'); txt+='Cámaras detectadas: '+list.length+'\n'; list.forEach((d,i)=> txt+='- ['+i+'] '+(d.label||'(sin etiqueta)')+'\n');
-      const vib = (navigator.vibrate && navigator.vibrate(60)) ? '✅' : (('vibrate' in navigator)?'⚠️':'❌');
-      txt+='Vibración: '+vib+'\n';
-      note(txt||'Test hecho');
+      const devs=await navigator.mediaDevices.enumerateDevices(); const list=devs.filter(d=>d.kind==='videoinput'); txt+='Cámaras detectadas: '+list.length+'\n'; list.forEach((d,i)=> txt+='- ['+i+'] '+(d.label||'(sin etiqueta)')+'\n'); note(txt||'Test hecho');
     });
-
-    // Drawer (+)
-    $('btnMore').addEventListener('click', ()=>{ $('drawer').classList.toggle('open'); });
-
-    // -------- PvP ----------
-    const fmtDisplay = (buf)=>{
-      let s = String(buf||'').replace(/[^\d,\.]/g,'').replace(/\./g,',');
-      if(!s) return '';
-      if(!s.includes(',')) return s+',00';
-      const [i,d=''] = s.split(',');
-      return i+','+(d+'00').slice(0,2);
-    };
-    const parsePrice = (buf)=>{
-      let s = String(buf||'').replace(/[^\d,\.]/g,'').replace(/\./g,',');
-      if(!s) return null;
-      if(!s.includes(',')) return Number(s);
-      const [intPart, decRaw=''] = s.split(',');
-      const dec = (decRaw+'00').slice(0,2);
-      return Number(intPart+'.'+dec);
-    };
-
-    function updatePvpPillText(){
-      const rec=loadList(K_RECENTS)[0]||null;
-      const el = $('pvpValue');
-      if (!el){ return; }
-      if (rec && rec.userPrice!=null){ el.textContent = fmtMoney(rec.userPrice)+'€'; }
-      else { el.textContent = '—'; }
-    }
-
-    function askAndSavePvp(id){
-      openKeypad(id);
-    }
-
-    function openKeypad(idForItem){
-      // Si no llega id, toma el último reciente
-      let itemId = idForItem || (loadList(K_RECENTS)[0]||{}).id;
-      if(!itemId){ alert('Escanea o busca un producto primero.'); return; }
-
-      const modal=document.createElement('div');
-      modal.className='modal';
-      modal.innerHTML=`
-        <div class="card">
-          <div class="kDisplay"><span>🏷️ PvP Tienda</span><span id="kOut">${$('pvpValue').textContent || '—'}</span></div>
-          <div class="kGrid">
-            ${['1','2','3','4','5','6','7','8','9'].map(n=>`<button class="kBtn" data-k="${n}">${n}</button>`).join('')}
-            <button class="kBtn" data-k=",">,</button>
-            <button class="kBtn" data-k="0">0</button>
-            <button class="kBtn del" data-k="del">⌫</button>
-          </div>
-          <div class="kRow">
-            <button class="btn secondary" id="kCancel">Cancelar</button>
-            <button class="btn ok" id="kOk">Guardar</button>
-          </div>
-        </div>`;
-      document.body.appendChild(modal);
-
-      const out = modal.querySelector('#kOut');
-      let buffer = '';
-
-      const setOut = ()=>{ out.textContent = buffer ? fmtDisplay(buffer) : '—'; };
-      setOut();
-
-      modal.addEventListener('click', (e)=>{ if(e.target===modal) modal.remove(); });
-
-      modal.querySelectorAll('.kBtn').forEach(btn=>{
-        btn.addEventListener('click', ()=>{
-          const k = btn.getAttribute('data-k');
-          if(k==='del'){
-            buffer = buffer.slice(0,-1);
-            if (buffer.endsWith(',')) buffer = buffer.slice(0,-1);
-            setOut(); 
-            return; 
-          }
-          if(k===','){ 
-            if(!buffer.includes(',')) buffer = buffer ? buffer+',' : '0,';
-            setOut(); 
-            return; 
-          }
-          buffer += k;
-          const parts = buffer.split(',');
-          if(parts[1] && parts[1].length>2){ parts[1]=parts[1].slice(0,2); buffer=parts.join(','); }
-          setOut();
-        });
-      });
-
-      modal.querySelector('#kCancel').addEventListener('click', ()=> modal.remove());
-      modal.querySelector('#kOk').addEventListener('click', ()=>{
-        const num = parsePrice(buffer);
-        if(num==null || !isFinite(num)){ alert('Precio no válido'); return; }
-        updateItemPvp(itemId, Math.max(0,num));
-        updatePvpPillText();
-        modal.remove();
-      });
-    }
-
-    $('pvpPill').addEventListener('click', ()=> openKeypad());
 
     // Buscar manual
     $('btnBuscar').addEventListener('click', async ()=>{
@@ -959,41 +580,78 @@
       await lookupAndRender(code);
     });
 
-    // Lookup backend (más tolerante)
-    async function lookupAndRender(ean){
-      const cached=cacheGet(ean); if(cached){ renderResult(cached.success,cached.product,ean,cached.meta); return; }
-      try{
-        const r=await fetch('/api/lookup?ean='+encodeURIComponent(ean));
-        const d=await r.json(); cacheSet(ean,d);
-        renderResult(!!(d && (d.success!==false)), d && d.product, ean, d && d.meta);
-      }catch(e){ note('No se pudo consultar el backend.'); }
+    // Toggles
+    renderToggles();
+    $('btnToggleSound').addEventListener('click', ()=>{ settings.noSound=!settings.noSound; saveSettings(settings); renderToggles(); });
+    $('btnToggleVibra').addEventListener('click', ()=>{ settings.noVibra=!settings.noVibra; saveSettings(settings); renderToggles(); });
+    $('btnToggleContinuous').addEventListener('click', ()=>{ settings.continuous=!settings.continuous; saveSettings(settings); renderToggles(); });
+
+    // Pon tu Precio (al último “reciente”)
+    $('btnSetPrice').addEventListener('click', ()=>{
+      const rec=loadList(K_RECENTS)[0]||null; if(!rec){ alert('Escanea o busca un producto primero.'); return; }
+      askAndSavePvp(rec.id);
+    });
+
+    // Lote (modal rápido)
+    function openBatch(){
+      if(document.getElementById('batchModal')) return;
+      const modal=document.createElement('div');
+      modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:9999';
+      modal.id='batchModal';
+      modal.innerHTML=`
+        <div style="background:#0d1423;border:1px solid #1a2434;border-radius:12px;padding:12px;width:min(680px,90vw)">
+          <h3 style="margin:0 0 8px 0;font-size:16px">Añadir por lote</h3>
+          <p class="muted" style="margin:4px 0 10px">Pega códigos separados por salto de línea, espacios o comas. Acepta EAN-13, UPC-A (12) y EAN-8.</p>
+          <textarea id="batchCodes" style="width:100%;min-height:190px;resize:vertical;border-radius:8px;border:1px solid #223352;background:#0c1322;color:#e7edf7;padding:10px" placeholder="Ejemplo:
+9788491296014
+740617300253
+8715946725963"></textarea>
+          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+            <button class="btn secondary" id="batchCancel">Cancelar</button>
+            <button class="btn" id="batchRun">Procesar</button>
+          </div>
+        </div>`;
+      document.body.appendChild(modal);
+      const close=()=>modal.remove();
+      modal.addEventListener('click', e=>{ if(e.target===modal) close(); });
+      modal.querySelector('#batchCancel').addEventListener('click', close);
+      modal.querySelector('#batchRun').addEventListener('click', async ()=>{
+        const raw=modal.querySelector('#batchCodes').value||'';
+        const toks=raw.split(/[\s,;]+/).filter(Boolean);
+        const codes=[];
+        for(const t of toks){ const s=String(t).replace(/[^0-9]/g,''); if(!s) continue; const v=validCode(s); if(v.ok) codes.push(s); }
+        if(!codes.length){ alert('No hay códigos válidos.'); return; }
+        close();
+        for(let i=0;i<codes.length;i++){ note(`Procesando lote ${i+1}/${codes.length}…`); await lookupAndRender(codes[i]); }
+        note('Lote terminado'); setTimeout(hideNote, 1200);
+      });
+      modal.querySelector('#batchCodes').focus();
     }
+    $('btnBatch').addEventListener('click', openBatch);
 
-    // Limpiar comparador y filtros
-    $('btnClearRecents').addEventListener('click', ()=>{ if(confirm('¿Vaciar listado del comparador?')) clearRecents(); });
-    $('btnClearRecFilters').addEventListener('click', ()=>{
-      recFilters = [];
-      saveJSON(K_REC_FILTER, recFilters);
-      renderRecents();
+    // Linterna
+    $('btnTorch').addEventListener('click', toggleTorch);
+
+    // Parar
+    $('btnStop').addEventListener('click', stopScanner);
+
+    // Iniciar
+    $('btnScan').addEventListener('click', startScanner);
+
+    // Validación al escribir
+    $('eanInput').addEventListener('input', ()=>{
+      const s=$('eanInput').value.replace(/[^0-9]/g,''); if(!s){ setEanHint('',true); return; }
+      const v=validCode(s); if(!v.ok) setEanHint('Código no válido (longitud o checksum).', false); else setEanHint(`Código válido (${v.type}).`, true);
     });
 
-    // Limpiar filtros en Favoritos
-    $('btnClearFavFilters').addEventListener('click', ()=>{
-      favFilters = [];
-      saveJSON(K_FAV_FILTER, favFilters);
-      renderFavs();
-    });
+    // Limpiar listas
+    $('btnClearRecents').addEventListener('click', ()=>{ if(confirm('¿Vaciar lista de últimos escaneados?')) clearRecents(); });
+    $('btnClearFavs').addEventListener('click', ()=>{ if(confirm('¿Vaciar favoritos?')) clearFavs(); });
 
-    // Mostrar solo comprados
-    $('btnToggleBought').addEventListener('click', ()=>{
-      favShowOnlyDone = !favShowOnlyDone;
-      saveJSON(K_FAV_SHOW_DONE, favShowOnlyDone);
-      renderFavs();
-    });
-
-    // UI inicial
-    renderRecents(); renderFavs(); renderToggles(); updatePvpPillText();
-
+    // Render inicial
+    renderRecents(); renderFavs();
+    // Procesar cola offline al cargar
+    queueProcess();
   })();
   </script>
 </body>
