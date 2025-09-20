@@ -20,9 +20,10 @@
     .btn.secondary{background:#182339;color:var(--text);border:1px solid #223352}
     .btn.ghost{background:transparent;border:1px dashed #2a3a5a;color:#9bb4d9}
     .btn[disabled]{opacity:.5;cursor:not-allowed}
-    .btn.danger{background:linear-gradient(180deg,#ff6464,#cc3030);color:#210000}
+    /* “Detener” naranja */
+    .btn.danger{background:linear-gradient(180deg,#ffb84d,#ff8c00);color:#1f1200}
     .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center}
-    .row.top{display:flex;align-items:center;gap:8px;flex-wrap:nowrap} /* fila principal sin saltos */
+    .row.top{display:flex;align-items:center;gap:8px;flex-wrap:nowrap}
     .row input{flex:1;min-width:180px;padding:12px;border-radius:12px;border:1px solid #223352;background:#0c1322;color:#e7edf7}
 
     #scanner{position:relative;aspect-ratio:3/2;background:#0d1423;border:1px dashed #223352;border-radius:12px;display:grid;place-items:center;overflow:hidden;margin-top:12px}
@@ -42,38 +43,34 @@
     .mini .muted{font-size:12px}
     .mini .actions{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
 
-    /* Botón “Ver en Amazon” con el amarillo de Amazon */
+    /* “Ver en Amazon” vuelve a tu estilo anterior (azul oscuro) */
     .banner{
       display:flex;justify-content:center;align-items:center;width:100%;
       padding:12px 14px;border-radius:10px;
-      background:#FFD814; border:1px solid #FCD200;
-      color:#0F1111; text-decoration:none; font-size:15px; font-weight:900; min-height:48px
+      background:#182339;border:1px solid #223352;
+      color:#e7edf7;text-decoration:none;font-size:15px;font-weight:900;min-height:48px
     }
-    .banner:hover{ background:#FCD200; }
 
     .pvpLineMini{font-size:14px;font-weight:800;margin-top:8px;color:#cfe2ff;text-align:right}
     .badgeManual{display:inline-block;margin-right:6px;padding:2px 6px;border-radius:999px;border:1px solid #2a3f66;background:#13203b;color:#cfe2ff;font-size:11px;font-weight:700;vertical-align:baseline}
-    .pvpSub{font-size:11px;color:#9bb4d9;margin-top:4px;text-align:right;font-weight:500}
 
-    .icon-btn{position:absolute;top:6px;left:6px;background:#172033;border:1px solid #284066;color:#c9d9f2;width:30px;height:30px;line-height:28px;text-align:center;border-radius:10px;cursor:pointer;font-weight:900;font-size:18px}
+    /* Cruz = mismo tamaño que la estrella */
+    .icon-btn{position:absolute;top:6px;left:6px;background:#172033;border:1px solid #284066;color:#c9d9f2;width:36px;height:36px;line-height:34px;text-align:center;border-radius:12px;cursor:pointer;font-weight:900;font-size:20px}
     .star{position:absolute;top:6px;right:6px;background:#172033;border:1px solid #284066;color:#f6e08f;width:36px;height:36px;line-height:34px;text-align:center;border-radius:12px;cursor:pointer;font-weight:900;font-size:20px}
     .star.off{color:#b0b0b0}
     .empty{color:#a8b3c7;font-size:13px}
     .toggles{display:flex;gap:8px;flex-wrap:wrap}
 
-    /* Botón Escáner un poco más pequeño (tu ajuste anterior) */
     #btnScan{ font-size:16px; padding:12px 16px; }
 
-    /* PvP + plus en una fila flexible */
+    /* PvP + plus */
     .pvpRow{ display:flex; gap:8px; align-items:center; flex:1; min-width:0; }
     .pill{ display:flex; align-items:center; gap:10px; padding:12px 14px;
            border-radius:14px; border:1px solid #223352; background:#0c1322; color:#e7edf7;
            cursor:pointer; font-weight:900; font-size:15px; flex:1; min-width:0; }
     .pill .hintSmall{ margin-left:auto; white-space:nowrap; }
     .tagIcon{ margin-right:8px; display:inline-block; }
-
-    .btn.plus{ width:40px; height:40px; display:inline-grid; place-items:center;
-               font-size:18px; padding:0; border-radius:12px }
+    .btn.plus{ width:40px; height:40px; display:inline-grid; place-items:center; font-size:18px; padding:0; border-radius:12px }
 
     /* Drawer */
     #drawer{display:none;margin-top:10px}
@@ -107,7 +104,6 @@
       <b>Escanear con la cámara</b>
       <div id="scanner"><div id="overlay">Pulsa “Escáner” y permite la cámara</div></div>
 
-      <!-- MISMA FILA: Escáner + PvP + + -->
       <div class="row top">
         <button class="btn" id="btnScan">Escáner</button>
 
@@ -122,7 +118,7 @@
         <button class="btn secondary" id="btnInstall" style="display:none">Instalar app</button>
       </div>
 
-      <!-- Drawer (opciones + manual + utilidades) -->
+      <!-- Drawer -->
       <div id="drawer" class="drawerBox">
         <div class="drawerGrid">
           <div>
@@ -285,7 +281,7 @@
     function toggleFav(item){ if(!item||!item.id) return; const arr=loadList(K_FAVS); const i=arr.findIndex(x=>String(x.id)===String(item.id)); if(i>=0) arr.splice(i,1); else arr.unshift(item); saveList(K_FAVS,arr); renderFavs(); renderRecents(); }
     function clearFavs(){ saveList(K_FAVS,[]); renderFavs(); renderRecents(); }
 
-    // Amazon deep-link
+    // Enlace Amazon: siempre web (sin intent)
     function extractASIN(link){
       if (!link) return null;
       const m = String(link).match(/\/(?:dp|gp\/product)\/([A-Z0-9]{10})/i);
@@ -296,25 +292,9 @@
       const asin = item?.asin || extractASIN(item?.affiliateLink) || '';
       return item?.affiliateLink || `https://www.${domain}/dp/${asin}`;
     }
-    function isAndroidChrome(){
-      const ua = navigator.userAgent || '';
-      return /Android/i.test(ua) && /(Chrome|EdgA|Chromium|SamsungBrowser|Brave)/i.test(ua);
-    }
     function openAmazon(item){
       const web = buildWebLink(item);
-      const asin = item.asin || extractASIN(web);
-      if (isAndroidChrome() && asin){
-        const pathAndQuery = web.replace(/^https?:\/\//i, '');
-        const appIntent =
-          `intent://${pathAndQuery}` +
-          `#Intent;scheme=https;package=com.amazon.mShop.android.shopping;` +
-          `S.browser_fallback_url=${encodeURIComponent(web)};end`;
-        let jumped = false;
-        setTimeout(()=>{ if(!jumped) location.href = web; }, 1500);
-        try { location.href = appIntent; jumped = true; } catch(_) { location.href = web; }
-        return;
-      }
-      location.href = web;
+      location.href = web; // siempre web
     }
 
     // Render tarjetas
@@ -329,8 +309,7 @@
         const disabled=item.affiliateLink?'':'disabled';
         const pvpBlock = (item.userPrice!=null) ? `
           <div class="pvpLineMini" data-action="price" title="Toca para editar">
-            <span class="badgeManual">Manual</span> 🏷️ Precio anotado: ${fmtMoney(item.userPrice)} €
-            <div class="pvpSub">Solo en este dispositivo · No es el precio de Amazon.</div>
+            <span class="badgeManual">Manual</span> 🏷️ Precio anotado: ${fmtMoney(item.userPrice)}€
           </div>` : '';
 
         let tagsBlock = '';
@@ -365,7 +344,6 @@
           </div>`;
       }).join('');
 
-      // Delegado de eventos
       el.querySelectorAll('.mini').forEach(card=>{
         const id=card.getAttribute('data-id');
         const item=arr.find(x=>String(x.id)===String(id));
@@ -373,7 +351,7 @@
           const act=ev.target?.getAttribute?.('data-action'); 
           if(!act) return;
           ev.preventDefault(); ev.stopPropagation();
-          if(act==='remove'){ source==='recents'?removeRecent(id):(saveList(K_FAVS,loadList(K_FAVS).filter(x=>String(x.id)!==String(id))),renderFavs(),renderRecents()); }
+          if(act==='remove'){ containerId==='recents'?removeRecent(id):(saveList(K_FAVS,loadList(K_FAVS).filter(x=>String(x.id)!==String(id))),renderFavs(),renderRecents()); }
           if(act==='star'){ toggleFav(item); }
           if(act==='open'){ openAmazon(item); }
           if(act==='price'){ askAndSavePvp(id); }
@@ -389,7 +367,7 @@
         }, { passive:false });
       });
 
-      // Listener directo a la cruz
+      // Listener directo a la cruz (mismo tamaño que estrella)
       el.querySelectorAll('.icon-btn').forEach(btn=>{
         btn.addEventListener('click', (ev)=>{
           ev.preventDefault(); ev.stopPropagation();
@@ -415,11 +393,25 @@
 
     // ---------- Cámara / Escáner ----------
     let currentStream=null, torchOn=false, scannerReader=null;
+    let idleTimer=null; // auto-stop si no hay lecturas
+    const IDLE_MS = 10*60*1000; // 10 minutos
+
+    function clearIdleTimer(){
+      if (idleTimer){ clearTimeout(idleTimer); idleTimer = null; }
+    }
+    function armIdleTimer(){
+      clearIdleTimer();
+      idleTimer = setTimeout(()=>{
+        note('Escáner detenido por inactividad (10 min).');
+        stopScanner();
+      }, IDLE_MS);
+    }
 
     function stopScanner(){
       try{ scannerReader && scannerReader.reset && scannerReader.reset(); }catch(_){}
       try{ currentStream && currentStream.getTracks().forEach(t=>t.stop()); }catch(_){}
       currentStream=null; scannerReader=null; torchOn=false;
+      clearIdleTimer();
       note('Escáner detenido'); setTimeout(hideNote, 800);
       setScanButtonActive(false);
     }
@@ -496,7 +488,6 @@
     async function startScanner(){
       if(!ensureMedia()){ note('Este navegador no soporta cámara.'); return; }
 
-      // Pre-permiso
       note('Pidiendo permiso de cámara…');
       try{
         const preId = await pickBackCameraDeviceId();
@@ -516,7 +507,6 @@
       video.style.width='100%'; video.style.height='100%'; video.style.objectFit='cover';
       cont.replaceChildren(video, (function(){ const m=document.createElement('div'); m.id='overlay'; m.textContent='Apunta al código de barras · Mantén el móvil estable'; return m;})());
 
-      // Stream real (intentando trasera)
       note('Abriendo cámara…');
       try{
         const backId = await pickBackCameraDeviceId();
@@ -531,12 +521,13 @@
         note('No se pudo abrir la cámara.'); return;
       }
 
-      // Gestión de resultados
+      // Gestión lecturas
       let justScanned=false, lastText='', lastAt=0;
       const COOLDOWN=1200;
       const onScan = (raw) => {
         const code = String(raw||'').replace(/[^0-9Xx]/g,'');
         if (!code) return;
+        armIdleTimer(); // reinicia inactividad al leer algo
         const now = Date.now();
         if (settings.continuous) {
           if (code===lastText && (now-lastAt)<COOLDOWN) return;
@@ -555,6 +546,7 @@
             console.log('[PrecioReal] Usando BarcodeDetector');
             scannerReader = { reset: ()=>{ try{ stopBD(); }catch{} } };
             setScanButtonActive(true);
+            armIdleTimer();
             return;
           }
         } catch {}
@@ -583,6 +575,7 @@
       });
 
       setScanButtonActive(true);
+      armIdleTimer();
     }
 
     // Botón único Escáner/Detener
@@ -628,11 +621,19 @@
       const d = $('drawer'); d.classList.toggle('open');
     });
 
-    // ---------- PvP TIENDA ----------
+    // -------- PvP ----------
+    const fmtDisplay = (buf)=>{
+      // Normaliza visual a "12,34" o "12,00" si entero
+      let s = String(buf||'').replace(/[^\d,\.]/g,'').replace(/\./g,',');
+      if(!s) return '';
+      if(!s.includes(',')) return s+',00';
+      const [i,d=''] = s.split(',');
+      return i+','+(d+'00').slice(0,2);
+    };
     const parsePrice = (buf)=>{
       let s = String(buf||'').replace(/[^\d,\.]/g,'').replace(/\./g,',');
       if(!s) return null;
-      if(!s.includes(',')) return Number(s); // entero → válido
+      if(!s.includes(',')) return Number(s); // entero OK
       const [intPart, decRaw=''] = s.split(',');
       const dec = (decRaw+'00').slice(0,2);
       return Number(intPart+'.'+dec);
@@ -642,12 +643,11 @@
       const rec=loadList(K_RECENTS)[0]||null;
       const el = $('pvpValue');
       if (!el){ return; }
-      if (rec && rec.userPrice!=null){ el.textContent = fmtMoney(rec.userPrice)+' €'; }
+      if (rec && rec.userPrice!=null){ el.textContent = fmtMoney(rec.userPrice)+'€'; }
       else { el.textContent = '—'; }
     }
 
     function askAndSavePvp(id){
-      // compat para toque en tarjetas (abre keypad del último)
       openKeypad();
     }
 
@@ -680,15 +680,7 @@
         return m ? m[0] : '';
       })();
 
-      const normalizeDisplay = (buf)=>{
-        if (!buf) return '—';
-        if (buf.includes(',')){
-          const parts = buf.split(',');
-          return parts[0] + ',' + (parts[1].padEnd(2,'0').slice(0,2));
-        }
-        return buf + ',00';
-      };
-      const setOut = ()=>{ out.textContent = normalizeDisplay(buffer); };
+      const setOut = ()=>{ out.textContent = buffer ? fmtDisplay(buffer) : '—'; };
       setOut();
 
       modal.addEventListener('click', (e)=>{
@@ -751,6 +743,12 @@
 
     // Render inicial
     renderRecents(); renderFavs(); renderToggles(); updatePvpPillText();
+
+    // ---------- Validación EAN/UPC ----------
+    function ean13Valid(s){ s=String(s).replace(/[^0-9]/g,''); if(s.length!==13) return false; const d=s.split('').map(n=>+n); const c=d[12]; let sum=0; for(let i=0;i<12;i++) sum+=d[i]*(i%2===0?1:3); return ((10-(sum%10))%10)===c; }
+    function ean8Valid(s){ s=String(s).replace(/[^0-9]/g,''); if(s.length!==8) return false; const d=s.split('').map(n=>+n); const c=d[7]; let sum=0; for(let i=0;i<7;i++) sum+=d[i]*(i%2===0?3:1); return ((10-(sum%10))%10)===c; }
+    function upcAValid(s){ s=String(s).replace(/[^0-9]/g,''); if(s.length!==12) return false; return ean13Valid('0'+s); }
+    function validCode(code){ const s=String(code).replace(/[^0-9]/g,''); if(s.length===13) return {ok:ean13Valid(s),type:'EAN-13'}; if(s.length===8) return {ok:ean8Valid(s),type:'EAN-8'}; if(s.length===12) return {ok:upcAValid(s),type:'UPC-A'}; return {ok:false,type:'unknown'}; }
 
   })();
   </script>
