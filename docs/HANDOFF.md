@@ -558,3 +558,5 @@ Web Share/Share Target para aceptar un enlace de Amazon y convertirlo a afiliado
 Exportar/Importar listas (JSON).
 
 OCR de ticket (si te apetece algo “wow” sin tocar compliance).
+
+Colas offline “Abrir luego” Beneficio: funciona sin cobertura en tienda.
