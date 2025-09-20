@@ -63,7 +63,6 @@
     .icon-btn{position:absolute;top:6px;left:6px;background:#172033;border:1px solid #284066;color:#c9d9f2;width:36px;height:36px;line-height:34px;text-align:center;border-radius:12px;cursor:pointer;font-weight:900;font-size:20px}
     .star{position:absolute;top:6px;right:6px;background:#172033;border:1px solid #284066;color:#f6e08f;width:36px;height:36px;line-height:34px;text-align:center;border-radius:12px;cursor:pointer;font-weight:900;font-size:20px}
     .star.off{color:#b0b0b0}
-    /* Checkbox “comprado” solo en Lista de la compra */
     .check{position:absolute;top:6px;right:6px;width:36px;height:36px;border-radius:12px;border:1px solid #284066;background:#172033;color:#9fe29f;display:grid;place-items:center;font-size:18px;cursor:pointer}
     .check.done{background:rgba(46,204,113,.15);border-color:#1e8f56;color:#2ecc71}
 
@@ -178,12 +177,15 @@
     <section class="panel" id="panelRecents">
       <div class="bar">
         <div class="title">🔎 Comparador de Precios</div>
-        <button class="btn ghost" id="btnClearRecents">Vaciar lista</button>
+        <div style="display:flex; gap:8px; align-items:center">
+          <button class="btn ghost" id="btnClearRecFilters">Limpiar filtros</button>
+          <button class="btn ghost" id="btnClearRecents">Vaciar lista</button>
+        </div>
       </div>
 
       <!-- Explicación -->
       <div class="hint" style="margin-bottom:6px">
-        Aquí verás los artículos que escanees o busques. Puedes **filtrarlos por la tienda o supermercado** usando etiquetas.
+        Aquí verás los artículos que escanees o busques. Puedes <b>filtrarlos por la tienda o supermercado</b> usando etiquetas.
       </div>
 
       <!-- Filtros por etiquetas (Comparador) -->
@@ -203,7 +205,7 @@
 
       <!-- Explicación -->
       <div class="hint" style="margin-bottom:6px">
-        Guarda aquí tus favoritos. Añade **etiquetas** (tienda/tipo) y **márquelos como comprados** cuando los tengas.
+        Guarda aquí tus favoritos. Añade <b>etiquetas</b> (tienda/tipo) y <b>márcalos como comprados</b> cuando los tengas.
       </div>
 
       <!-- Barra de filtros por etiquetas (Lista de la compra) -->
@@ -389,8 +391,6 @@
             <span class="chip add" data-action="tag-add">+ etiqueta</span>
           </div>`;
 
-        // Botón de estado (estrella para añadir al carrito de compra desde comparador;
-        // checkbox "comprado" en la lista de la compra)
         let stateBtn = '';
         if (source==='recents'){
           stateBtn = `<div class="star ${inFav?'':'off'}" title="${inFav?'Quitar de la lista de la compra':'Añadir a la lista de la compra'}" data-action="star">★</div>`;
@@ -464,9 +464,16 @@
       items.forEach(it=> (normalizeTags(it.tags||[])).forEach(t=>set.add(t)));
       return Array.from(set).sort((a,b)=> a.localeCompare(b));
     }
+    function pruneRecFilters(validTags){
+      const set = new Set(validTags);
+      const before = recFilters.slice();
+      recFilters = recFilters.filter(t => set.has(t));
+      if (before.length !== recFilters.length) saveJSON(K_REC_FILTER, recFilters);
+    }
     function renderRecFilterBar(){
       const bar = $('recFilterBar');
       const tags = collectRecTags();
+      pruneRecFilters(tags);
       if(!tags.length){ bar.innerHTML=''; return; }
       bar.innerHTML = tags.map(t=>{
         const c = colorForTag(t);
@@ -491,10 +498,19 @@
       const all = loadList(K_RECENTS);
       renderRecFilterBar();
       const filtered = applyRecFilter(all);
+
+      const emptyHint = $('recentsEmpty');
+      if (emptyHint) {
+        if (!filtered.length && all.length && recFilters.length){
+          emptyHint.textContent = 'No hay resultados con los filtros actuales. Pulsa “Limpiar filtros”.';
+        } else {
+          emptyHint.textContent = 'Aún no hay artículos. Escanea o busca un código.';
+        }
+      }
       renderList('recents','recentsEmpty', filtered, 'recents');
     }
 
-    // ---------- Filtros: Favoritos (Lista de la compra) ----------
+    // ---------- Filtros: Favoritos ----------
     function collectFavTags(){
       const items = loadList(K_FAVS);
       const set = new Set();
@@ -865,8 +881,13 @@
       }catch(e){ note('No se pudo consultar el backend.'); }
     }
 
-    // Limpiar listas
+    // Limpiar comparador y filtros
     $('btnClearRecents').addEventListener('click', ()=>{ if(confirm('¿Vaciar listado del comparador?')) clearRecents(); });
+    $('btnClearRecFilters').addEventListener('click', ()=>{
+      recFilters = [];
+      saveJSON(K_REC_FILTER, recFilters);
+      renderRecents();
+    });
 
     // Mostrar solo comprados
     $('btnToggleBought').addEventListener('click', ()=>{
