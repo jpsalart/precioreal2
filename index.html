@@ -60,6 +60,8 @@
       font-size:14px;font-weight:800;margin-top:8px;color:#cfe2ff;
       text-align:right; white-space:nowrap; display:flex; align-items:center; justify-content:flex-end; gap:6px;
     }
+    .pvpAdd{font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:6px; padding:4px 8px; border-radius:8px; border:1px dashed #2a3a5a; color:#9bb4d9}
+    .pvpAdd:hover{border-style:solid;color:#cfe2ff}
     .badgeManual{display:inline-block;margin-right:6px;padding:2px 6px;border-radius:999px;border:1px solid #2a3f66;background:#13203b;color:#cfe2ff;font-size:11px;font-weight:700;vertical-align:baseline}
 
     /* Cerrar y estado */
@@ -79,12 +81,12 @@
     .pill{
       display:flex; align-items:center; gap:10px; padding:12px 14px;
       border-radius:14px; border:1px solid #223352; background:#0c1322; color:#e7edf7;
-      cursor:pointer; font-weight:900; flex:1; min-width:0;
+      cursor:pointer; font-weight:900; flex:1 1 auto; min-width:0;
       min-height:var(--control-h);
     }
     .pill .tagIcon{ margin-right:10px; font-size:18px }
     .pill .label{ font-size:16px; }
-    .pill .value{ margin-left:auto; white-space:nowrap; font-size:18px; font-weight:900; overflow:hidden; text-overflow:ellipsis; }
+    .pill .value{ margin-left:auto; white-space:nowrap; font-size:18px; font-weight:900; overflow:visible; text-overflow:clip; flex:0 0 auto; }
 
     .btn.plus{ width:32px; height:var(--control-h); display:inline-grid; place-items:center; font-size:18px; padding:0; border-radius:12px }
 
@@ -181,7 +183,7 @@
         </div>
       </div>
 
-      <div class="hint">Consejo: apoya el móvil y apunta al código de barras.</div>
+      <div class="hint">Primero añade siempre el precio antes de apuntar un código de barras.</div>
     </section>
 
     <!-- Comparador -->
@@ -194,32 +196,31 @@
         </div>
       </div>
 
-      <!-- Explicación -->
       <div class="hint" style="margin-bottom:6px">
         Artículos escaneados y sus precios; podrás <b>compararlos en Amazon</b>. Filtra por tienda y añádelos a la lista con <b>★</b>.
       </div>
 
-      <!-- Filtros por etiquetas (Comparador) -->
       <div id="recFilterBar"></div>
 
       <div id="recents" class="list-grid"></div>
       <div id="recentsEmpty" class="empty" style="display:none">Aún no hay artículos. Escanea o busca un código.</div>
-      <div id="tipRecents" class="empty" style="margin-top:10px">Consejo: usa etiquetas como “Carrefour”, “Fnac”, “🏠 Casa” o “⚡ Urgente”.</div>
+      <div id="tipRecents" class="empty" style="margin-top:10px">Consejo: usa etiquetas como “Carrefour”, “Fnac”, “MediaMarkt”. Crea una etiqueta con el nombre de la tienda o supermercado.</div>
     </section>
 
     <!-- Lista de la compra -->
     <section class="panel" id="panelFavs">
       <div class="bar">
         <div class="title" id="favTitle">Lista de la compra (0)</div>
-        <button class="btn ghost" id="btnToggleBought">Comprados</button>
+        <div style="display:flex; gap:8px; align-items:center">
+          <button class="btn ghost" id="btnClearFavFilters">Limpiar filtros</button>
+          <button class="btn ghost" id="btnToggleBought">Comprados</button>
+        </div>
       </div>
 
-      <!-- Explicación -->
       <div class="hint" style="margin-bottom:6px">
         Guarda aquí tus favoritos. Añade <b>etiquetas</b> (tienda/tipo) y <b>márcalos como comprados</b> cuando los tengas.
       </div>
 
-      <!-- Barra de filtros por etiquetas (Lista de la compra) -->
       <div id="favFilterBar"></div>
 
       <div id="favs" class="list-grid"></div>
@@ -246,6 +247,7 @@
     const K_FAV_FILTER = 'pr-fav-filter-v1';
     const K_REC_FILTER = 'pr-rec-filter-v1';
     const K_FAV_SHOW_DONE = 'pr-fav-show-done-v1';
+    const K_TAG_FREQ = 'pr-tag-freq-v1';
 
     const loadJSON=(k,def)=>{ try{ return JSON.parse(localStorage.getItem(k)||JSON.stringify(def)); }catch(_){ return def; } };
     const saveJSON=(k,v)=>{ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(_){ } };
@@ -255,6 +257,7 @@
     let favFilters = loadJSON(K_FAV_FILTER, []);
     let recFilters = loadJSON(K_REC_FILTER, []);
     let favShowOnlyDone = loadJSON(K_FAV_SHOW_DONE, false);
+    let tagFreq = loadJSON(K_TAG_FREQ, {}); // {tag: count}
 
     const renderToggles=()=>{
       $('btnToggleSound').textContent = 'Sonido: ' + (settings.noSound ? 'OFF' : 'ON');
@@ -304,6 +307,17 @@
       });
       return Array.from(set).sort((a,b)=> a.localeCompare(b));
     }
+    function incTagFreq(tag){
+      const t = String(tag||'').trim(); if(!t) return;
+      tagFreq[t] = (tagFreq[t]||0) + 1;
+      saveJSON(K_TAG_FREQ, tagFreq);
+    }
+    function topTags(limit=12){
+      return Object.entries(tagFreq)
+        .sort((a,b)=> b[1]-a[1])
+        .slice(0,limit)
+        .map(([t])=>t);
+    }
 
     // Modelo
     function normalizeItem(ean, resp){
@@ -340,6 +354,7 @@
       const apply=(key)=>{ const arr=loadList(key); const i=arr.findIndex(x=>String(x.id)===String(id));
         if(i>=0){ const tags=normalizeTags(arr[i].tags||[]); if(!tags.includes(t)) tags.push(t); arr[i].tags=tags; saveList(key,arr); } };
       apply(K_RECENTS); apply(K_FAVS);
+      incTagFreq(t);
       renderFavs(); renderRecents();
     }
     function removeTagFrom(id, tag){
@@ -391,12 +406,16 @@
         const img=item.image?`<img alt="Imagen" src="${item.image}">`:'—';
         const inFav=isFav(item.id);
         const disabled=item.affiliateLink?'':'disabled';
-        const pvpBlock = (item.userPrice!=null) ? `
-          <div class="pvpLineMini" data-action="price" title="Toca para editar">
-            <span class="badgeManual">Manual</span>
-            <span>🏷️ Precio anotado:</span>
-            <span>${fmtMoney(item.userPrice)}€</span>
-          </div>` : '';
+
+        const pvpBlock = (item.userPrice!=null)
+          ? `<div class="pvpLineMini" data-action="price" data-id="${item.id}" title="Toca para editar">
+               <span class="badgeManual">Manual</span>
+               <span>🏷️ Precio anotado:</span>
+               <span>${fmtMoney(item.userPrice)}€</span>
+             </div>`
+          : `<div class="pvpLineMini" title="Añadir precio">
+               <span class="pvpAdd" data-action="price" data-id="${item.id}">➕ Añadir precio</span>
+             </div>`;
 
         // TAGS (en ambos listados)
         const tags = normalizeTags(item.tags||[]);
@@ -408,7 +427,7 @@
         const tagsBlock = `
           <div class="tags" data-id="${item.id}">
             ${chips}
-            <span class="chip add" data-action="tag-add">+ etiqueta</span>
+            <span class="chip add" data-action="tag-add" data-source="${source}">+ etiqueta</span>
           </div>`;
 
         let stateBtn = '';
@@ -450,9 +469,9 @@
           }
           if(act==='star'){ toggleFav(item); }
           if(act==='open'){ openAmazon(item); }
-          if(act==='price'){ askAndSavePvp(id); }
+          if(act==='price'){ askAndSavePvp(ev.target.getAttribute('data-id') || id); }
           if(act==='toggle-done'){ toggleCompleted(id); }
-          if(act==='tag-add'){ openTagPicker(id); }
+          if(act==='tag-add'){ openTagPicker(id, ev.target.getAttribute('data-source')||''); }
           if(act==='tag-remove'){
             const t = ev.target?.getAttribute?.('data-tag') || ev.target?.parentElement?.getAttribute?.('data-tag');
             if(!t) return;
@@ -475,16 +494,18 @@
     }
 
     // ---------- Tag Picker ----------
-    function openTagPicker(id){
-      const all = collectAllTags();
-      const quick = ['🏠 Casa','⚡ Urgente','🎂 Cumpleaños','🎁 Regalo'];
-      const unique = Array.from(new Set([...quick, ...all]));
+    function openTagPicker(id, context){
+      const allUsed = collectAllTags();
+      const popular = topTags(12).filter(t=> allUsed.includes(t));
+      // En COMPARADOR no mostramos predefinidas; solo populares + usadas.
+      const quick = (context==='recents') ? [] : ['🏠 Casa','⚡ Urgente','🎂 Cumpleaños','🎁 Regalo'];
+      const unique = Array.from(new Set([ ...quick, ...popular, ...allUsed ])).filter(Boolean);
 
       const modal = document.createElement('div');
       modal.className = 'tagpicker';
       modal.innerHTML = `
         <div class="box">
-          <h3>Elige o crea una etiqueta</h3>
+          <h3>${context==='recents' ? 'Crea una etiqueta con el nombre de la tienda o supermercado' : 'Elige o crea una etiqueta'}</h3>
           <div class="tags" id="tpList">
             ${unique.length ? unique.map(t=>{
               const c = colorForTag(t); const style = `background:${c.bg};border-color:${c.br};color:${c.tx}`;
@@ -492,7 +513,7 @@
             }).join('') : '<div class="muted">Aún no tienes etiquetas.</div>'}
           </div>
           <div class="rowInline">
-            <input id="tpInput" placeholder='Ej.: Carrefour, Fnac, 🏠 Casa, ⚡ Urgente…'>
+            <input id="tpInput" placeholder='Ej.: Carrefour, Fnac, MediaMarkt, Alcampo…'>
             <button class="btn secondary" id="tpCancel">Cancelar</button>
             <button class="btn" id="tpSave">Añadir</button>
           </div>
@@ -500,7 +521,6 @@
       document.body.appendChild(modal);
 
       const close = ()=> modal.remove();
-
       modal.addEventListener('click', (e)=>{ if(e.target===modal) close(); });
 
       modal.querySelectorAll('#tpList .chip').forEach(ch=>{
@@ -622,7 +642,7 @@
       renderToggles();
     }
 
-    // Resultado lookup (más permisivo para pintar en comparador)
+    // Resultado lookup
     function renderResult(ok, p, ean, meta){
       const shouldAdd = !!(ok || p || meta);
       if(!shouldAdd){ note('No encontrado para '+ean); return; }
@@ -864,11 +884,14 @@
       else { el.textContent = '—'; }
     }
 
-    function askAndSavePvp(id){ openKeypad(); }
+    function askAndSavePvp(id){
+      openKeypad(id);
+    }
 
-    function openKeypad(){
-      const rec=loadList(K_RECENTS)[0]||null;
-      if(!rec){ alert('Escanea o busca un producto primero.'); return; }
+    function openKeypad(idForItem){
+      // Si no llega id, toma el último reciente
+      let itemId = idForItem || (loadList(K_RECENTS)[0]||{}).id;
+      if(!itemId){ alert('Escanea o busca un producto primero.'); return; }
 
       const modal=document.createElement('div');
       modal.className='modal';
@@ -889,11 +912,7 @@
       document.body.appendChild(modal);
 
       const out = modal.querySelector('#kOut');
-      let buffer = (function(){
-        const txt = $('pvpValue').textContent||'';
-        const m = txt.match(/[\d]+(?:,[\d]{0,2})?/);
-        return m ? m[0] : '';
-      })();
+      let buffer = '';
 
       const setOut = ()=>{ out.textContent = buffer ? fmtDisplay(buffer) : '—'; };
       setOut();
@@ -925,13 +944,13 @@
       modal.querySelector('#kOk').addEventListener('click', ()=>{
         const num = parsePrice(buffer);
         if(num==null || !isFinite(num)){ alert('Precio no válido'); return; }
-        const rec=loadList(K_RECENTS)[0]||null;
-        if(rec){ updateItemPvp(rec.id, Math.max(0,num)); updatePvpPillText(); }
+        updateItemPvp(itemId, Math.max(0,num));
+        updatePvpPillText();
         modal.remove();
       });
     }
 
-    $('pvpPill').addEventListener('click', openKeypad);
+    $('pvpPill').addEventListener('click', ()=> openKeypad());
 
     // Buscar manual
     $('btnBuscar').addEventListener('click', async ()=>{
@@ -956,6 +975,13 @@
       recFilters = [];
       saveJSON(K_REC_FILTER, recFilters);
       renderRecents();
+    });
+
+    // Limpiar filtros en Favoritos
+    $('btnClearFavFilters').addEventListener('click', ()=>{
+      favFilters = [];
+      saveJSON(K_FAV_FILTER, favFilters);
+      renderFavs();
     });
 
     // Mostrar solo comprados
