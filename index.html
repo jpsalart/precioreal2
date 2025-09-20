@@ -56,7 +56,10 @@
       color:#06121f;text-decoration:none;font-size:18px;font-weight:900;min-height:52px
     }
 
-    .pvpLineMini{font-size:14px;font-weight:800;margin-top:8px;color:#cfe2ff;text-align:right}
+    .pvpLineMini{
+      font-size:14px;font-weight:800;margin-top:8px;color:#cfe2ff;
+      text-align:right; white-space:nowrap; display:flex; align-items:center; justify-content:flex-end; gap:6px;
+    }
     .badgeManual{display:inline-block;margin-right:6px;padding:2px 6px;border-radius:999px;border:1px solid #2a3f66;background:#13203b;color:#cfe2ff;font-size:11px;font-weight:700;vertical-align:baseline}
 
     /* Cerrar y estado */
@@ -81,8 +84,9 @@
     }
     .pill .tagIcon{ margin-right:10px; font-size:18px }
     .pill .label{ font-size:16px; }
-    .pill .value{ margin-left:auto; white-space:nowrap; font-size:18px; font-weight:900; }
-    .btn.plus{ width:36px; height:var(--control-h); display:inline-grid; place-items:center; font-size:18px; padding:0; border-radius:12px }
+    .pill .value{ margin-left:auto; white-space:nowrap; font-size:18px; font-weight:900; overflow:hidden; text-overflow:ellipsis; }
+
+    .btn.plus{ width:32px; height:var(--control-h); display:inline-grid; place-items:center; font-size:18px; padding:0; border-radius:12px }
 
     /* Drawer */
     #drawer{display:none;margin-top:10px}
@@ -112,6 +116,13 @@
     #recFilterBar, #favFilterBar{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 4px}
     .chip.filter{cursor:pointer; user-select:none}
     .chip.filter.active{outline:2px solid var(--accent)}
+
+    /* Tag picker */
+    .tagpicker{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:10000}
+    .tagpicker .box{background:#0d1423;border:1px solid #1a2434;border-radius:12px;padding:12px;width:min(520px,92vw)}
+    .tagpicker h3{margin:0 0 8px 0;font-size:16px}
+    .rowInline{display:flex;gap:8px;align-items:center;margin-top:8px}
+    .rowInline input{flex:1;min-width:0}
   </style>
 </head>
 <body>
@@ -173,10 +184,10 @@
       <div class="hint">Consejo: apoya el móvil y apunta al código de barras.</div>
     </section>
 
-    <!-- Comparador de Precios -->
+    <!-- Comparador -->
     <section class="panel" id="panelRecents">
       <div class="bar">
-        <div class="title">🔎 Comparador de Precios</div>
+        <div class="title">🔎 Comparador</div>
         <div style="display:flex; gap:8px; align-items:center">
           <button class="btn ghost" id="btnClearRecFilters">Limpiar filtros</button>
           <button class="btn ghost" id="btnClearRecents">Vaciar lista</button>
@@ -185,7 +196,7 @@
 
       <!-- Explicación -->
       <div class="hint" style="margin-bottom:6px">
-        Aquí verás los artículos que escanees o busques. Puedes <b>filtrarlos por la tienda o supermercado</b> usando etiquetas.
+        Artículos escaneados y sus precios; podrás <b>compararlos en Amazon</b>. Filtra por tienda y añádelos a la lista con <b>★</b>.
       </div>
 
       <!-- Filtros por etiquetas (Comparador) -->
@@ -193,7 +204,7 @@
 
       <div id="recents" class="list-grid"></div>
       <div id="recentsEmpty" class="empty" style="display:none">Aún no hay artículos. Escanea o busca un código.</div>
-      <div id="tipRecents" class="empty" style="margin-top:10px">Consejo: añade etiquetas (p. ej. tienda: Carrefour, 🏠 Casa, ⚡ Urgente).</div>
+      <div id="tipRecents" class="empty" style="margin-top:10px">Consejo: usa etiquetas como “Carrefour”, “Fnac”, “🏠 Casa” o “⚡ Urgente”.</div>
     </section>
 
     <!-- Lista de la compra -->
@@ -286,6 +297,13 @@
     // Tags
     function normalizeTags(arr){ if(!Array.isArray(arr)) return []; const out=[]; for(const t of arr){ const s=String(t||'').trim(); if(!s) continue; if(!out.includes(s)) out.push(s); } return out.slice(0,24); }
     function colorForTag(tag){ const s = String(tag||''); let h=0; for(let i=0;i<s.length;i++){ h = (h*31 + s.charCodeAt(i)) % 360; } const bg = `hsla(${h},70%,18%,.55)`; const br = `hsla(${h},70%,38%,.95)`; const tx = `hsla(${h},95%,90%,1)`; return { bg, br, tx }; }
+    function collectAllTags(){
+      const set = new Set();
+      [K_RECENTS, K_FAVS].forEach(k=>{
+        (loadList(k)||[]).forEach(it=> normalizeTags(it.tags||[]).forEach(t=> set.add(t)));
+      });
+      return Array.from(set).sort((a,b)=> a.localeCompare(b));
+    }
 
     // Modelo
     function normalizeItem(ean, resp){
@@ -375,7 +393,9 @@
         const disabled=item.affiliateLink?'':'disabled';
         const pvpBlock = (item.userPrice!=null) ? `
           <div class="pvpLineMini" data-action="price" title="Toca para editar">
-            <span class="badgeManual">Manual</span> 🏷️ Precio anotado: ${fmtMoney(item.userPrice)}€
+            <span class="badgeManual">Manual</span>
+            <span>🏷️ Precio anotado:</span>
+            <span>${fmtMoney(item.userPrice)}€</span>
           </div>` : '';
 
         // TAGS (en ambos listados)
@@ -432,10 +452,7 @@
           if(act==='open'){ openAmazon(item); }
           if(act==='price'){ askAndSavePvp(id); }
           if(act==='toggle-done'){ toggleCompleted(id); }
-          if(act==='tag-add'){
-            const t = prompt('Nueva etiqueta (ej.: nombre de la tienda, supermercado, urgencia… p. ej. "Carrefour", "El Corte Inglés", "⚡ Urgente")','');
-            if(t!=null){ addTagTo(id, t); }
-          }
+          if(act==='tag-add'){ openTagPicker(id); }
           if(act==='tag-remove'){
             const t = ev.target?.getAttribute?.('data-tag') || ev.target?.parentElement?.getAttribute?.('data-tag');
             if(!t) return;
@@ -451,10 +468,62 @@
           const card = btn.closest('.mini');
           const id = card?.getAttribute('data-id');
           if(!id) return;
-          if(source==='recents') removeRecent(id);
+          if(containerId==='recents') removeRecent(id);
           else { saveList(K_FAVS,loadList(K_FAVS).filter(x=>String(x.id)!==String(id))); renderFavs(); renderRecents(); }
         }, { passive:false });
       });
+    }
+
+    // ---------- Tag Picker ----------
+    function openTagPicker(id){
+      const all = collectAllTags();
+      const quick = ['🏠 Casa','⚡ Urgente','🎂 Cumpleaños','🎁 Regalo'];
+      const unique = Array.from(new Set([...quick, ...all]));
+
+      const modal = document.createElement('div');
+      modal.className = 'tagpicker';
+      modal.innerHTML = `
+        <div class="box">
+          <h3>Elige o crea una etiqueta</h3>
+          <div class="tags" id="tpList">
+            ${unique.length ? unique.map(t=>{
+              const c = colorForTag(t); const style = `background:${c.bg};border-color:${c.br};color:${c.tx}`;
+              return `<span class="chip" data-t="${t}" style="${style}">${t}</span>`;
+            }).join('') : '<div class="muted">Aún no tienes etiquetas.</div>'}
+          </div>
+          <div class="rowInline">
+            <input id="tpInput" placeholder='Ej.: Carrefour, Fnac, 🏠 Casa, ⚡ Urgente…'>
+            <button class="btn secondary" id="tpCancel">Cancelar</button>
+            <button class="btn" id="tpSave">Añadir</button>
+          </div>
+        </div>`;
+      document.body.appendChild(modal);
+
+      const close = ()=> modal.remove();
+
+      modal.addEventListener('click', (e)=>{ if(e.target===modal) close(); });
+
+      modal.querySelectorAll('#tpList .chip').forEach(ch=>{
+        ch.addEventListener('click', ()=>{
+          const tag = ch.getAttribute('data-t')||'';
+          addTagTo(id, tag);
+          close();
+        });
+      });
+
+      modal.querySelector('#tpCancel').addEventListener('click', close);
+      modal.querySelector('#tpSave').addEventListener('click', ()=>{
+        const v = (modal.querySelector('#tpInput').value||'').trim();
+        if(!v) return;
+        addTagTo(id, v);
+        close();
+      });
+
+      const input = modal.querySelector('#tpInput');
+      input.addEventListener('keydown', (e)=>{
+        if(e.key==='Enter'){ e.preventDefault(); modal.querySelector('#tpSave').click(); }
+      });
+      input.focus();
     }
 
     // ---------- Filtros: Recents ----------
@@ -813,8 +882,8 @@
             <button class="kBtn del" data-k="del">⌫</button>
           </div>
           <div class="kRow">
-            <button class="kBtn secondary" id="kCancel">Cancelar</button>
-            <button class="kBtn ok" id="kOk">Guardar</button>
+            <button class="btn secondary" id="kCancel">Cancelar</button>
+            <button class="btn ok" id="kOk">Guardar</button>
           </div>
         </div>`;
       document.body.appendChild(modal);
