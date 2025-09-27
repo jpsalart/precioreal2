@@ -1,0 +1,562 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PrecioReal · Rescate</title>
+  <meta name="theme-color" content="#0b0f14">
+  <link rel="manifest" href="/manifest.json">
+  <style>
+    :root{
+      --bg:#0b0f14; --panel:#121824; --text:#e7edf7; --muted:#a8b3c7;
+      --brand:#3aa1ff; --brand2:#1e78d5; --bd:#1a2434;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;
+         background:var(--bg); color:var(--text);}
+    header{position:sticky;top:0;z-index:10;background:linear-gradient(180deg,#0b0f14,#0b0f1400);
+           padding:16px 12px 8px;border-bottom:1px solid var(--bd);}
+    h1{font-size:1.1rem;margin:0 0 6px 0;letter-spacing:.3px}
+    .hint{color:var(--muted);font-size:.9rem}
+    main{max-width:900px;margin:0 auto;padding:12px}
+    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .btn{appearance:none;border:1px solid var(--bd);background:#182131;color:var(--text);
+         padding:10px 12px;border-radius:10px;cursor:pointer}
+    .btn.primary{background:linear-gradient(180deg,var(--brand),var(--brand2));border:none;color:#001225;font-weight:600}
+    .btn.secondary{background:#162033}
+    .btn.warn{background:#3a1c1c;border-color:#6b2a2a}
+    .muted{color:var(--muted)}
+    .pill{display:inline-flex;gap:6px;align-items:center;padding:8px 10px;border:1px dashed var(--bd);
+          border-radius:999px;color:var(--muted)}
+    input[type="text"], input[type="number"]{background:#0f1726;border:1px solid var(--bd);
+          color:var(--text);border-radius:10px;padding:10px 12px}
+    video{width:100%;max-height:50vh;background:#000;border-radius:12px;border:1px solid var(--bd)}
+    .section-title{display:flex;align-items:center;justify-content:space-between;margin:16px 0 8px}
+    .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+    .card{background:var(--panel);border:1px solid var(--bd);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
+    /* Imagen estable + smart-fit + toggle */
+    .card .media{
+      position: relative; width:100%; aspect-ratio: var(--ar, 16 / 10);
+      background:#0a1220; border-bottom:1px solid var(--bd); overflow:hidden; cursor:zoom-in;
+    }
+    .card .media img{
+      position:absolute; inset:0; width:100%; height:100%;
+      object-fit: cover; object-position:center; display:block; transition:transform .15s ease-out;
+    }
+    .card .media[data-fit="contain"]{ cursor:zoom-out; }
+    .card .media[data-fit="contain"] img{ object-fit: contain; }
+    .card .media.loading::after{
+      content:''; position:absolute; inset:auto 12px 12px auto;
+      width:16px; height:16px; border-radius:50%;
+      border:2px solid rgba(255,255,255,.25); border-top-color: rgba(255,255,255,.8);
+      animation: pr-spin .8s linear infinite;
+    }
+    @keyframes pr-spin{to{transform:rotate(360deg)}}
+    .card .body{padding:12px;display:flex;flex-direction:column;gap:8px}
+    .title{font-weight:600;font-size:.95rem;line-height:1.25rem;
+      display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .cat{font-size:.8rem;color:var(--muted);
+      display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+    .row.actions{margin-top:auto}
+    .chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--bd);padding:4px 8px;border-radius:999px;font-size:.8rem;color:var(--muted)}
+    .star{cursor:pointer}
+    .price{font-family:ui-monospace,Menlo,Consolas;font-size:.95rem}
+    .tabs{display:flex;gap:8px;margin-top:10px}
+    .tab{padding:8px 12px;border-radius:12px;border:1px solid var(--bd);cursor:pointer;color:var(--muted)}
+    .tab.active{background:#162033;color:var(--text)}
+    .divider{height:1px;background:var(--bd);margin:12px 0}
+    .counter{font-size:.85rem;color:var(--muted)}
+    .flex{display:flex;align-items:center;gap:8px}
+    .grow{flex:1}
+    footer{padding:40px 12px;color:var(--muted);text-align:center}
+    .link{color:#9ecbff;text-decoration:none}
+    #toasts{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;display:flex;flex-direction:column;gap:8px;z-index:9999;pointer-events:none}
+    .toast{pointer-events:auto;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;border:1px solid var(--bd);background:#10192b;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+    .toast.success{border-color:#22553a;background:#0f2a1d;color:#a6f3b3}
+    .toast.error{border-color:#5a2727;background:#2a0f0f;color:#ffbdbd}
+    .toast .act{margin-left:6px;text-decoration:underline;cursor:pointer}
+    #cameraControls{display:none;align-items:center;gap:10px}
+    #zoomSlider{width:220px}
+    @media (max-width: 480px){
+      .cards{ grid-template-columns: 1fr; }
+      .card .media{ aspect-ratio: var(--ar, 4 / 3); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>PrecioReal · Rescate</h1>
+    <div class="hint">Versión de rescate con escáner + imágenes smart-fit. No muestra precios de Amazon.</div>
+  </header>
+
+  <main>
+    <div class="row">
+      <button id="btnScan" class="btn primary">📷 Escáner</button>
+      <div class="pill">PvP Tienda <input id="inputPrice" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0,00" style="width:110px"></div>
+      <input id="inputManual" class="grow" type="text" placeholder="Introducir código manual">
+      <button id="btnManualGo" class="btn">➕ Añadir</button>
+    </div>
+
+    <div class="row toggles" style="margin-top:8px">
+      <button class="btn secondary" id="btnToggleSound">Sonido: ON</button>
+      <button class="btn secondary" id="btnToggleVibra">Vibración: ON</button>
+      <button class="btn secondary" id="btnToggleContinuous">Escáner continuo: ON</button>
+      <button class="btn secondary" id="btnOpenInApp">Abrir en app: OFF</button>
+      <button class="btn secondary" id="btnTorch">Linterna: OFF</button>
+      <button class="btn secondary" id="btnTestCam">Test cámara</button>
+    </div>
+
+    <div style="margin-top:10px">
+      <video id="video" playsinline muted></video>
+    </div>
+
+    <div id="cameraControls" class="row" style="margin-top:8px">
+      <span class="muted">Zoom</span>
+      <input type="range" id="zoomSlider" min="1" max="1" step="0.1" value="1">
+      <span id="zoomVal" class="muted">1×</span>
+      <span id="afBadge" class="chip" title="Auto-focus">AF auto</span>
+    </div>
+
+    <div class="tabs">
+      <div id="tabComparar" class="tab active">Comparar</div>
+      <div id="tabLista" class="tab">Lista de la compra</div>
+    </div>
+
+    <div id="viewComparar">
+      <div class="section-title">
+        <div class="flex">
+          <span class="counter" id="countComparar">0 ítems</span>
+        </div>
+        <div class="flex">
+          <button id="btnClearFilters" class="btn">Limpiar filtros (0)</button>
+        </div>
+      </div>
+      <div class="cards" id="cardsComparar"></div>
+    </div>
+
+    <div id="viewLista" style="display:none">
+      <div class="section-title">
+        <div class="flex">
+          <span class="counter" id="countLista">0 ítems</span>
+        </div>
+        <div class="flex">
+          <button id="btnMostrarComprados" class="btn">Ver comprados: OFF</button>
+        </div>
+      </div>
+      <div class="cards" id="cardsLista"></div>
+    </div>
+
+    <div class="divider"></div>
+    <div class="muted">Cumplimiento Amazon Afiliados: no mostramos precios de Amazon; el PvP indicado es manual.</div>
+  </main>
+
+  <footer>
+    <a class="link" href="/api/zxing.js" target="_blank" rel="noopener">ZXing local</a> ·
+    <a class="link" href="/api/lookup?ean=9788491296014" target="_blank" rel="noopener">Lookup test</a> ·
+    <a class="link" href="/api/go/B07ZDBT15M?d=9" target="_blank" rel="noopener">Go test</a>
+  </footer>
+
+  <div id="toasts" aria-live="polite" aria-atomic="true"></div>
+
+  <script src="/api/zxing.js" defer></script>
+
+  <script>
+  // ===== Utilidades base =====
+  const $ = sel => document.getElementById(sel);
+  const sleep = ms => new Promise(r=>setTimeout(r,ms));
+  const now = () => Date.now();
+
+  // ===== Settings (localStorage) =====
+  function loadSettings(){ try { return JSON.parse(localStorage.getItem('pr-settings-v1')||'{}'); } catch(e){ return {}; } }
+  function saveSettings(s){ localStorage.setItem('pr-settings-v1', JSON.stringify(s||{})); }
+  let settings = Object.assign({ noSound:false, noVibra:false, continuous:true, openInApp:false }, loadSettings());
+  function renderToglesSafe(){
+    const map = [
+      ['btnToggleSound','Sonido: ', settings.noSound ? 'OFF':'ON'],
+      ['btnToggleVibra','Vibración: ', settings.noVibra ? 'OFF':'ON'],
+      ['btnToggleContinuous','Escáner continuo: ', settings.continuous ? 'ON':'OFF'],
+      ['btnOpenInApp','Abrir en app: ', settings.openInApp ? 'ON':'OFF'],
+    ];
+    map.forEach(([id,prefix,val])=>{ const el=$(id); if(el) el.textContent = prefix+val; });
+  }
+  renderToglesSafe();
+  $('btnToggleSound')?.addEventListener('click', ()=>{ settings.noSound=!settings.noSound; saveSettings(settings); renderToglesSafe(); });
+  $('btnToggleVibra')?.addEventListener('click', ()=>{ settings.noVibra=!settings.noVibra; saveSettings(settings); renderToglesSafe(); });
+  $('btnToggleContinuous')?.addEventListener('click', ()=>{ settings.continuous=!settings.continuous; saveSettings(settings); renderToglesSafe(); });
+  $('btnOpenInApp')?.addEventListener('click', ()=>{ settings.openInApp=!settings.openInApp; saveSettings(settings); renderToglesSafe(); });
+
+  // ===== Estado app =====
+  let scanning = false, stream = null, lastScanAt = 0, torchOn = false, wakeLock = null, currentTrack = null;
+  let detector = ('BarcodeDetector' in window) ? new BarcodeDetector({ formats:['ean_13','ean_8','upc_a','upc_e','code_128'] }) : null;
+  let autostopTimer = null;
+
+  const codeCooldown = new Map();
+  const burstBuffer = [];
+  let lastBurstNoticeAt = 0;
+
+  function vibrate(ms=40){ try{ if(!settings.noVibra && navigator.vibrate) navigator.vibrate(ms); }catch(e){} }
+  async function beep(){
+    if(settings.noSound) return;
+    try{ const ctx = new (window.AudioContext||window.webkitAudioContext)();
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type='sine'; o.frequency.value=880; g.gain.value=0.02;
+      o.start(); setTimeout(()=>{ o.stop(); ctx.close(); },120);
+    }catch(e){}
+  }
+
+  // ===== Toasts =====
+  function showToast({message, type='info', timeout=2500, actionText='', onAction=null}={}){
+    const root = $('toasts'); const el = document.createElement('div');
+    el.className = 'toast' + (type==='success' ? ' success' : type==='error' ? ' error' : '');
+    el.innerHTML = `<span>${message}</span>` + (actionText ? ` <span class="act">${actionText}</span>` : '');
+    root.appendChild(el);
+    let timer = setTimeout(()=>{ el.remove(); }, timeout);
+    if(actionText && onAction){ el.querySelector('.act').addEventListener('click', ()=>{ clearTimeout(timer); onAction(); el.remove(); }); }
+  }
+
+  // ===== Tabs =====
+  function switchTab(name){
+    const isComparar = name==='comparar';
+    $('tabComparar')?.classList.toggle('active', isComparar);
+    $('tabLista')?.classList.toggle('active', !isComparar);
+    if($('viewComparar')) $('viewComparar').style.display = isComparar?'block':'none';
+    if($('viewLista')) $('viewLista').style.display = isComparar?'none':'block';
+    renderAll();
+  }
+  $('tabComparar')?.addEventListener('click', ()=>switchTab('comparar'));
+  $('tabLista')?.addEventListener('click', ()=>switchTab('lista'));
+
+  // ===== Render tarjetas =====
+  function itemCardHTML(item, inList=false){
+    const media = `
+      <div class="media loading" data-id="${item.id||''}" data-fit="cover" onclick="toggleFit(this)">
+        ${
+          item.image
+            ? `<img src="${item.image}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onload="fitImage(this)">`
+            : `<div class="cover">Sin imagen</div>`
+        }
+      </div>`;
+
+    const price = item.userPrice!=null ? `<div class="price">PvP Tienda: ${item.userPrice.toFixed(2)} €</div>` : `<div class="price muted">Añadir precio</div>`;
+    const tags = (item.tags||[]).map(t=>`<span class="chip">#${escapeHtml(t)}</span>`).join(' ');
+    const star = inList ? `<span class="chip">Comprado: <input type="checkbox" ${item.completed?'checked':''} data-action="toggle-comprado" data-id="${item.id}"></span>` : `<span class="chip star" title="Añadir a lista" data-action="fav" data-id="${item.id}">⭐</span>`;
+    const btnLabel = inList ? 'Comprar en Amazon' : 'Ver en Amazon';
+    return `<div class="card" data-id="${item.id}">${media}<div class="body"><div class="title">${escapeHtml(item.title||'Sin título')}</div><div class="cat">${escapeHtml(item.category||'')}</div>${price}<div class="row actions"><button class="btn" data-action="open" data-id="${item.id}">🛒 ${btnLabel}</button><button class="btn" data-action="add-price" data-id="${item.id}">€ Precio</button>${star}</div><div class="row">${tags || ''}</div></div></div>`;
+  }
+  function renderAll(){
+    $('cardsComparar').innerHTML = (recientes||[]).map(it=>itemCardHTML(it,false)).join('');
+    $('countComparar').textContent = `${(recientes||[]).length} ítems`;
+    const list = (favoritos||[]).filter(f=> showComprados ? true : !f.completed);
+    $('cardsLista').innerHTML = list.map(it=>itemCardHTML(it,true)).join('');
+    $('countLista').textContent = `${list.length} ítems`;
+  }
+
+  // ===== Datos locales =====
+  function loadArr(key){ try{return JSON.parse(localStorage.getItem(key)||'[]')}catch(e){return[]} }
+  function saveArr(key, val){ localStorage.setItem(key, JSON.stringify(val||[])); }
+  let recientes = loadArr('pr-recent-v1');
+  let favoritos = loadArr('pr-favs-v1');
+  let showComprados = false;
+  renderAll();
+
+  document.addEventListener('click', (e)=>{
+    const btn = e.target.closest('button,span.star,input[type="checkbox"]'); if(!btn) return;
+    const action = btn.dataset.action; const id = btn.dataset.id; if(!action || !id) return;
+    const item = (recientes.find(x=>x.id===id) || favoritos.find(x=>x.id===id));
+    if(!item) return;
+
+    if(action==='open'){ openAmazonSmart(item); }
+    else if(action==='add-price'){
+      const val = prompt('Precio manual (€, usa punto o coma):', item.userPrice!=null? String(item.userPrice):'');
+      if(val!=null){
+        const n = Number(String(val).replace(',','.'));
+        if(!isNaN(n)){ item.userPrice = Math.round(n*100)/100; item.userPriceAt = now(); persistItem(item); renderAll(); }
+      }
+    }
+    else if(action==='fav'){
+      if(!favoritos.find(x=>x.id===item.id)){ const copy = {...item, completed:false, completedAt:null}; favoritos.unshift(copy); saveArr('pr-favs-v1', favoritos); renderAll(); }
+    }
+    else if(action==='toggle-comprado'){
+      item.completed = btn.checked; item.completedAt = item.completed ? now() : null; saveArr('pr-favs-v1', favoritos); renderAll();
+    }
+  });
+
+  $('btnMostrarComprados')?.addEventListener('click', ()=>{
+    showComprados = !showComprados;
+    $('btnMostrarComprados').textContent = 'Ver comprados: ' + (showComprados?'ON':'OFF');
+    renderAll();
+  });
+
+  function persistItem(item){
+    const i = recientes.findIndex(x=>x.id===item.id); if(i>=0){ recientes[i]=item; saveArr('pr-recent-v1', recientes); }
+    const j = favoritos.findIndex(x=>x.id===item.id); if(j>=0){ favoritos[j]=item; saveArr('pr-favs-v1', favoritos); }
+  }
+
+  // ===== Wake Lock =====
+  async function requestWakeLock(){ try{ if('wakeLock' in navigator){ wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', ()=>{}); } }catch(e){} }
+  async function releaseWakeLock(){ try{ await wakeLock?.release(); }catch(e){} wakeLock = null; }
+  document.addEventListener('visibilitychange', async ()=>{ if(document.visibilityState === 'visible' && scanning && wakeLock){ try{ wakeLock = await navigator.wakeLock.request('screen'); }catch(e){} } });
+
+  // ===== Escáner =====
+  const video = $('video');
+  async function startScan(){
+    if(scanning) return; scanning = true;
+    $('btnScan').textContent = '⛔ Detener'; $('btnScan').classList.add('warn');
+    try{
+      stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' }, audio:false });
+      video.srcObject = stream; await video.play(); scheduleAutostop(); await requestWakeLock();
+      currentTrack = stream.getVideoTracks()[0]; setupCameraControls(currentTrack).catch(()=>{});
+      if(detector){ scanLoopBarcodeDetector(); } else { scanLoopZXing(); }
+    }catch(e){
+      scanning = false; $('btnScan').textContent = '📷 Escáner'; $('btnScan').classList.remove('warn'); alert('No se pudo iniciar la cámara.');
+    }
+  }
+  function stopScan(){
+    scanning = false; $('btnScan').textContent = '📷 Escáner'; $('btnScan').classList.remove('warn');
+    try{ if(stream){ stream.getTracks().forEach(t=>t.stop()); } stream = null; currentTrack = null; }catch(e){}
+    clearAutostop(); torchOff(); releaseWakeLock(); $('cameraControls').style.display = 'none';
+  }
+  $('btnScan')?.addEventListener('click', ()=> scanning ? stopScan() : startScan() );
+
+  function scheduleAutostop(){ clearAutostop(); autostopTimer = setTimeout(()=>{ if(scanning) stopScan(); }, 10*60*1000); }
+  function clearAutostop(){ if(autostopTimer){ clearTimeout(autostopTimer); autostopTimer=null; }}
+
+  async function scanLoopBarcodeDetector(){
+    while(scanning){
+      try{
+        const barcodes = await detector.detect(video);
+        if(barcodes && barcodes.length){
+          const code = sanitizeCode(barcodes[0].rawValue || ''); if(code) await onCodeDetected(code);
+        }
+      }catch(e){}
+      await sleep(120);
+    }
+  }
+  async function scanLoopZXing(){
+    let ZX = window.ZXing || window['ZXing'];
+    for(let i=0;i<50 && !ZX;i++){ await sleep(100); ZX = window.ZXing || window['ZXing']; }
+    if(!ZX){ console.warn('ZXing no disponible'); return; }
+    const reader = new ZX.BrowserMultiFormatReader();
+    try{
+      await reader.decodeFromVideoDevice(null, video, async (result, err)=>{
+        if(!scanning) return;
+        if(result){
+          const code = sanitizeCode(result.getText()); if(code) await onCodeDetected(code);
+          if(!settings.continuous){ reader.reset(); }
+        }
+      });
+    }catch(e){ console.error('ZXing error', e); }
+  }
+
+  function sanitizeCode(raw){ return (String(raw||'').replace(/[^0-9Xx]/g,'').toUpperCase()); }
+
+  async function onCodeDetected(code){
+    const t = now();
+    const last = codeCooldown.get(code) || 0;
+    if(t - last < 2000) return; codeCooldown.set(code, t);
+    if(t - lastScanAt < 300) return; lastScanAt = t; scheduleAutostop();
+    vibrate(30); beep();
+
+    burstBuffer.push({ code, t }); for(let i=burstBuffer.length-1; i>=0; i--){ if(t - burstBuffer[i].t > 5000) burstBuffer.splice(i,1); }
+    const distinct = new Set(burstBuffer.map(x=>x.code)).size;
+
+    let item = await resolveEAN(code);
+    if(item){
+      const existing = recientes.find(x=>x.id===item.id);
+      if(!existing){ recientes.unshift(item); saveArr('pr-recent-v1', recientes); }
+      else { Object.assign(existing, item); saveArr('pr-recent-v1', recientes); }
+      renderAll();
+      showToast({ message: '✅ Encontrado', type:'success', timeout:1500 });
+    }else{
+      showToast({ message: '❌ No encontrado', type:'error', timeout:1800 });
+    }
+    if(settings.continuous && distinct >= 3 && (t - lastBurstNoticeAt > 4000)){
+      lastBurstNoticeAt = t;
+      showToast({ message: `Procesados ${distinct}`, type: 'success', timeout: 4000, actionText: 'Ver', onAction: ()=> switchTab('comparar') });
+    }
+    if(!settings.continuous) stopScan();
+  }
+
+  // ===== Lookup =====
+  async function resolveEAN(ean){
+    const cacheKey = 'pr-cache-' + ean;
+    try{ const cached = JSON.parse(localStorage.getItem(cacheKey)||'null'); if(cached && (now()-cached.t) < 30*60*1000){ return cached.item; } }catch(e){}
+    try{
+      const r = await fetch('/api/lookup?ean='+encodeURIComponent(ean), { cache:'no-store' });
+      if(!r.ok) throw new Error('lookup http '+r.status);
+      const data = await r.json();
+      if(!data.success) return null;
+      const prod = data.product||{}; const meta = data.meta||{}; const asin = meta.asin || ''; const domain = meta.domain || '9';
+      const item = { id: asin || ean, ean, asin, domain, title: prod.title || ('EAN ' + ean), image: prod.image || null, category: prod.category || '',
+        affiliateLink: prod.affiliateLink || ('/api/go/'+encodeURIComponent(asin)+'?d='+encodeURIComponent(domain)), userPrice: null, userPriceAt: null,
+        tags: [], completed: false, completedAt: null, ts: now() };
+      localStorage.setItem(cacheKey, JSON.stringify({ t:now(), item })); return item;
+    }catch(err){ enqueueOffline(ean); return null; }
+  }
+  function enqueueOffline(ean){ const q = loadArr('pr-queue-v1'); q.push({ ean, t: now() }); saveArr('pr-queue-v1', q); }
+  async function reprocesarCola(){ const q = loadArr('pr-queue-v1'); if(!q.length) return;
+    const next = q.shift(); saveArr('pr-queue-v1', q);
+    const item = await resolveEAN(next.ean);
+    if(item){ if(!recientes.find(x=>x.id===item.id)){ recientes.unshift(item); saveArr('pr-recent-v1', recientes); renderAll(); } }
+    setTimeout(reprocesarCola, 500);
+  }
+  window.addEventListener('online', reprocesarCola); reprocesarCola();
+
+  // ===== Manual input =====
+  $('btnManualGo')?.addEventListener('click', async ()=>{
+    const code = sanitizeCode($('inputManual').value); if(!code) return;
+    const item = await resolveEAN(code);
+    if(item){ if(!recientes.find(x=>x.id===item.id)){ recientes.unshift(item); saveArr('pr-recent-v1', recientes); renderAll(); } showToast({ message: '✅ Encontrado', type:'success', timeout:1500 }); }
+    else { showToast({ message: '❌ No encontrado', type:'error', timeout:1800 }); }
+  });
+
+  // ===== Linterna =====
+  $('btnTorch')?.addEventListener('click', async ()=>{
+    if(!stream){ alert('Inicia el escáner primero.'); return; }
+    const track = stream.getVideoTracks()[0];
+    const caps = track.getCapabilities?.(); if(!caps || !('torch' in caps)){ alert('Este dispositivo/navegador no soporta linterna.'); return; }
+    torchOn = !torchOn;
+    try{ await track.applyConstraints({ advanced:[{ torch: torchOn }] }); $('btnTorch').textContent = 'Linterna: ' + (torchOn?'ON':'OFF'); }catch(e){ alert('No se pudo activar la linterna.'); }
+  });
+
+  $('btnTestCam')?.addEventListener('click', async ()=>{
+    try{ const s = await navigator.mediaDevices.getUserMedia({ video:true, audio:false }); s.getTracks().forEach(t=>t.stop()); alert('Cámara OK'); }catch(e){ alert('Error cámara'); }
+  });
+
+  // ===== Cámara: zoom + enfoque continuo =====
+  async function setupCameraControls(track){
+    try{
+      const caps = track.getCapabilities?.() || {}; const s = track.getSettings?.() || {};
+      if(caps.focusMode && Array.isArray(caps.focusMode) && caps.focusMode.includes('continuous')){
+        try{ await track.applyConstraints({ advanced:[{ focusMode:'continuous' }] }); $('afBadge').style.display = 'inline-flex'; }catch(e){ $('afBadge').style.display = 'none'; }
+      }else{ $('afBadge').style.display = 'none'; }
+      if('zoom' in caps){
+        const min = typeof caps.zoom.min === 'number' ? caps.zoom.min : 1;
+        const max = typeof caps.zoom.max === 'number' ? caps.zoom.max : 1;
+        const step = typeof caps.zoom.step === 'number' ? caps.zoom.step : 0.1;
+        const cur = typeof s.zoom === 'number' ? s.zoom : min;
+        const slider = $('zoomSlider'); slider.min = String(min); slider.max = String(max); slider.step = String(step); slider.value = String(cur);
+        $('zoomVal').textContent = (Number(slider.value)).toFixed(1) + '×'; $('cameraControls').style.display = 'flex';
+        slider.addEventListener('input', async (e)=>{
+          const v = Number(e.target.value); $('zoomVal').textContent = v.toFixed(1) + '×';
+          try{ await track.applyConstraints({ zoom: v }).catch(async ()=>{ await track.applyConstraints({ advanced:[{ zoom: v }] }); }); }catch(err){}
+        });
+      }else{ $('cameraControls').style.display = 'none'; }
+    }catch(e){ $('cameraControls').style.display = 'none'; }
+  }
+
+  // ===== Deep link Amazon =====
+  function isAndroidIntentCapable(){ const ua = navigator.userAgent || ''; return /Android/i.test(ua) && /(Chrome|EdgA|Brave|SamsungBrowser|Chromium)/i.test(ua); }
+  function tldFromKeepa(domainIdx){ const map = {1:'com',2:'co.uk',3:'de',4:'fr',5:'co.jp',6:'ca',7:'cn',8:'it',9:'es',10:'in',11:'com.mx',12:'com.br',13:'com.au',14:'nl',15:'se',16:'pl',17:'com.tr',18:'sg',19:'sa',20:'ae'}; return map[String(domainIdx||9)] || 'es'; }
+  function openAmazonSmart(item){
+    try{
+      const webHref = item?.affiliateLink ? new URL(item.affiliateLink, location.origin).href : `https://www.amazon.${tldFromKeepa(item?.domain)}/dp/${encodeURIComponent(item?.asin || '')}`;
+      if (settings.openInApp && isAndroidIntentCapable() && (item?.asin)){
+        const tld = tldFromKeepa(item?.domain); const asin = item.asin;
+        const intentUrl = `intent://www.amazon.${tld}/dp/${encodeURIComponent(asin)}#Intent;scheme=https;package=com.amazon.mShop.android.shopping;S.browser_fallback_url=${encodeURIComponent(webHref)};end`;
+        location.href = intentUrl; return;
+      }
+      location.href = webHref;
+    }catch(e){}
+  }
+
+  // ===== Imagen: smart-fit + toggle con persistencia =====
+  function prFitKey(media, img){ return media?.dataset?.id || img?.currentSrc || img?.src || ''; }
+  function prFitLoad(key){ try{ return JSON.parse(localStorage.getItem('pr-fit-'+key)||'null'); }catch(e){ return null; } }
+  function prFitSave(key, obj){ try{ localStorage.setItem('pr-fit-'+key, JSON.stringify(obj||{})); }catch(e){} }
+  function prBucketFromAR(ar){ if(ar < 0.9) return '3 / 4'; if(ar <= 1.15) return '1 / 1'; if(ar <= 1.6) return '4 / 3'; return '16 / 9'; }
+  function fitImage(img){
+    try{
+      const media = img.closest('.media'); if(!media) return;
+      media.classList.remove('loading');
+      const key = prFitKey(media, img);
+      const saved = prFitLoad(key);
+      if(saved && (saved.fit || saved.ar)){ if(saved.ar) media.style.setProperty('--ar', saved.ar); if(saved.fit) media.dataset.fit = saved.fit; return; }
+      const w = img.naturalWidth||1, h = img.naturalHeight||1, ar = w/h;
+      media.style.setProperty('--ar', prBucketFromAR(ar));
+      const rect = media.getBoundingClientRect(); const arBox = (rect.width||1)/(rect.height||1);
+      const diff = Math.abs(ar - arBox) / Math.max(arBox, 1);
+      media.dataset.fit = diff > 0.12 ? 'contain' : 'cover';
+    }catch(e){}
+  }
+  function toggleFit(el){
+    const media = el?.classList?.contains('media') ? el : el?.closest?.('.media'); if(!media) return;
+    const next = media.dataset.fit === 'contain' ? 'cover' : 'contain'; media.dataset.fit = next;
+    const img = media.querySelector('img'); const w = img?.naturalWidth||0, h = img?.naturalHeight||0; const ar = (w && h) ? (w/h) : null;
+    const key = prFitKey(media, img); prFitSave(key, { fit: next, ar: ar ? prBucketFromAR(ar) : undefined });
+  }
+
+  // ===== Helpers =====
+  function escapeHtml(s){ return String(s||'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+  async function torchOff(){ try{ if(!stream) return; const track = stream.getVideoTracks()[0]; await track.applyConstraints({ advanced:[{ torch:false }] }); $('btnTorch').textContent = 'Linterna: OFF'; torchOn = false; }catch(e){} }
+
+  if('serviceWorker' in navigator){ navigator.serviceWorker.register('/sw.js').catch(()=>{}); }
+  </script>
+
+<style id="rgb-force-styles">
+/* === RGB Force Styles (high specificity + !important for demo) === */
+#btnScan.btn.btn-neon{
+  background:linear-gradient(180deg,#111a2b,#0d1524) !important;
+  border-color:#20314d !important;
+  position:relative; isolation:isolate;
+}
+#btnScan.btn.btn-neon::after{
+  content:''; position:absolute; inset:-2px; border-radius:14px;
+  background:radial-gradient(120px 60px at var(--mx,50%) var(--my,50%), rgba(0,240,255,.45), transparent 60%);
+  z-index:-1; filter:blur(10px); opacity:.9; transition:opacity .25s ease;
+}
+#btnScan.btn.btn-neon:active::after{ opacity:1; }
+
+/* CTA "Ver/Comprar en Amazon" */
+button.btn.btn-rgb[data-action="open"],
+button[data-action="open"].btn.btn-rgb{
+  border:0 !important;
+  padding:calc(10px + 2px) calc(12px + 2px) !important;
+  background:
+    linear-gradient(#162033,#162033) padding-box,
+    conic-gradient(from var(--a,0deg),#ff6ec7,#00e5ff,#7cff6b,#ff6ec7) border-box !important;
+  border:2px solid transparent !important;
+  color:inherit !important;
+}
+button.btn.btn-rgb[data-action="open"]:hover{ --a: 180deg; }
+</style>
+
+
+<script>
+(function(){
+  function applyRGB(){
+    try{
+      const scan = document.getElementById('btnScan');
+      if(scan && !scan.classList.contains('btn-neon')) scan.classList.add('btn-neon');
+
+      document.querySelectorAll('button[data-action="open"]').forEach(btn=>{
+        btn.classList.add('btn');
+        btn.classList.add('btn-rgb');
+      });
+    }catch(e){}
+  }
+  // Run now
+  applyRGB();
+
+  // Monkey-patch renderAll if it exists
+  if(window.renderAll && !window.__rgb_patched){
+    const _orig = window.renderAll;
+    window.renderAll = function(){ const r = _orig.apply(this, arguments); try{ applyRGB(); }catch(e){} return r; };
+    window.__rgb_patched = true;
+  }
+
+  // Observe dynamic changes in cards containers
+  const obs = new MutationObserver(()=>applyRGB());
+  const c1 = document.getElementById('cardsComparar');
+  const c2 = document.getElementById('cardsLista');
+  if(c1) obs.observe(c1, {childList:true, subtree:true});
+  if(c2) obs.observe(c2, {childList:true, subtree:true});
+
+  console.log('[RGB] Forced styles active');
+})();
+</script>
+
+</body>
+</html>
