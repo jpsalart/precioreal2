@@ -82,6 +82,42 @@
       .cards{ grid-template-columns: 1fr; }
       .card .media{ aspect-ratio: var(--ar, 4 / 3); }
     }
+  
+/* === PrecioReal · Botones RGB/Neón integrados === */
+/* Escáner: efecto neón SOLO cuando no está en modo .warn (Detener) */
+#btnScan:not(.warn){
+  background: linear-gradient(180deg,#111a2b,#0d1524);
+  border-color: #20314d;
+  position: relative;
+  isolation: isolate;
+  color: inherit;
+}
+#btnScan:not(.warn)::after{
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 12px;
+  background: radial-gradient(120px 60px at var(--mx,50%) var(--my,50%), rgba(0,240,255,.45), transparent 60%);
+  z-index: -1;
+  filter: blur(10px);
+  pointer-events: none;
+}
+
+/* CTA Ver/Comprar en Amazon: borde RGB */
+.row.actions button[data-action="open"]{
+  border: 0;
+  padding: calc(10px + 2px) calc(12px + 2px);
+  background:
+    linear-gradient(#162033,#162033) padding-box,
+    conic-gradient(from 0deg, #ff6ec7, #00e5ff, #7cff6b, #ff6ec7) border-box;
+  border: 2px solid transparent;
+  color: inherit;
+}
+
+@media (prefers-reduced-motion: reduce){
+  #btnScan::after{ transition:none !important; }
+}
+
   </style>
 </head>
 <body>
@@ -487,6 +523,22 @@
     const img = media.querySelector('img'); const w = img?.naturalWidth||0, h = img?.naturalHeight||0; const ar = (w && h) ? (w/h) : null;
     const key = prFitKey(media, img); prFitSave(key, { fit: next, ar: ar ? prBucketFromAR(ar) : undefined });
   }
+
+  
+  // === Neon glow follow for #btnScan (no cambia lógica existente) ===
+  (function(){
+    const btn = document.getElementById('btnScan');
+    if(!btn) return;
+    const setPos = (e)=>{
+      const r = btn.getBoundingClientRect();
+      const p = e.touches ? e.touches[0] : e;
+      btn.style.setProperty('--mx', (p.clientX - r.left) + 'px');
+      btn.style.setProperty('--my', (p.clientY - r.top) + 'px');
+    };
+    btn.addEventListener('mousemove', setPos, {passive:true});
+    btn.addEventListener('touchstart', setPos, {passive:true});
+    btn.addEventListener('touchmove', setPos, {passive:true});
+  })();
 
   // ===== Helpers =====
   function escapeHtml(s){ return String(s||'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
