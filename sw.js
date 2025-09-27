@@ -1,98 +1,96 @@
-/* PrecioReal Service Worker — v5 (cache-bust + safe strategies)
-   - Immediate activation: skipWaiting + clients.claim
-   - Network-first for navigations (HTML) to avoid stale UI
-   - Stale-while-revalidate for static assets (CSS/JS/vendor/images)
-   - Bypass caches for dynamic APIs (/api/lookup, /api/go, /api/log)
-*/
-const CACHE_NAME = 'pr-v5';
-const STATIC_ASSETS = [
-  '/',               // adjust if your index is not at root
-  '/index.html',     // ensure your deployed filename matches
+/* sw.js — Service Worker de PrecioReal */
+const VERSION = 'pr-v1c-2025-09-15';
+const STATIC_CACHE = `static-${VERSION}`;
+
+const PRECACHE_URLS = [
+  '/',               // raíz
+  '/index.html',     // si existe como archivo
   '/manifest.json',
-  // Vendor/ZXing (served via /api/zxing.js, but we leave it network-first)
-  // Add icons, CSS, and your static JS files if you have separate ones, e.g.:
-  // '/icons/icon-192.png',
-  // '/icons/icon-512.png',
+  '/sw.js',
+  '/offline.html',
+  '/api/zxing.js',   // motor de escaneo local
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
+  // Si tienes ZXing UMD local:
+  '/vendor/zxing/index.min.js'
 ];
 
+// ----- Install: precache -----
 self.addEventListener('install', (event) => {
-  self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS).catch(()=>{}))
+    caches.open(STATIC_CACHE).then(cache => cache.addAll(PRECACHE_URLS))
+      .then(() => self.skipWaiting())
   );
 });
 
+// ----- Activate: limpiar caches viejos -----
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
-    // Clean old caches
     const keys = await caches.keys();
-    await Promise.all(keys.map(k => (k !== CACHE_NAME) ? caches.delete(k) : Promise.resolve()));
+    await Promise.all(keys.map(k => (k.startsWith('static-') && k !== STATIC_CACHE) ? caches.delete(k) : null));
     await self.clients.claim();
   })());
 });
 
-function isNavigationRequest(request) {
-  return request.mode === 'navigate' || (request.method === 'GET' && request.headers.get('accept')?.includes('text/html'));
-}
-function isApiBypass(url) {
-  return url.pathname.startsWith('/api/lookup') ||
-         url.pathname.startsWith('/api/go')     ||
-         url.pathname.startsWith('/api/log');
-}
-function isStaticAsset(url) {
-  // Heuristic: file-like requests (has extension) or common folders
-  return /\.\w+$/.test(url.pathname) || url.pathname.startsWith('/icons/') || url.pathname.startsWith('/vendor/');
+// Utilidad simple: ¿es navegación de página?
+function isNavigationRequest(req) {
+  return req.mode === 'navigate' || (req.method === 'GET' && req.headers.get('accept')?.includes('text/html'));
 }
 
-// Network-first for HTML navigations
-async function networkFirst(event) {
-  try {
-    const fresh = await fetch(event.request);
-    const cache = await caches.open(CACHE_NAME);
-    cache.put(event.request, fresh.clone()).catch(()=>{});
-    return fresh;
-  } catch (err) {
-    const cached = await caches.match(event.request, { ignoreSearch: true });
-    if (cached) return cached;
-    // Fallback to the cached shell if available
-    return caches.match('/index.html') || new Response('Offline', { status: 503, statusText: 'Offline' });
-  }
-}
-
-// Stale-while-revalidate for static assets
-async function staleWhileRevalidate(event) {
-  const cache = await caches.open(CACHE_NAME);
-  const cached = await cache.match(event.request);
-  const fetchPromise = fetch(event.request).then((resp) => {
-    cache.put(event.request, resp.clone()).catch(()=>{});
-    return resp;
-  }).catch(()=>null);
-  return cached || fetchPromise || new Response('', { status: 504 });
-}
-
+// ----- Fetch: estrategias mixtas -----
+// - Navegación: Network-first con fallback a offline.html
+// - /api/*: Network-first con fallback a cache (si hay)
+// - Estáticos: Cache-first con SWR para iconos y scripts locales
 self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
+  const { request } = event;
+  const url = new URL(request.url);
 
-  // Ignore non-GET
-  if (event.request.method !== 'GET') return;
+  // Solo manejar peticiones del mismo origen
+  if (url.origin !== self.location.origin) return;
 
-  // Bypass API endpoints (always go to network)
-  if (isApiBypass(url)) {
-    return event.respondWith(fetch(event.request).catch(() => new Response('Offline', { status: 503 })));
+  // Navegación
+  if (isNavigationRequest(request)) {
+    event.respondWith((async () => {
+      try {
+        const fresh = await fetch(request);
+        const cache = await caches.open(STATIC_CACHE);
+        cache.put(request, fresh.clone());
+        return fresh;
+      } catch (err) {
+        const cache = await caches.open(STATIC_CACHE);
+        const cached = await cache.match(request);
+        return cached || cache.match('/offline.html');
+      }
+    })());
+    return;
   }
 
-  // Navigations → network-first
-  if (isNavigationRequest(event.request)) {
-    return event.respondWith(networkFirst(event));
+  // API local: network-first
+  if (url.pathname.startsWith('/api/')) {
+    event.respondWith((async () => {
+      const cache = await caches.open(STATIC_CACHE);
+      try {
+        const fresh = await fetch(request);
+        if (fresh && fresh.ok) cache.put(request, fresh.clone());
+        return fresh;
+      } catch (err) {
+        const cached = await cache.match(request);
+        if (cached) return cached;
+        throw err;
+      }
+    })());
+    return;
   }
 
-  // Static assets → stale-while-revalidate
-  if (isStaticAsset(url)) {
-    return event.respondWith(staleWhileRevalidate(event));
-  }
-
-  // Default: try cache, then network
-  event.respondWith(
-    caches.match(event.request).then(resp => resp || fetch(event.request))
-  );
+  // Estático mismo origen: cache-first (SWR)
+  event.respondWith((async () => {
+    const cache = await caches.open(STATIC_CACHE);
+    const cached = await cache.match(request);
+    const fetchAndUpdate = fetch(request).then(res => {
+      if (res && res.ok) cache.put(request, res.clone());
+      return res;
+    }).catch(() => cached);
+    return cached || fetchAndUpdate;
+  })());
 });
+
