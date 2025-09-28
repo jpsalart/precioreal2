@@ -601,8 +601,87 @@ function openAmazon(item){
 })();
 </script>
 
+<script>
+/* ====== Afiliado Amazon – Inserción rápida (inline) ======
+   Pega este bloque justo antes de </body>.
+   Te expone en global:
+   - buildAffiliateUrl(asin, tag, domain?)
+   - testAmazonAPI()
+   - applyAffiliateLink({ asin, tag, domain?, titleSel?, imageSel? })
+   ======================================================== */
+
+(function () {
+  'use strict';
+
+  const DEFAULT_DOMAIN = 'amazon.es';
+
+  function buildAffiliateUrl(asin, tag, domain = DEFAULT_DOMAIN) {
+    if (!asin || !tag) throw new Error('Faltan asin o tag');
+    return `https://${domain}/dp/${encodeURIComponent(asin)}/?tag=${encodeURIComponent(tag)}`;
+  }
+
+  async function testAmazonAPI() {
+    const asin = 'B00E8KEYPC';        // ASIN de ejemplo
+    const tag  = 'tu-asociate-id-21'; // <-- pon aquí tu tag (con comillas)
+    const url  = buildAffiliateUrl(asin, tag);
+    console.log('🧪 testAmazonAPI OK →', url);
+    // Si quieres probar que abre con tu tag, descomenta:
+    // window.open(url, '_blank');
+    return { ok: true, url };
+  }
+
+  /* Aplica el enlace afiliado al título y a la imagen del resultado.
+     Ajusta los selectores si tus IDs/clases son diferentes. */
+  function applyAffiliateLink({
+    asin,
+    tag,
+    domain = DEFAULT_DOMAIN,
+    titleSel = '#resultTitle',  // <-- cambia si tu HTML usa otros selectores
+    imageSel = '#resultImage'   // <-- cambia si tu HTML usa otros selectores
+  } = {}) {
+    const url = buildAffiliateUrl(asin, tag, domain);
+    window._lastAffiliateURL = url; // útil para depurar en consola
+
+    // Título
+    const t = document.querySelector(titleSel);
+    if (t) {
+      if (t.tagName === 'A') {
+        t.href = url; t.target = '_blank'; t.rel = 'noopener';
+      } else {
+        t.style.cursor = 'pointer';
+        t.addEventListener('click', () => window.open(url, '_blank'), { passive: true });
+      }
+    }
+
+    // Imagen
+    const img = document.querySelector(imageSel);
+    if (img) {
+      // si ya es <a>, setea href; si es <img/div>, añade click
+      if (img.tagName === 'A') {
+        img.href = url; img.target = '_blank'; img.rel = 'noopener';
+      } else {
+        img.style.cursor = 'pointer';
+        img.addEventListener('click', () => window.open(url, '_blank'), { passive: true });
+      }
+    }
+
+    console.log('🔗 Enlace afiliado aplicado:', url, { titleSel, imageSel });
+    return url;
+  }
+
+  // Exponer al global para poder usarlo desde otros scripts / consola
+  window.buildAffiliateUrl = buildAffiliateUrl;
+  window.testAmazonAPI     = testAmazonAPI;
+  window.applyAffiliateLink = applyAffiliateLink;
+
+  console.log('✅ Afiliado listo: testAmazonAPI(), applyAffiliateLink({...})');
+})();
+</script>
+
+  
 </body>
 </html>
+
 
 
 
