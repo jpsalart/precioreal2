@@ -601,6 +601,33 @@ function openAmazon(item){
 })();
 </script>
 
+  <script>
+/* ====== Afiliado Amazon – Inserción rápida (inline) ====== */
+(function () {
+  'use strict';
+  const DEFAULT_DOMAIN = 'amazon.es';
+
+  function buildAffiliateUrl(asin, tag, domain = DEFAULT_DOMAIN) {
+    if (!asin || !tag) throw new Error('Faltan asin o tag');
+    return `https://${domain}/dp/${encodeURIComponent(asin)}/?tag=${encodeURIComponent(tag)}`;
+  }
+
+  // Test visible desde consola
+  window.testAmazonAPI = function () {
+    const asin = 'B00E8KEYPC';        // ASIN de ejemplo
+    const tag  = 'tu-asociate-id-21'; // <-- pon aquí tu tag (con comillas)
+    const url  = buildAffiliateUrl(asin, tag);
+    console.log('🧪 testAmazonAPI →', url);
+    return { ok: true, url };
+  };
+
+  console.log('✅ Afiliado listo: testAmazonAPI() disponible');
+})();
+</script>
+
+
+
+  
 <script>
 /* ====== Afiliado Amazon – Inserción rápida (inline) ======
    Pega este bloque justo antes de </body>.
@@ -681,6 +708,7 @@ function openAmazon(item){
   
 </body>
 </html>
+
 
 
 
