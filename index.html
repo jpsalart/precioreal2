@@ -34,11 +34,11 @@
     .bar .title{font-size:18px;font-weight:900}
 
     /* Tarjetas de listas */
-    .list-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
-    .mini{position:relative;display:grid;grid-template-columns:72px 1fr;gap:10px;align-items:center;background:#0d1423;border:1px solid var(--bd);border-radius:10px;padding:10px}
-    .mini .thumb{width:72px;height:72px;border-radius:8px;background:#101a2c;display:grid;place-items:center;overflow:hidden}
+    .list-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+    .mini{position:relative;display:grid;grid-template-columns:1fr;gap:10px;background:#0f1626;border:1px solid var(--bd);border-radius:10px;padding:10px}
+    .mini .thumb{width:100%;height:180px;border-radius:10px;background:#101a2c;display:grid;place-items:center;overflow:hidden}
     .mini .thumb img{width:100%;height:100%;object-fit:cover}
-    .mini .title{font-size:16px;font-weight:800;line-height:1.25;max-height:2.6em;overflow:hidden}
+    .mini .title{font-size:17px;font-weight:800;line-height:1.3;max-height:none;overflow:visible;margin-top:6px}
     .mini .muted{font-size:12px}
     .mini .actions{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
     .banner{display:flex;justify-content:center;align-items:center;width:100%;padding:12px 14px;border-radius:10px;background:#182339;border:1px solid #223352;color:#e7edf7;text-decoration:none;font-size:15px;font-weight:900;min-height:48px}
@@ -89,6 +89,13 @@
         <button class="btn secondary" id="btnToggleVibra">Vibración: ON</button>
         <button class="btn secondary" id="btnToggleContinuous">Escáner continuo: ON</button>
       </div>
+      <!-- Zoom (solo si el dispositivo lo soporta) -->
+      <div class="row" id="zoomRow" style="display:none; align-items:center">
+        <label for="zoomRange" style="min-width:120px">Zoom</label>
+        <input id="zoomRange" type="range" min="1" max="5" step="0.1" value="1" style="flex:1"/>
+        <span id="zoomLabel" class="muted" style="width:60px;text-align:right">x1.0</span>
+      </div>
+
       <div class="row">
         <input id="imgInput" type="file" accept="image/*" style="display:none">
         <button class="btn secondary" id="btnUpload">Subir foto (leer código)</button>
@@ -256,7 +263,8 @@
         const id=card.getAttribute('data-id');
         const item=arr.find(x=>x.id===id);
         card.addEventListener('click', (ev)=>{
-          const act=ev.target?.getAttribute?.('data-action'); if(!act) return;
+          const target = ev.target && ev.target.closest ? ev.target.closest('[data-action]') : ev.target;
+          const act = target && target.getAttribute ? target.getAttribute('data-action') : null; if(!act) return;
           ev.preventDefault(); ev.stopPropagation();
           if(act==='remove'){ source==='recents'?removeRecent(id):(saveList(K_FAVS,loadList(K_FAVS).filter(x=>x.id!==id)),renderFavs(),renderRecents()); }
           if(act==='star'){ toggleFav(item); }
@@ -308,49 +316,34 @@ function buildWebLink(item){
   const asin = item.asin || extractASIN(item.affiliateLink) || '';
   return item.affiliateLink || `https://www.${domain}/dp/${asin}`;
 }
-function isAndroidChromeStrict(){
+function isAndroidChrome(){
   const ua = navigator.userAgent || '';
-  return /Android/i.test(ua)
-      && /(Chrome\/\d+|EdgA\/\d+)/i.test(ua)
-      && !/SamsungBrowser|Brave/i.test(ua);
+  // Android + navegadores que soportan intent:// de forma fiable
+  return /Android/i.test(ua) && /(Chrome|EdgA|Chromium|SamsungBrowser|Brave)/i.test(ua);
 }
-// Mantener alias por compatibilidad
-function isAndroidChrome(){ return isAndroidChromeStrict(); }
 
 function openAmazon(item){
-  // SAFE mode: only HTTPS. If the Amazon app has verified links enabled,
-  // Android abrirá la app; si no, se quedará en web. Evita Play Store.
-  const web = buildWebLink(item);
-  location.href = web;
-}
+  const web = buildWebLink(item);            // ya incluye ?tag=...
+  const asin = item.asin || extractASIN(web);
+  const domain = item.domain || 'amazon.es';
 
-// Opcional: modo "forzar app" solo en Chrome/Edge oficiales (puede abrir Play Store en algunos casos)
-// Úsalo solo si el usuario lo quiere explícitamente (p.ej., desde un switch/ajuste).
-function openAmazonForceApp(item){
-  const web = buildWebLink(item);
-  const asin = item.asin || extractASIN(web) || '';
-  if (!isAndroidChromeStrict() || !asin) { location.href = web; return; }
-
-  let hidden = false;
-  const onHide = () => { hidden = true; };
-  window.addEventListener('pagehide', onHide, { once: true });
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') hidden = true;
-  }, { once: true });
-
-  // Intento 1: https (si la app está asociada, se abrirá)
-  location.href = web;
-
-  // Intento 2: intent:// solo si seguimos visibles tras un margen
-  setTimeout(() => {
-    if (hidden) return;
+  // ANDROID + Chrome/Edge: usar intent:// con la URL COMPLETA (con ?tag=)
+  if (isAndroidChrome() && asin){
+    // Quita protocolo para el intent (dejamos dominio + path + query intactos)
     const pathAndQuery = web.replace(/^https?:\/\//i, '');
     const appIntent =
       `intent://${pathAndQuery}` +
       `#Intent;scheme=https;package=com.amazon.mShop.android.shopping;` +
       `S.browser_fallback_url=${encodeURIComponent(web)};end`;
-    try { location.href = appIntent; } catch(_) { location.href = web; }
-  }, 500);
+
+    let jumped = false;
+    const timer = setTimeout(()=>{ if(!jumped) location.href = web; }, 1500);
+    try { location.href = appIntent; jumped = true; } catch(_) { location.href = web; }
+    return;
+  }
+
+  // iOS / escritorio / otros navegadores → enlace web normal (con tag)
+  location.href = web;
 }
 
 
@@ -361,7 +354,7 @@ function openAmazonForceApp(item){
     function stopScanner(){
       try{ scannerReader && scannerReader.reset && scannerReader.reset(); }catch(_){}
       try{ currentStream && currentStream.getTracks().forEach(t=>t.stop()); }catch(_){}
-      currentStream=null; scannerReader=null; torchOn=false;
+      currentStream=null; scannerReader=null; torchOn=false; const zr=document.getElementById('zoomRow'); if(zr) zr.style.display='none';
       note('Escáner detenido'); setTimeout(hideNote, 800);
     }
 
@@ -388,6 +381,48 @@ function openAmazonForceApp(item){
         note(torchOn?'Linterna: ON':'Linterna: OFF'); setTimeout(hideNote, 800);
       }catch(_){ note('No se pudo cambiar la linterna.'); }
     }
+
+    
+    // ----- Zoom (MediaTrackConstraints) -----
+    async function applyZoom(track, value){
+      try{
+        if(!track) return;
+        const caps = track.getCapabilities ? track.getCapabilities() : null;
+        if(caps && 'zoom' in caps){
+          // Algunas implementaciones requieren advanced, otras aceptan directo
+          const cons = caps.zoom ? { advanced:[{ zoom:value }] } : { zoom:value };
+          await track.applyConstraints(cons);
+        }
+      }catch(e){ console.warn('Zoom apply failed', e); }
+    }
+
+    function setupZoomUIWithTrack(track){
+      try{
+        const caps = track && track.getCapabilities ? track.getCapabilities() : null;
+        const s = track && track.getSettings ? track.getSettings() : null;
+        const row = document.getElementById('zoomRow');
+        const rng = document.getElementById('zoomRange');
+        const lbl = document.getElementById('zoomLabel');
+        if(!caps || !('zoom' in caps)){ if(row) row.style.display='none'; return; }
+        const min = caps.zoom.min ?? 1;
+        const max = caps.zoom.max ?? 5;
+        const step = caps.zoom.step ?? 0.1;
+        const val = Math.min(max, Math.max(min, settings.zoom ?? s?.zoom ?? min));
+        if(rng){ rng.min=min; rng.max=max; rng.step=step; rng.value=val; }
+        if(lbl){ lbl.textContent = 'x' + Number(val).toFixed(1); }
+        if(row) row.style.display='flex';
+        applyZoom(track, val);
+        if(rng){
+          rng.oninput = (ev)=>{
+            const v = parseFloat(ev.target.value||min);
+            if(lbl) lbl.textContent = 'x' + v.toFixed(1);
+            settings.zoom = v; saveSettings(settings);
+            applyZoom(track, v);
+          };
+        }
+      }catch(e){ console.warn('setupZoomUI error', e); }
+    }
+
 
     async function startScanner(){
       if(!ensureMedia()){ note('Este navegador no soporta cámara.'); return; }
@@ -423,6 +458,7 @@ function openAmazonForceApp(item){
       try{
         currentStream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'environment' } }, audio:false });
         video.srcObject=currentStream;
+        try{ const track=currentStream.getVideoTracks()[0]; setupZoomUIWithTrack(track); }catch(_){}
         await video.play().catch(()=>{}); // por si el autoplay se bloquea
         hideNote();
       }catch(e){
