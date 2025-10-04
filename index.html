@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>PrecioReal · Escanea y abre en Amazon</title>
   <meta name="description" content="Escanea EAN/UPC/ISBN, encuentra el ASIN y abre la ficha de Amazon con tu enlace de afiliado.">
   <meta name="theme-color" content="#0b0f14">
@@ -12,14 +12,18 @@
       --bg:#0b0f14; --panel:#121824; --text:#e7edf7; --muted:#a8b3c7;
       --brand:#3aa1ff; --brand2:#1e78d5; --bd:#1a2434; --ok:#9fe29f; --bad:#ffb3b3;
       --accent:#2b6cb0; --accent-2:#245b94;
+      --header-h: 48px;
     }
     *{box-sizing:border-box}
-    body{margin:0;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial; background:var(--bg); color:var(--text)}
+    body{margin:0;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial; background:var(--bg); color:var(--text);
+      padding-top: calc(var(--header-h) + env(safe-area-inset-top));}
 
-    /* ===== Header Ticker (no sticky) ===== */
-    header.ticker{background:var(--panel);border-bottom:1px solid var(--bd);padding:0;overflow:hidden}
-    .ticker-wrap{position:relative;width:100%}
-    .ticker-track{display:inline-block;white-space:nowrap;padding:10px 0;animation:ticker 18s linear infinite;will-change:transform}
+    /* ===== Header fijo con marquee ===== */
+    header.ticker{position:fixed;top:0;left:0;right:0;z-index:1000;height:calc(var(--header-h) + env(safe-area-inset-top));
+      padding-top:env(safe-area-inset-top);background:var(--panel);border-bottom:1px solid var(--bd);overflow:hidden;
+      box-shadow: 0 2px 0 rgba(26,36,52,.65), 0 10px 24px rgba(0,0,0,.35)}
+    .ticker-wrap{position:relative;width:100%;height:var(--header-h);display:grid;align-items:center}
+    .ticker-track{display:inline-block;white-space:nowrap;animation:ticker 18s linear infinite;will-change:transform}
     .ticker-track span{margin-right:32px;color:var(--muted)}
     .ticker-track b{color:#cfe2ff}
     .ticker-track:hover{animation-play-state:paused}
@@ -86,7 +90,7 @@
   </style>
 </head>
 <body>
-  <!-- Header con texto en movimiento -->
+  <!-- Header fijo con texto en movimiento -->
   <header class="ticker" aria-label="Mensaje informativo">
     <div class="ticker-wrap">
       <div class="ticker-track">
