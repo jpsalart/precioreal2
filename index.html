@@ -2,11 +2,15 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>PrecioReal · Escanea y abre en Amazon</title>
   <meta name="description" content="Escanea EAN/UPC/ISBN, encuentra el ASIN y abre la ficha de Amazon con tu enlace de afiliado.">
   <meta name="theme-color" content="#0b0f14">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
   <style>
     :root{
       --bg:#0b0f14; --panel:#121824; --text:#e7edf7; --muted:#a8b3c7;
@@ -15,32 +19,27 @@
     *{box-sizing:border-box}
     body{margin:0;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial; background:var(--bg); color:var(--text)}
 
-    /* ===== Header normal (no fixed) con marquee ===== */
-    header.ticker{background:var(--panel);border-bottom:1px solid var(--bd);padding:0;overflow:hidden}
-    .ticker-wrap{position:relative;width:100%}
-    .ticker-track{display:inline-block;white-space:nowrap;padding:10px 0;animation:ticker 18s linear infinite;will-change:transform}
-    .ticker-track span{margin-right:32px;color:var(--muted)}
-    .ticker-track b{color:#cfe2ff}
-    .ticker-track:hover{animation-play-state:paused}
-    @keyframes ticker{0%{transform:translateX(100%)}100%{transform:translateX(-100%)}}
-    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-
-    main{max-width:900px;margin:0 auto;padding:12px}
-    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-
-    .btn{appearance:none;border:1px solid var(--bd);background:#182131;color:var(--text); padding:10px 12px;border-radius:10px;cursor:pointer}
+    /* ===== AppBar (estática, profesional) ===== */
+    header.appbar{background:var(--panel);border-bottom:1px solid var(--bd);height:56px;padding:0 12px;display:flex;align-items:center;justify-content:space-between}
+    .brand{display:flex;align-items:center;gap:10px}
+    .brand .logo{width:28px;height:28px;border-radius:8px;background:#0f1726;border:1px solid var(--bd);display:block;object-fit:cover}
+    .brand .title{font-weight:700;letter-spacing:.2px}
+    .app-actions{display:flex;gap:8px}
+    .btn{appearance:none;border:1px solid var(--bd);background:#182131;color:var(--text); padding:8px 10px;border-radius:10px;cursor:pointer}
     .btn.primary{background:linear-gradient(180deg,var(--brand),var(--brand2));border:none;color:#001225;font-weight:700}
     .btn.secondary{background:#162033}
     .btn.warn{background:#3a1c1c;border-color:#6b2a2a}
     .btn:active{transform:translateY(1px)}
 
+    main{max-width:900px;margin:0 auto;padding:12px}
+    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
     .muted{color:var(--muted)}
 
     /* ===== Cards ===== */
     .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
     .card{position:relative;background:var(--panel);border:1px solid var(--bd);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
-    .cover{width:100%;aspect-ratio:1 / 1; background:#0a1220;display:flex;align-items:center;justify-content:center;color:#4a5c7a}
-    .cover img{width:100%;height:100%;object-fit:cover;display:block}
+    .cover{width:100%;height:clamp(120px,28vw,160px); background:#0a1220;display:flex;align-items:center;justify-content:center;color:#4a5c7a}
+    .cover img{width:100%;height:100%;object-fit:contain;display:block;padding:8px}
     .card .body{padding:12px;display:flex;flex-direction:column;gap:8px}
     .title{font-weight:600;font-size:.95rem;line-height:1.25rem}
     .cat{font-size:.8rem;color:var(--muted)}
@@ -67,7 +66,7 @@
     footer{padding:40px 12px;color:var(--muted);text-align:center}
     .link{color:#9ecbff;text-decoration:none}
 
-    /* ===== Panel de opciones ===== */
+    /* ===== Panel de configuración ===== */
     .opts-anchor{position:relative}
     #btnOpts{display:inline-flex;align-items:center;gap:6px}
     .opts-panel{position:relative;width:100%;background:#10192b;border:1px solid var(--bd);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.35);margin-top:8px; overflow:hidden; max-height:0; transition:max-height .24s ease}
@@ -77,36 +76,61 @@
     .opts-note{font-size:.85rem;color:var(--muted)}
 
     /* ===== Cámara ===== */
-    video{width:100%;max-height:50vh;background:#000;border-radius:12px;border:1px solid var(--bd)}
+    video#video{width:100%;height:100%;max-height:none;object-fit:cover;display:block;background:#000;border:0}
     #cameraControls{display:none;align-items:center;gap:10px;margin-top:8px}
     #zoomSlider{width:220px}
 
     /* ===== Toasts ===== */
     #toasts{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;display:flex;flex-direction:column;gap:8px;z-index:9999;pointer-events:none}
-    .toast{pointer-events:auto;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;border:1px solid var(--bd);background:#10192b;color:var(--text);box-shadow:0 8px 24px rgba(0,0,0,.3)}
+    .toast{pointer-events:auto;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;border:1px solid var(--bd);background:#10192b;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.3)}
     .toast.success{border-color:#22553a;background:#0f2a1d;color:#a6f3b3}
     .toast.error{border-color:#5a2727;background:#2a0f0f;color:#ffbdbd}
     .toast .act{margin-left:6px;text-decoration:underline;cursor:pointer}
 
-    @media (prefers-reduced-motion: reduce){ .ticker-track{animation:none} .opts-panel{transition:none} }
+    @media (prefers-reduced-motion: reduce){ .opts-panel{transition:none} }
+    /* iOS hint */
+    .ios-hint{background:#10192b;border:1px dashed var(--bd);color:var(--muted);margin:8px auto 0;max-width:900px;padding:8px 12px;border-radius:10px;font-size:.9rem;display:none}
+    .ios-hint b{color:#e7edf7}
+
+    /* layout tweaks: colocar Escáner a la derecha y panel debajo */
+    .opts-anchor #btnOpts{ order:1; margin-left:auto }
+    .opts-anchor #btnScan{ order:2 }
+    .opts-anchor #optsPanel{ order:3; width:100% }
+    .grow{ flex:1 }
+
+    /* cámara rectangular controlada por contenedor */
+    .cam-wrap{ margin-top:10px }
+    .cam-frame{ position:relative; width:100%; aspect-ratio:16/9; max-height:34vh; margin:0 auto; background:#000; border:1px solid var(--bd); border-radius:16px; overflow:hidden }
+
+    /* Tabs coloreadas + estado del escáner */
+    #tabComparar.tab{ border-color:#1e78d5 }
+    #tabComparar.tab.active{ background:linear-gradient(180deg,var(--brand),var(--brand2)); color:#001225; font-weight:800 }
+    #tabLista.tab{ border-color:#6b4dd6 }
+    #tabLista.tab.active{ background:linear-gradient(180deg,#b59aff,#6b4dd6); color:#0b0720; font-weight:800 }
+    .btn.scan-on{ background:linear-gradient(180deg,#ffd84d,#ffb300); color:#1a1200; border:none; min-height:56px; padding:12px 16px; font-weight:900 }
+
+    /* Ajuste modo imágenes A: encajar sin recorte (uniforme y compacto) */
+    #btnScan{ min-height:56px; padding:12px 16px; font-weight:900 }
+
   </style>
 </head>
 <body>
-  <!-- Header normal con texto en movimiento -->
-  <header class="ticker" aria-label="Mensaje informativo">
-    <div class="ticker-wrap">
-      <div class="ticker-track">
-        <span><b>PrecioReal</b> · Escanea y abre en Amazon</span> •
-        <span><b>PrecioReal</b> · Escanea y abre en Amazon</span> •
-        <span><b>PrecioReal</b> · Escanea y abre en Amazon</span>
-      </div>
+  <!-- App bar estática (sin texto en movimiento) -->
+  <header class="appbar" aria-label="Barra de la app">
+    <div class="brand">
+      <img class="logo" src="/icons/icon-192.png" alt="Logo" onerror="this.style.background='#122038'; this.src=''; this.outerHTML='<div class=\'logo\' style=\"display:grid;place-items:center;font-weight:800\">PR</div>'">
+      <div class="title">PrecioReal</div>
+    </div>
+    <div class="app-actions">
+      <button id="btnInstall" class="btn" aria-label="Instalar aplicación" style="display:none">⬇️ Instalar</button>
     </div>
   </header>
-  <h1 class="sr-only">PrecioReal · Escanea y abre en Amazon</h1>
+
+  <div id="iosHint" class="ios-hint" role="note">En iPhone/iPad: abre <b>Compartir</b> y elige <b>“Añadir a pantalla de inicio”</b> para instalar la app.</div>
 
   <main>
     <!-- Controles superiores: Escáner + Configuración -->
-    <div class="row opts-anchor">
+    <div class="row opts-anchor" style="margin-top:12px">
       <button id="btnScan" class="btn primary">📷 Escáner</button>
       <button id="btnOpts" class="btn secondary" aria-expanded="false" aria-controls="optsPanel" aria-label="Abrir configuración">⚙️ Configuración</button>
 
@@ -132,8 +156,10 @@
       </div>
     </div>
 
-    <div style="margin-top:10px">
-      <video id="video" playsinline muted></video>
+    <div class="cam-wrap">
+      <div class="cam-frame">
+        <video id="video" playsinline muted></video>
+      </div>
     </div>
 
     <div id="cameraControls" class="row">
@@ -145,7 +171,7 @@
 
     <div class="tabs">
       <div id="tabComparar" class="tab active">Comparar</div>
-      <div id="tabLista" class="tab">Lista de la compra</div>
+      <div id="tabLista" class="tab">Favoritos</div>
     </div>
 
     <div id="viewComparar">
@@ -348,18 +374,18 @@
   const video = $('video');
   async function startScan(){
     if(scanning) return; scanning = true;
-    $('btnScan').textContent = '⛔ Detener'; $('btnScan').classList.add('warn');
+    $('btnScan').textContent = '⛔ Detener'; $('btnScan').classList.add('scan-on');
     try{
       stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' }, audio:false });
       video.srcObject = stream; await video.play(); scheduleAutostop(); await requestWakeLock();
       currentTrack = stream.getVideoTracks()[0]; setupCameraControls(currentTrack).catch(()=>{});
       if(detector){ scanLoopBarcodeDetector(); } else { scanLoopZXing(); }
     }catch(e){
-      scanning = false; $('btnScan').textContent = '📷 Escáner'; $('btnScan').classList.remove('warn'); alert('No se pudo iniciar la cámara.');
+      scanning = false; $('btnScan').textContent = '📷 Escáner'; $('btnScan').classList.remove('scan-on'); alert('No se pudo iniciar la cámara.');
     }
   }
   function stopScan(){
-    scanning = false; $('btnScan').textContent = '📷 Escáner'; $('btnScan').classList.remove('warn');
+    scanning = false; $('btnScan').textContent = '📷 Escáner'; $('btnScan').classList.remove('scan-on');
     try{ if(stream){ stream.getTracks().forEach(t=>t.stop()); } stream = null; currentTrack = null; }catch(e){}
     clearAutostop(); torchOff(); releaseWakeLock(); $('cameraControls').style.display = 'none';
   }
@@ -505,7 +531,44 @@
   function escapeHtml(s){ return String(s||'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
   async function torchOff(){ try{ if(!stream) return; const track = stream.getVideoTracks()[0]; await track.applyConstraints({ advanced:[{ torch:false }] }); $('btnTorch').textContent = 'Linterna: OFF'; torchOn = false; }catch(e){} }
 
-  if('serviceWorker' in navigator){ navigator.serviceWorker.register('/sw.js').catch(()=>{}); }
+  /* ===== PWA: botón Instalar + registro automático de SW ===== */
+  // Registro silencioso del SW en /sw.js
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(()=>{});
+  }
+
+  // Botón Instalar (solo cuando el navegador lo permite)
+  let deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', (e)=>{
+    e.preventDefault();
+    deferredPrompt = e;
+    const installed = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    if(!installed) $('btnInstall').style.display = 'inline-flex';
+  });
+  window.addEventListener('appinstalled', ()=>{
+    $('btnInstall').style.display = 'none';
+    showToast({ message: '✅ App instalada', type:'success' });
+  });
+  $('btnInstall').addEventListener('click', async ()=>{
+    if(!deferredPrompt){ showToast({ message:'Instalación no disponible en este navegador', type:'error' }); return; }
+    deferredPrompt.prompt();
+    try{ await deferredPrompt.userChoice; }catch(_){}
+    deferredPrompt = null;
+    $('btnInstall').style.display = 'none';
+  });
+
+  // iOS hint: mostrar ayuda para añadir a pantalla de inicio
+  function showIOSHintIfNeeded(){
+    const ua = window.navigator.userAgent || '';
+    const isIOS = /iPad|iPhone|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const inStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    if(isIOS && !inStandalone){
+      const el = $('iosHint'); if(el) el.style.display = 'block';
+      const btn = $('btnInstall'); if(btn) btn.style.display = 'none';
+    }
+  }
+  document.addEventListener('DOMContentLoaded', showIOSHintIfNeeded);
+
   </script>
 </body>
 </html>
