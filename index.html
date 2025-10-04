@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>PrecioReal · Escanea y abre en Amazon</title>
+  <title>PrecioReal · Escanea y abre en Amazon (B)</title>
   <meta name="description" content="Escanea EAN/UPC/ISBN, encuentra el ASIN y abre la ficha de Amazon con tu enlace de afiliado.">
   <meta name="theme-color" content="#0b0f14">
   <meta name="mobile-web-app-capable" content="yes">
@@ -38,8 +38,9 @@
     /* ===== Cards ===== */
     .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
     .card{position:relative;background:var(--panel);border:1px solid var(--bd);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
-    .cover{width:100%;height:clamp(120px,28vw,160px); background:#0a1220;display:flex;align-items:center;justify-content:center;color:#4a5c7a}
-    .cover img{width:100%;height:100%;object-fit:contain;display:block;padding:8px}
+    /* Versión B: ratio dinámico (cero bandas, cero recorte). La altura del cover varía según la imagen. */
+    .cover{width:100%; background:#0a1220; display:block}
+    .cover img{display:block; width:100%; height:auto}
     .card .body{padding:12px;display:flex;flex-direction:column;gap:8px}
     .title{font-weight:600;font-size:.95rem;line-height:1.25rem}
     .cat{font-size:.8rem;color:var(--muted)}
@@ -68,14 +69,20 @@
 
     /* ===== Panel de configuración ===== */
     .opts-anchor{position:relative}
-    #btnOpts{display:inline-flex;align-items:center;gap:6px}
+    /* Reordenamos: Configuración y Escáner a la derecha */
+    .opts-anchor #btnOpts{ order:1; margin-left:auto }
+    .opts-anchor #btnScan{ order:2 }
+    .opts-anchor #optsPanel{ order:3; width:100% }
+
     .opts-panel{position:relative;width:100%;background:#10192b;border:1px solid var(--bd);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.35);margin-top:8px; overflow:hidden; max-height:0; transition:max-height .24s ease}
     .opts-panel.open{max-height:800px}
     .opts-inner{padding:12px;display:grid;gap:10px}
     .opts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}
     .opts-note{font-size:.85rem;color:var(--muted)}
 
-    /* ===== Cámara ===== */
+    /* ===== Cámara (rectángulo) ===== */
+    .cam-wrap{ margin-top:10px }
+    .cam-frame{ position:relative; width:100%; aspect-ratio:16/9; max-height:34vh; margin:0 auto; background:#000; border:1px solid var(--bd); border-radius:16px; overflow:hidden }
     video#video{width:100%;height:100%;max-height:none;object-fit:cover;display:block;background:#000;border:0}
     #cameraControls{display:none;align-items:center;gap:10px;margin-top:8px}
     #zoomSlider{width:220px}
@@ -87,31 +94,20 @@
     .toast.error{border-color:#5a2727;background:#2a0f0f;color:#ffbdbd}
     .toast .act{margin-left:6px;text-decoration:underline;cursor:pointer}
 
-    @media (prefers-reduced-motion: reduce){ .opts-panel{transition:none} }
-    /* iOS hint */
-    .ios-hint{background:#10192b;border:1px dashed var(--bd);color:var(--muted);margin:8px auto 0;max-width:900px;padding:8px 12px;border-radius:10px;font-size:.9rem;display:none}
-    .ios-hint b{color:#e7edf7}
-
-    /* layout tweaks: colocar Escáner a la derecha y panel debajo */
-    .opts-anchor #btnOpts{ order:1; margin-left:auto }
-    .opts-anchor #btnScan{ order:2 }
-    .opts-anchor #optsPanel{ order:3; width:100% }
-    .grow{ flex:1 }
-
-    /* cámara rectangular controlada por contenedor */
-    .cam-wrap{ margin-top:10px }
-    .cam-frame{ position:relative; width:100%; aspect-ratio:16/9; max-height:34vh; margin:0 auto; background:#000; border:1px solid var(--bd); border-radius:16px; overflow:hidden }
-
     /* Tabs coloreadas + estado del escáner */
     #tabComparar.tab{ border-color:#1e78d5 }
     #tabComparar.tab.active{ background:linear-gradient(180deg,var(--brand),var(--brand2)); color:#001225; font-weight:800 }
     #tabLista.tab{ border-color:#6b4dd6 }
     #tabLista.tab.active{ background:linear-gradient(180deg,#b59aff,#6b4dd6); color:#0b0720; font-weight:800 }
+    /* Botón Escáner: mismo tamaño encendido/apagado */
+    #btnScan{ min-height:56px; padding:12px 16px; font-weight:900 }
     .btn.scan-on{ background:linear-gradient(180deg,#ffd84d,#ffb300); color:#1a1200; border:none; min-height:56px; padding:12px 16px; font-weight:900 }
 
-    /* Ajuste modo imágenes A: encajar sin recorte (uniforme y compacto) */
-    #btnScan{ min-height:56px; padding:12px 16px; font-weight:900 }
+    /* iOS hint */
+    .ios-hint{background:#10192b;border:1px dashed var(--bd);color:#muted;margin:8px auto 0;max-width:900px;padding:8px 12px;border-radius:10px;font-size:.9rem;display:none}
+    .ios-hint b{color:#e7edf7}
 
+    @media (prefers-reduced-motion: reduce){ .opts-panel{transition:none} }
   </style>
 </head>
 <body>
@@ -129,10 +125,10 @@
   <div id="iosHint" class="ios-hint" role="note">En iPhone/iPad: abre <b>Compartir</b> y elige <b>“Añadir a pantalla de inicio”</b> para instalar la app.</div>
 
   <main>
-    <!-- Controles superiores: Escáner + Configuración -->
+    <!-- Controles superiores: Configuración + Escáner a la derecha -->
     <div class="row opts-anchor" style="margin-top:12px">
-      <button id="btnScan" class="btn primary">📷 Escáner</button>
       <button id="btnOpts" class="btn secondary" aria-expanded="false" aria-controls="optsPanel" aria-label="Abrir configuración">⚙️ Configuración</button>
+      <button id="btnScan" class="btn primary">📷 Escáner</button>
 
       <!-- Panel de configuración -->
       <div id="optsPanel" class="opts-panel" role="region" aria-label="Opciones de configuración">
@@ -288,14 +284,14 @@
   function isFav(id){ return favoritos.some(f=>f.id===id); }
 
   function itemCardHTML(item, inList=false){
-    const img = item.image ? `<img src="${item.image}" alt="">` : '';
+    const img = item.image ? `<img src="${item.image}" alt="" data-id="${item.id}">` : '';
     const favPressed = isFav(item.id) ? 'true' : 'false';
     const price = item.userPrice!=null ? `<div class="price">PvP Tienda: ${item.userPrice.toFixed(2)} €</div>` : '';
     const bought = inList ? `<span class="chip">Comprado: <input type="checkbox" ${item.completed?'checked':''} data-action="toggle-comprado" data-id="${item.id}"></span>` : '';
     return `
       <div class="card" data-id="${item.id}">
         <button class="fav-btn" data-action="fav-toggle" data-id="${item.id}" aria-pressed="${favPressed}" title="${isFav(item.id)?'Quitar de favoritos':'Añadir a favoritos'}">${isFav(item.id)?'★':'☆'}</button>
-        <div class="cover">${img || 'Sin imagen'}</div>
+        <div class="cover">${img || '<div style="padding:32px;color:#4a5c7a;text-align:center">Sin imagen</div>'}</div>
         <div class="body">
           <div class="title">${escapeHtml(item.title||'Sin título')}</div>
           <div class="cat">${escapeHtml(item.category||'')}</div>
@@ -315,8 +311,26 @@
     const list = favoritos.filter(f=> showComprados ? true : !f.completed);
     $('cardsLista').innerHTML = list.map(it=>itemCardHTML(it,true)).join('');
     $('countLista').textContent = `${list.length} ítems`;
+    // Ajustar aspect-ratio de cada cover al cargar la imagen
+    requestAnimationFrame(autoSetAspectRatios);
   }
   renderAll();
+
+  function autoSetAspectRatios(){
+    document.querySelectorAll('.cover img').forEach(img=>{
+      if(img.complete && img.naturalWidth > 0){
+        const r = `${img.naturalWidth} / ${img.naturalHeight}`;
+        const cover = img.closest('.cover');
+        if(cover) cover.style.aspectRatio = r;
+      }else{
+        img.addEventListener('load', ()=>{
+          const r = `${img.naturalWidth} / ${img.naturalHeight}`;
+          const cover = img.closest('.cover');
+          if(cover) cover.style.aspectRatio = r;
+        }, { once:true });
+      }
+    });
+  }
 
   // Click handling (incluye favorito con stopPropagation)
   document.addEventListener('click', (e)=>{
@@ -532,12 +546,7 @@
   async function torchOff(){ try{ if(!stream) return; const track = stream.getVideoTracks()[0]; await track.applyConstraints({ advanced:[{ torch:false }] }); $('btnTorch').textContent = 'Linterna: OFF'; torchOn = false; }catch(e){} }
 
   /* ===== PWA: botón Instalar + registro automático de SW ===== */
-  // Registro silencioso del SW en /sw.js
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(()=>{});
-  }
-
-  // Botón Instalar (solo cuando el navegador lo permite)
+  if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').catch(()=>{}); }
   let deferredPrompt = null;
   window.addEventListener('beforeinstallprompt', (e)=>{
     e.preventDefault();
