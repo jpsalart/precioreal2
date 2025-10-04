@@ -1,1 +1,754 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PrecioReal · Escanea y abre en Amazon</title>
+  <meta name="description" content="Escanea EAN/UPC/ISBN, encuentra el ASIN y abre la ficha en Amazon con tu enlace de afiliado.">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png">
+  <meta name="theme-color" content="#0b0f14">
+  <style>
+    :root{ --bg:#0b0f14; --panel:#121824; --text:#e7edf7; --muted:#a8b3c7; --brand:#3aa1ff; --brand2:#1e78d5; --bd:#1a2434; --ok:#9fe29f; --bad:#ffb3b3; }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,Segoe UI,Roboto,Inter,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    .wrap{max-width:820px;margin:0 auto;padding:16px}
+    header{display:flex;align-items:center;gap:12px;padding:16px 0;border-bottom:1px solid var(--bd)}
+    .logo{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;background:linear-gradient(135deg,var(--brand),#7cc8ff);color:#041423;font-weight:900}
+    h1{font-size:18px;margin:0}.muted{color:var(--muted)}
+    .panel{background:var(--panel);border:1px solid var(--bd);border-radius:14px;padding:14px;margin:16px 0}
+    .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 16px;border:0;border-radius:12px;cursor:pointer;background:linear-gradient(180deg,var(--brand),var(--brand2));color:#06121f;font-weight:800}
+    .btn.secondary{background:#182339;color:var(--text);border:1px solid #223352}
+    .btn.ghost{background:transparent;border:1px dashed #2a3a5a;color:#9bb4d9}
+    .btn[disabled]{opacity:.5;cursor:not-allowed}
+    .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+    .row input{flex:1;min-width:180px;padding:12px;border-radius:12px;border:1px solid #223352;background:#0c1322;color:#e7edf7}
+    #scanner{position:relative;aspect-ratio:3/2;background:#0d1423;border:1px dashed #223352;border-radius:12px;display:grid;place-items:center;overflow:hidden;margin-top:12px}
+    #scanner video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+    #overlay{position:absolute;left:8px;right:8px;bottom:8px;background:rgba(0,0,0,.45);border:1px solid #223352;border-radius:8px;padding:6px 8px;font-size:12px;color:#cfe7ff;white-space:pre-line}
+    .hint{font-size:12px;color:#9bb4d9;margin-top:6px}
+    footer{margin:18px 0 8px;border-top:1px solid var(--bd);padding-top:12px;color:#a8b3c7;font-size:0.9rem;line-height:1.35}
+
+    /* Panel headings más grandes */
+    .bar{display:flex;justify-content:space-between;align-items:center;margin:8px 0 4px 0}
+    .bar .title{font-size:18px;font-weight:900}
+
+    /* Tarjetas de listas */
+    .list-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+    .mini{position:relative;display:grid;grid-template-columns:72px 1fr;gap:10px;align-items:center;background:#0d1423;border:1px solid var(--bd);border-radius:10px;padding:10px}
+    .mini .thumb{width:72px;height:72px;border-radius:8px;background:#101a2c;display:grid;place-items:center;overflow:hidden}
+    .mini .thumb img{width:100%;height:100%;object-fit:cover}
+    .mini .title{font-size:16px;font-weight:800;line-height:1.25;max-height:2.6em;overflow:hidden}
+    .mini .muted{font-size:12px}
+    .mini .actions{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+    .banner{display:flex;justify-content:center;align-items:center;width:100%;padding:12px 14px;border-radius:10px;background:#182339;border:1px solid #223352;color:#e7edf7;text-decoration:none;font-size:15px;font-weight:900;min-height:48px}
+
+    /* Precio anotado (manual) */
+    .pvpLineMini{font-size:14px;font-weight:800;margin-top:8px;color:#cfe2ff;text-align:right}
+    .badgeManual{display:inline-block;margin-right:6px;padding:2px 6px;border-radius:999px;border:1px solid #2a3f66;background:#13203b;color:#cfe2ff;font-size:11px;font-weight:700;vertical-align:baseline}
+    .pvpSub{font-size:11px;color:#9bb4d9;margin-top:4px;text-align:right;font-weight:500}
+
+    /* invertidos: ✕ a la izquierda, ⭐ a la derecha (más grande) */
+    .icon-btn{position:absolute;top:6px;left:6px;background:#172033;border:1px solid #284066;color:#c9d9f2;width:24px;height:24px;line-height:22px;text-align:center;border-radius:8px;cursor:pointer;font-weight:900}
+    .star{position:absolute;top:6px;right:6px;background:#172033;border:1px solid #284066;color:#f6e08f;width:36px;height:36px;line-height:34px;text-align:center;border-radius:12px;cursor:pointer;font-weight:900;font-size:20px}
+    .star.off{color:#b0b0b0}
+    .empty{color:#a8b3c7;font-size:13px}
+
+    /* Botones toggle */
+    .toggles{display:flex;gap:8px;flex-wrap:wrap}
+
+    .link.big{font-size:18px;font-weight:900;padding:14px 16px;border-width:2px;width:100%;justify-content:center;min-height:48px}
+  
+/* === PrecioReal · Tokens y estilos additivos (no destructivos) === */
+:root{
+  /* colores derivados */
+  --surface:#0d1423;
+  --ring:#7cc8ff;
+  --ring-strong:#9fe2ff;
+  --brand-600:#2e91f0;
+  --brand-700:#1e78d5;
+  --ok-700:#74d774;
+  --warn:#ffd27a;
+  --error:#ff7a7a;
+
+  /* tipografía (escala fluida) */
+  --fs-h1: clamp(18px, 2vw, 22px);
+  --fs-h2: clamp(16px, 1.8vw, 20px);
+  --fs-body: clamp(14px, 1.6vw, 16px);
+  --fs-small: clamp(12px, 1.4vw, 13px);
+
+  /* radios y sombras */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 14px;
+  --shadow-1: 0 6px 18px rgba(0,0,0,.28), 0 1px 0 rgba(255,255,255,.02) inset;
+  --shadow-2: 0 10px 24px rgba(0,0,0,.36);
+}
+
+/* tipografía base y títulos */
+body{ font-size:var(--fs-body); }
+h1{ font-size:var(--fs-h1); }
+.bar .title{ font-size:var(--fs-h2); }
+.mini .title{ font-size:16px; } /* mantenemos tu tamaño visual */
+
+/* Focus ring accesible unificado */
+:where(button,a,input,textarea,select,.banner):focus-visible{
+  outline:2px solid var(--ring);
+  outline-offset:2px;
+  border-radius: var(--radius-md);
+}
+
+/* Botones: estados sutiles */
+.btn{ box-shadow: 0 1px 0 rgba(255,255,255,.06) inset; transition: transform .08s ease, box-shadow .2s ease, opacity .2s ease; }
+.btn:hover{ filter:saturate(1.05); }
+.btn:active{ transform: translateY(1px) scale(.99); }
+.btn.secondary:hover{ border-color:#2b4166; background:#1a2540; }
+.btn.ghost:hover{ border-style:solid; border-color:#385584; color:#b8cff0; }
+
+/* CTA Amazon */
+.banner{ transition: transform .08s ease, box-shadow .2s ease, opacity .2s; box-shadow: var(--shadow-1); }
+.banner:hover{ transform: translateY(-1px); box-shadow: var(--shadow-2); }
+.banner:active{ transform: translateY(0); }
+.banner.disabled{ opacity:.55; pointer-events:none; filter:grayscale(.25); }
+
+/* Cards de listas: elevación y feedback */
+.mini{ box-shadow: 0 1px 0 rgba(255,255,255,.02) inset, 0 0 0 1px rgba(26,36,52,.6); transition: box-shadow .2s ease, transform .08s ease, border-color .2s ease; }
+.mini:hover{ box-shadow: 0 2px 0 rgba(255,255,255,.02) inset, 0 8px 20px rgba(0,0,0,.35); transform: translateY(-1px); }
+.mini .thumb{ background:#0f1a2c; }
+.icon-btn,.star{ transition: transform .08s ease, background .2s ease; }
+.icon-btn:active,.star:active{ transform: scale(.96); }
+
+/* Overlay de notas más legible */
+#overlay{
+  backdrop-filter: blur(6px);
+  background: linear-gradient(0deg, rgba(0,0,0,.55), rgba(0,0,0,.38));
+  border-color:#274065;
+  border-radius: var(--radius-md);
+}
+
+/* Marco de escaneo con esquinas-guía (sin HTML extra) */
+#scanner{ position:relative; }
+#scanner::after{
+  content:"";
+  position:absolute; inset:8px;
+  border-radius:16px;
+  pointer-events:none;
+  background:
+    linear-gradient(90deg,var(--brand),var(--brand)) top left/32px 2px no-repeat,
+    linear-gradient(0deg ,var(--brand),var(--brand)) top left/2px 32px no-repeat,
+    linear-gradient(90deg,var(--brand),var(--brand)) top right/32px 2px no-repeat,
+    linear-gradient(0deg ,var(--brand),var(--brand)) top right/2px 32px no-repeat,
+    linear-gradient(90deg,var(--brand),var(--brand)) bottom left/32px 2px no-repeat,
+    linear-gradient(0deg ,var(--brand),var(--brand)) bottom left/2px 32px no-repeat,
+    linear-gradient(90deg,var(--brand),var(--brand)) bottom right/32px 2px no-repeat,
+    linear-gradient(0deg ,var(--brand),var(--brand)) bottom right/2px 32px no-repeat;
+  opacity:.9;
+}
+
+/* “Flash” de confirmación de lectura (añade clase .flash en JS) */
+@keyframes pr-scan-flash{
+  0%{ box-shadow: 0 0 0 0 rgba(124,200,255,.55) inset; }
+  100%{ box-shadow: 0 0 0 10px rgba(124,200,255,0) inset; }
+}
+#scanner.flash::after{
+  animation: pr-scan-flash .35s ease-out;
+}
+
+/* Estados de inputs: foco y error OK */
+.row input:focus{ outline:2px solid var(--ring); outline-offset:2px; }
+
+/* Utilidad Skeleton (por si la necesitas) */
+.skeleton{ position:relative; overflow:hidden; background:#101a2c; border-radius:10px; }
+.skeleton::after{
+  content:""; position:absolute; inset:0;
+  background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,.06), rgba(255,255,255,0));
+  transform: translateX(-100%); animation: pr-skel 1.2s infinite;
+}
+@keyframes pr-skel{ to{ transform: translateX(100%);} }
+
+/* Preferencias de movimiento */
+@media (prefers-reduced-motion: reduce){
+  *{ animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo">PR</div>
+      <div>
+        <h1>PrecioReal</h1>
+        <div class="muted">Escanea un producto y abre su ficha en Amazon</div>
+      </div>
+    </header>
+
+    <section class="panel">
+      <b>Escanear con la cámara</b>
+      <div id="scanner"><div id="overlay">Pulsa “Iniciar escáner” y permite la cámara</div></div>
+      <div class="row">
+        <button class="btn" id="btnScan">Iniciar escáner</button>
+        <button class="btn" id="btnSetPrice">Pon tu Precio</button>
+        <button class="btn secondary" id="btnStop">Parar</button>
+        <button class="btn secondary" id="btnTorch">Linterna</button>
+        <button class="btn secondary" id="btnTest">Test cámara</button>
+        <button class="btn secondary" id="btnBatch">Añadir por lote</button>
+        <!-- Botón Instalar app (PWA) -->
+<button class="btn secondary" id="btnInstall" style="display:none">Instalar app</button>
+
+      </div>
+      <div class="row toggles">
+        <button class="btn secondary" id="btnToggleSound">Sonido: ON</button>
+        <button class="btn secondary" id="btnToggleVibra">Vibración: ON</button>
+        <button class="btn secondary" id="btnToggleContinuous">Escáner continuo: ON</button>
+      </div>
+      <div class="row">
+        <input id="imgInput" type="file" accept="image/*" style="display:none">
+        <button class="btn secondary" id="btnUpload">Subir foto (leer código)</button>
+      </div>
+      <div class="hint">Si la cámara no abre, puedes subir una foto del código o introducir el EAN manualmente.</div>
+    </section>
+  <!-- NUEVO: tip iOS para instalar como app -->
+  <div id="a2hsTip" class="hint" style="display:none">
+    iOS: para instalar, toca <b>Compartir</b> → <b>Añadir a pantalla de inicio</b>.
+  </div>
+
+    <section class="panel">
+      <b>O introduce el código (EAN/ISBN/UPC)</b>
+      <div class="row">
+        <input id="eanInput" inputmode="numeric" pattern="[0-9]*" placeholder="Ej.: 9788491296014" />
+        <button class="btn secondary" id="btnBuscar">Buscar</button>
+      </div>
+      <div class="hint" id="eanHint"></div>
+    </section>
+
+    <!-- Últimos escaneados -->
+    <section class="panel" id="panelRecents">
+      <div class="bar">
+        <div class="title">🕘 Últimos escaneados</div>
+        <button class="btn ghost" id="btnClearRecents">Vaciar lista</button>
+      </div>
+      <div id="recents" class="list-grid"></div>
+      <div id="recentsEmpty" class="empty" style="display:none">Aquí verás tus últimos escaneos.</div>
+      <div id="tipRecents" class="empty" style="margin-top:10px">Consejo: Añádelo en tu carrito de Amazon para no perderlo.</div>
+    </section>
+
+    <!-- Favoritos -->
+    <section class="panel" id="panelFavs">
+      <div class="bar">
+        <div class="title" id="favTitle">Favoritos (0)</div>
+        <button class="btn ghost" id="btnClearFavs">Vaciar favoritos</button>
+      </div>
+      <div id="favs" class="list-grid"></div>
+      <div id="favsEmpty" class="empty" style="display:none">⭐ Añade los productos que quieras guardar.</div>
+    </section>
+
+    <footer>
+      En calidad de Afiliado de Amazon, obtengo ingresos por las compras adscritas que cumplen los requisitos aplicables.
+    </footer>
+  </div>
+
+  <script>
+  (function(){
+    'use strict';
+
+    // ---------- helpers ----------
+    const $ = id => document.getElementById(id);
+    const note = (m)=>{ const o=$('overlay'); if(o){o.textContent=m;o.style.display='block';} console.log('[PrecioReal]', m); };
+    const hideNote = ()=>{ const o=$('overlay'); if(o) o.style.display='none'; };
+    const ttlSec = 1800; // 30 min cache local
+    const MAX_RECENTS = 20;
+    const K_RECENTS = 'pr-recent-v1';
+    const K_FAVS = 'pr-favs-v1';
+    const K_SETTINGS = 'pr-settings-v1';
+
+    function loadSettings(){ try{ return JSON.parse(localStorage.getItem(K_SETTINGS)||'{}')||{}; }catch(_){ return {}; } }
+    function saveSettings(s){ try{ localStorage.setItem(K_SETTINGS, JSON.stringify(s)); }catch(_){ } }
+    // continuo ON por defecto
+    let settings = Object.assign({ noSound:false, noVibra:false, continuous:true }, loadSettings());
+
+    function renderToggles(){
+      $('btnToggleSound').textContent = 'Sonido: ' + (settings.noSound ? 'OFF' : 'ON');
+      $('btnToggleVibra').textContent = 'Vibración: ' + (settings.noVibra ? 'OFF' : 'ON');
+      $('btnToggleContinuous').textContent = 'Escáner continuo: ' + (settings.continuous ? 'ON' : 'OFF');
+    }
+
+    function beep(){
+      try{
+        if (!settings.noSound){
+          const ctx=new (window.AudioContext||window.webkitAudioContext)();
+          const o=ctx.createOscillator(); const g=ctx.createGain();
+          o.frequency.value=880; g.gain.value=0.1; o.connect(g).connect(ctx.destination);
+          o.start(); setTimeout(()=>{o.stop();ctx.close();},120);
+        }
+      }catch(_){}
+      try{ if (!settings.noVibra){ navigator.vibrate && navigator.vibrate(80); } }catch(_){}
+    
+  // Flash visual opcional en el marco de escaneo
+  try{ const sc=document.getElementById('scanner'); sc && (sc.classList.add('flash'), setTimeout(()=>sc.classList.remove('flash'), 280)); }catch(_){}
+}
+    const fmtMoney = (n)=> (isFinite(n)? (Number(n).toFixed(2).replace('.',',')) : '');
+
+    // --------- Validación EAN/UPC ----------
+    function ean13Valid(s){ s=String(s).replace(/[^0-9]/g,''); if(s.length!==13) return false; const d=s.split('').map(n=>+n); const c=d[12]; let sum=0; for(let i=0;i<12;i++) sum+=d[i]*(i%2===0?1:3); return ((10-(sum%10))%10)===c; }
+    function ean8Valid(s){ s=String(s).replace(/[^0-9]/g,''); if(s.length!==8) return false; const d=s.split('').map(n=>+n); const c=d[7]; let sum=0; for(let i=0;i<7;i++) sum+=d[i]*(i%2===0?3:1); return ((10-(sum%10))%10)===c; }
+    function upcAValid(s){ s=String(s).replace(/[^0-9]/g,''); if(s.length!==12) return false; return ean13Valid('0'+s); }
+    function validCode(code){ const s=String(code).replace(/[^0-9]/g,''); if(s.length===13) return {ok:ean13Valid(s),type:'EAN-13'}; if(s.length===8) return {ok:ean8Valid(s),type:'EAN-8'}; if(s.length===12) return {ok:upcAValid(s),type:'UPC-A'}; return {ok:false,type:'unknown'}; }
+    function setEanHint(msg, ok){ const el=$('eanHint'); el.textContent=msg||''; el.style.color=ok?'#9fe29f':'#ffb3b3'; }
+
+    // --------- Cache local mínima ----------
+    function cacheGet(ean){ try{ const raw=localStorage.getItem('pr-cache-'+ean); if(!raw) return null; const o=JSON.parse(raw); if(!o||!o.t||!o.d) return null; if((Date.now()-o.t)/1000>ttlSec) return null; return o.d; }catch(_){ return null; } }
+    function cacheSet(ean,data){ try{ localStorage.setItem('pr-cache-'+ean, JSON.stringify({t:Date.now(),d:data})); }catch(_){ } }
+
+    // --------- Storage listas ----------
+    function loadList(key){ try{ return JSON.parse(localStorage.getItem(key)||'[]')||[]; }catch(_){ return []; } }
+    function saveList(key,arr){ try{ localStorage.setItem(key, JSON.stringify(arr)); }catch(_){ } }
+    function getFromAnyList(id){ const a=loadList(K_RECENTS).find(x=>x.id===id); if(a) return a; return loadList(K_FAVS).find(x=>x.id===id)||null; }
+
+    function normalizeItem(ean, resp){
+      const p = resp?.product||{}; const m = resp?.meta||{};
+      const id = m.asin || ean || p.asin || p.id || (p.affiliateLink||'').split('/api/go/')[1]?.split('?')[0] || null;
+      const prev = getFromAnyList(id) || {};
+      return { id, ean: ean||null, asin: m.asin||null, domain: m.domain||null,
+               title: p.title||('Código '+(ean||'desconocido')), image: p.image||null,
+               category: p.category||'', affiliateLink: p.affiliateLink||null,
+               userPrice: prev.userPrice||null, userPriceAt: prev.userPriceAt||null, ts: Date.now() };
+    }
+
+    function addRecent(item){
+      if(!item||!item.id) return;
+      const arr=loadList(K_RECENTS); const idx=arr.findIndex(x=>x.id===item.id);
+      if(idx>=0) arr.splice(idx,1);
+      arr.unshift(item); if(arr.length>MAX_RECENTS) arr.length=MAX_RECENTS;
+      saveList(K_RECENTS, arr); renderRecents();
+    }
+
+    function updateItemPvp(id, pvp){
+      const apply=(key)=>{ const arr=loadList(key); const i=arr.findIndex(x=>x.id===id);
+        if(i>=0){ arr[i].userPrice=pvp; arr[i].userPriceAt=(pvp!=null)?Date.now():null; saveList(key,arr); } };
+      apply(K_RECENTS); apply(K_FAVS);
+      renderRecents(); renderFavs();
+    }
+
+    function removeRecent(id){ const arr=loadList(K_RECENTS).filter(x=>x.id!==id); saveList(K_RECENTS,arr); renderRecents(); }
+    function clearRecents(){ saveList(K_RECENTS,[]); renderRecents(); }
+    function isFav(id){ return loadList(K_FAVS).some(x=>x.id===id); }
+    function toggleFav(item){ if(!item||!item.id) return; const arr=loadList(K_FAVS); const i=arr.findIndex(x=>x.id===item.id); if(i>=0) arr.splice(i,1); else arr.unshift(item); saveList(K_FAVS,arr); renderFavs(); renderRecents(); }
+    function clearFavs(){ saveList(K_FAVS,[]); renderFavs(); renderRecents(); }
+
+    function tsToText(ts){ try{ if(!ts) return ''; const d=new Date(ts); const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const hh=String(d.getHours()).padStart(2,'0'); const mi=String(d.getMinutes()).padStart(2,'0'); return `${dd}/${mm} ${hh}:${mi}`; }catch(_){ return ''; } }
+
+    function renderList(containerId, emptyId, arr, source){
+      const el=$(containerId), empty=$(emptyId);
+      if(!arr.length){ el.innerHTML=''; empty.style.display='block'; return; }
+      empty.style.display='none';
+      el.innerHTML = arr.map(item=>{
+        const safeTitle=(item.title||'Producto').replace(/</g,'&lt;');
+        const img=item.image?`<img alt="Imagen" src="${item.image}" data-action="open" style="cursor:pointer">`:'—';
+        const starOn=isFav(item.id);
+        const disabled=item.affiliateLink?'':'disabled';
+        const pvpBlock = (item.userPrice!=null) ? `
+          <div class="pvpLineMini" data-action="price" title="Toca para editar">
+            <span class="badgeManual">Manual</span> 🏷️ Precio anotado: ${fmtMoney(item.userPrice)} €
+            <div class="pvpSub">Solo en este dispositivo · No es el precio de Amazon.</div>
+          </div>` : '';
+        return `
+          <div class="mini" data-id="${item.id}">
+            <div class="icon-btn" title="Quitar" data-action="remove">✕</div>
+            <div class="star ${starOn?'':'off'}" title="${starOn?'Quitar de favoritos':'Añadir a favoritos'}" data-action="star">★</div>
+            <div class="thumb" data-action="open" style="cursor:pointer">${img}</div>
+            <div>
+              <div class="title" data-action="open" style="cursor:pointer">${safeTitle}</div>
+              <div class="muted">${item.category||'—'}</div>
+              <div class="actions" style="margin-top:14px">
+                <a class="banner ${disabled}" href="${item.affiliateLink||'#'}" data-action="open">🛒 Ver en Amazon</a>
+              </div>
+              ${pvpBlock}
+            </div>
+          </div>`;
+      }).join('');
+
+      el.querySelectorAll('.mini').forEach(card=>{
+        const id=card.getAttribute('data-id');
+        const item=arr.find(x=>x.id===id);
+        card.addEventListener('click', (ev)=>{
+          const act=ev.target?.getAttribute?.('data-action'); if(!act) return;
+          ev.preventDefault(); ev.stopPropagation();
+          if(act==='remove'){ source==='recents'?removeRecent(id):(saveList(K_FAVS,loadList(K_FAVS).filter(x=>x.id!==id)),renderFavs(),renderRecents()); }
+          if(act==='star'){ toggleFav(item); }
+          if(act==='open'){ openAmazon(item); }
+          if(act==='price'){ askAndSavePvp(id); }
+        }, { passive:false });
+      });
+    }
+
+    function renderRecents(){ renderList('recents','recentsEmpty', loadList(K_RECENTS), 'recent'); }
+    function renderFavs(){ const arr=loadList(K_FAVS); renderList('favs','favsEmpty', arr, 'fav'); const t=$('favTitle'); if(t) t.textContent='Favoritos ('+arr.length+')'; }
+
+    function renderResult(ok, p, ean, meta){
+      if(!ok){ note('No encontrado para '+ean); return; }
+      const item = normalizeItem(ean, { product:p, meta:meta||{} });
+      addRecent(item);
+      note('Añadido a “Últimos escaneados”.'); setTimeout(hideNote, 900);
+    }
+
+    function askAndSavePvp(id){
+      const old=getFromAnyList(id);
+      const pre=(old && old.userPrice!=null)? String(old.userPrice).replace('.',',') : '';
+      const v=prompt('Introduce tu precio (ej. 12,99). Se guarda solo en este dispositivo:', pre);
+      if(v===null) return;
+      const num=Number(String(v).replace(',','.').replace(/[^\d.]/g,'')); if(!isFinite(num)){ alert('Precio no válido'); return; }
+      updateItemPvp(id, Math.max(0,num));
+      // (sin logs ni envíos al backend para mantenerlo 100% local)
+    }
+
+    async function lookupAndRender(ean){
+      const cached=cacheGet(ean); if(cached){ renderResult(cached.success,cached.product,ean,cached.meta); return; }
+      try{
+        const r=await fetch('/api/lookup?ean='+encodeURIComponent(ean));
+        const d=await r.json(); cacheSet(ean,d);
+        renderResult(d && d.success, d && d.product, ean, d && d.meta);
+      }catch(e){ note('No se pudo consultar el backend.'); }
+    }
+
+    // ---------- Amazon deep-link helpers ----------
+function extractASIN(link){
+  if (!link) return null;
+  const m = link.match(/\/(?:dp|gp\/product)\/([A-Z0-9]{10})/i);
+  return m ? m[1].toUpperCase() : null;
+}
+function buildWebLink(item){
+  // Usa el enlace de afiliado que ya te da el backend (con ?tag=...)
+  // y cae a un enlace base si faltase.
+  const domain = item.domain || 'amazon.es';
+  const asin = item.asin || extractASIN(item.affiliateLink) || '';
+  return item.affiliateLink || `https://www.${domain}/dp/${asin}`;
+}
+function isAndroidChrome(){
+  const ua = navigator.userAgent || '';
+  // Android + navegadores que soportan intent:// de forma fiable
+  return /Android/i.test(ua) && /(Chrome|EdgA|Chromium|SamsungBrowser|Brave)/i.test(ua);
+}
+
+function openAmazon(item){
+  const web = buildWebLink(item);            // ya incluye ?tag=...
+  const asin = item.asin || extractASIN(web);
+  const domain = item.domain || 'amazon.es';
+
+  // ANDROID + Chrome/Edge: usar intent:// con la URL COMPLETA (con ?tag=)
+  if (isAndroidChrome() && asin){
+    // Quita protocolo para el intent (dejamos dominio + path + query intactos)
+    const pathAndQuery = web.replace(/^https?:\/\//i, '');
+    const appIntent =
+      `intent://${pathAndQuery}` +
+      `#Intent;scheme=https;package=com.amazon.mShop.android.shopping;` +
+      `S.browser_fallback_url=${encodeURIComponent(web)};end`;
+
+    let jumped = false;
+    const timer = setTimeout(()=>{ if(!jumped) location.href = web; }, 1500);
+    try { location.href = appIntent; jumped = true; } catch(_) { location.href = web; }
+    return;
+  }
+
+  // iOS / escritorio / otros navegadores → enlace web normal (con tag)
+  location.href = web;
+}
+
+
+    
+    // ---------- ZXing + cámara ----------
+    let currentStream=null, torchOn=false, scannerReader=null;
+
+    function stopScanner(){
+      try{ scannerReader && scannerReader.reset && scannerReader.reset(); }catch(_){}
+      try{ currentStream && currentStream.getTracks().forEach(t=>t.stop()); }catch(_){}
+      currentStream=null; scannerReader=null; torchOn=false;
+      note('Escáner detenido'); setTimeout(hideNote, 800);
+    }
+
+    function ensureMedia(){ return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia); }
+
+    function loadZXing(){
+      if (window.ZXingBrowser || window.ZXing) return Promise.resolve(true);
+      return new Promise(resolve=>{
+        const s=document.createElement('script');
+        s.src='/api/zxing.js'; s.async=true;
+        s.onload=()=>resolve(!!(window.ZXingBrowser||window.ZXing));
+        s.onerror=()=>resolve(false);
+        document.head.appendChild(s);
+      });
+    }
+
+    async function toggleTorch(){
+      const track=currentStream?.getVideoTracks?.()[0];
+      const caps=track?.getCapabilities?.();
+      if(!track || !caps || !caps.torch){ note('Este dispositivo no soporta linterna.'); return; }
+      try{
+        torchOn=!torchOn;
+        await track.applyConstraints({ advanced:[{ torch:torchOn }] });
+        note(torchOn?'Linterna: ON':'Linterna: OFF'); setTimeout(hideNote, 800);
+      }catch(_){ note('No se pudo cambiar la linterna.'); }
+    }
+
+    async function startScanner(){
+      if(!ensureMedia()){ note('Este navegador no soporta cámara.'); return; }
+      note('Cargando ZXing…');
+      const ok = await loadZXing();
+      const ZX = window.ZXingBrowser || window.ZXing || null;
+      const ReaderCtor = ZX && ZX.BrowserMultiFormatReader ? ZX.BrowserMultiFormatReader : null;
+      if(!ok || !ReaderCtor){ note('ZXing no disponible. Usa la búsqueda manual.'); return; }
+
+      try{
+        const r=await fetch('/api/zxing.js', { cache:'no-store' });
+        console.log('X-Precioreal-ZXing:', r.headers.get('X-Precioreal-ZXing')||'(sin cabecera)');
+      }catch(_){}
+
+      note('Pidiendo permiso de cámara…');
+      try{
+        const prov = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'environment' } }, audio:false });
+        prov.getTracks().forEach(t=>t.stop());
+      }catch(e){
+        if(e && (e.name==='NotAllowedError'||e.name==='PermissionDeniedError')){ note('Permiso denegado. Actívalo en los ajustes del navegador.'); return; }
+        if(e && (e.name==='NotFoundError'||e.name==='DevicesNotFoundError')){ note('No hay cámara disponible.'); return; }
+      }
+
+      const cont=$('scanner');
+      const video=document.createElement('video');
+      video.setAttribute('playsinline',''); video.setAttribute('autoplay',''); video.setAttribute('muted','');
+      video.muted=true; video.playsInline=true;
+      video.style.width='100%'; video.style.height='100%'; video.style.objectFit='cover';
+      cont.replaceChildren(video, (function(){ const m=document.createElement('div'); m.id='overlay'; return m;})());
+
+      // abrir stream
+      note('Abriendo cámara…');
+      try{
+        currentStream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'environment' } }, audio:false });
+        video.srcObject=currentStream;
+        await video.play().catch(()=>{}); // por si el autoplay se bloquea
+        hideNote();
+      }catch(e){
+        note('No se pudo abrir la cámara.'); return;
+      }
+
+      // lector global y decodificación continua/única
+      scannerReader = new ReaderCtor();
+      let justScanned=false, lastText='', lastAt=0;
+      const COOLDOWN=1200;
+
+      note('Escaneando…');
+      scannerReader.decodeFromVideoDevice(null, video, (result)=>{
+        if(!result || !result.getText) return;
+        const raw=result.getText()||''; const code=raw.replace(/[^0-9Xx]/g,''); if(!code) return;
+
+        const now=Date.now();
+        if(settings.continuous){
+          if(code===lastText && (now-lastAt)<COOLDOWN) return;
+          lastText=code; lastAt=now; beep(); lookupAndRender(code);
+        }else{
+          if(!justScanned){ justScanned=true; beep(); stopScanner(); lookupAndRender(code); }
+        }
+      }).catch(err=>{
+        console.error('decodeFromVideoDevice error', err);
+        note('Fallo del motor de escaneo. Intenta de nuevo o usa modo manual.');
+      });
+    }
+
+    // Subir imagen para leer código
+    $('btnUpload').addEventListener('click', ()=> $('imgInput').click());
+    $('imgInput').addEventListener('change', async (ev)=>{
+      const f=ev.target.files && ev.target.files[0]; if(!f) return;
+      try{
+        const imgURL=URL.createObjectURL(f); const img=new Image();
+        img.onload=async ()=>{
+          try{
+            if('BarcodeDetector' in window){
+              const bmp=await createImageBitmap(img);
+              const det=new BarcodeDetector({ formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39','qr_code'] });
+              const codes=await det.detect(bmp); bmp.close&&bmp.close();
+              if(codes && codes.length){ const code=String(codes[0].rawValue||'').replace(/[^0-9Xx]/g,''); if(code){ beep(); await lookupAndRender(code); URL.revokeObjectURL(imgURL); return; } }
+              note('No se detectó código en la imagen.');
+            }else{ note('Este navegador no soporta lectura desde imagen.'); }
+          }catch(_){ note('Fallo al procesar la imagen.'); }
+          URL.revokeObjectURL(imgURL);
+        }; img.src=imgURL;
+      }catch(_){ note('No se pudo abrir la imagen.'); }
+    });
+
+    // Test cámara
+    $('btnTest').addEventListener('click', async ()=>{
+      let txt='';
+      if(navigator.permissions && navigator.permissions.query){ try{ const p=await navigator.permissions.query({name:'camera'}); txt+='Permiso cámara: '+p.state+'\n'; }catch(_){} }
+      try{ const s=await navigator.mediaDevices.getUserMedia({video:true,audio:false}); s.getTracks().forEach(t=>t.stop()); txt+='getUserMedia: ✅ OK\n'; }catch(e){ txt+='getUserMedia: ❌ '+(e.name||e.message)+'\n'; }
+      const devs=await navigator.mediaDevices.enumerateDevices(); const list=devs.filter(d=>d.kind==='videoinput'); txt+='Cámaras detectadas: '+list.length+'\n'; list.forEach((d,i)=> txt+='- ['+i+'] '+(d.label||'(sin etiqueta)')+'\n'); note(txt||'Test hecho');
+    });
+
+    // Buscar manual
+    $('btnBuscar').addEventListener('click', async ()=>{
+      const code=$('eanInput').value.replace(/[^0-9]/g,''); const v=validCode(code);
+      if(!v.ok){ setEanHint('Código no válido.', false); return; }
+      await lookupAndRender(code);
+    });
+
+    // Toggles
+    renderToggles();
+    $('btnToggleSound').addEventListener('click', ()=>{ settings.noSound=!settings.noSound; saveSettings(settings); renderToggles(); });
+    $('btnToggleVibra').addEventListener('click', ()=>{ settings.noVibra=!settings.noVibra; saveSettings(settings); renderToggles(); });
+    $('btnToggleContinuous').addEventListener('click', ()=>{ settings.continuous=!settings.continuous; saveSettings(settings); renderToggles(); });
+
+    // Pon tu Precio (al último “reciente”)
+    $('btnSetPrice').addEventListener('click', ()=>{
+      const rec=loadList(K_RECENTS)[0]||null; if(!rec){ alert('Escanea o busca un producto primero.'); return; }
+      askAndSavePvp(rec.id);
+    });
+
+    // Lote (modal rápido)
+    function openBatch(){
+      if(document.getElementById('batchModal')) return;
+      const modal=document.createElement('div');
+      modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:9999';
+      modal.id='batchModal';
+      modal.innerHTML=`
+        <div style="background:#0d1423;border:1px solid #1a2434;border-radius:12px;padding:12px;width:min(680px,90vw)">
+          <h3 style="margin:0 0 8px 0;font-size:16px">Añadir por lote</h3>
+          <p class="muted" style="margin:4px 0 10px">Pega códigos separados por salto de línea, espacios o comas. Acepta EAN-13, UPC-A (12) y EAN-8.</p>
+          <textarea id="batchCodes" style="width:100%;min-height:190px;resize:vertical;border-radius:8px;border:1px solid #223352;background:#0c1322;color:#e7edf7;padding:10px" placeholder="Ejemplo:
+9788491296014
+740617300253
+8715946725963"></textarea>
+          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+            <button class="btn secondary" id="batchCancel">Cancelar</button>
+            <button class="btn" id="batchRun">Procesar</button>
+          </div>
+        </div>`;
+      document.body.appendChild(modal);
+      const close=()=>modal.remove();
+      modal.addEventListener('click', e=>{ if(e.target===modal) close(); });
+      modal.querySelector('#batchCancel').addEventListener('click', close);
+      modal.querySelector('#batchRun').addEventListener('click', async ()=>{
+        const raw=modal.querySelector('#batchCodes').value||'';
+        const toks=raw.split(/[\s,;]+/).filter(Boolean);
+        const codes=[];
+        for(const t of toks){ const s=String(t).replace(/[^0-9]/g,''); if(!s) continue; const v=validCode(s); if(v.ok) codes.push(s); }
+        if(!codes.length){ alert('No hay códigos válidos.'); return; }
+        close();
+        for(let i=0;i<codes.length;i++){ note(`Procesando lote ${i+1}/${codes.length}…`); await lookupAndRender(codes[i]); }
+        note('Lote terminado'); setTimeout(hideNote, 1200);
+      });
+      modal.querySelector('#batchCodes').focus();
+    }
+    $('btnBatch').addEventListener('click', openBatch);
+
+    // Linterna
+    $('btnTorch').addEventListener('click', toggleTorch);
+
+    // Parar
+    $('btnStop').addEventListener('click', stopScanner);
+
+    // Iniciar
+    $('btnScan').addEventListener('click', startScanner);
+
+    // Validación al escribir
+    $('eanInput').addEventListener('input', ()=>{
+      const s=$('eanInput').value.replace(/[^0-9]/g,''); if(!s){ setEanHint('',true); return; }
+      const v=validCode(s); if(!v.ok) setEanHint('Código no válido (longitud o checksum).', false); else setEanHint(`Código válido (${v.type}).`, true);
+    });
+
+    // Limpiar listas
+    $('btnClearRecents').addEventListener('click', ()=>{ if(confirm('¿Vaciar lista de últimos escaneados?')) clearRecents(); });
+    $('btnClearFavs').addEventListener('click', ()=>{ if(confirm('¿Vaciar favoritos?')) clearFavs(); });
+
+    // Render inicial
+    renderRecents(); renderFavs();
+  })();
+  </script>
+
+  <script>
+/* PWA: registrar Service Worker + Add to Home Screen */
+(function(){
+  // Registrar SW
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js')
+      .then(r => console.log('[PWA] SW registrado:', r.scope))
+      .catch(e => console.warn('[PWA] SW error:', e));
+  }
+
+  // Estado instalación (standalone)
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  const isiOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+
+  // beforeinstallprompt (Android/Chrome)
+  let deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    const btn = document.getElementById('btnInstall');
+    if (btn) btn.style.display = 'inline-flex';
+  });
+
+  const btnInstall = document.getElementById('btnInstall');
+  if (btnInstall) {
+    btnInstall.addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      try {
+        const choice = await deferredPrompt.userChoice;
+        console.log('[PWA] A2HS:', choice.outcome);
+      } catch(_) {}
+      deferredPrompt = null;
+      btnInstall.style.display = 'none';
+    });
+  }
+
+  // iOS tip si no está instalada
+  const tip = document.getElementById('a2hsTip');
+  if (tip) {
+    if (isiOS && !isStandalone) tip.style.display = 'block';
+  }
+
+  // Ocultar botón si ya está instalada
+  if (isStandalone && btnInstall) btnInstall.style.display = 'none';
+
+  // Detectar instalación
+  window.addEventListener('appinstalled', () => {
+    console.log('[PWA] App instalada');
+    if (btnInstall) btnInstall.style.display = 'none';
+    if (tip) tip.style.display = 'none';
+  });
+})();
+</script>
+
+<script>
+/* ====== Afiliado Amazon – Inserción rápida (inline) ====== */
+(function () {
+  'use strict';
+  const DEFAULT_DOMAIN = 'amazon.es';
+
+  function buildAffiliateUrl(asin, tag, domain = DEFAULT_DOMAIN) {
+    if (!asin || !tag) throw new Error('Faltan asin o tag');
+    return `https://${domain}/dp/${encodeURIComponent(asin)}/?tag=${encodeURIComponent(tag)}`;
+  }
+
+  // Test visible desde consola (expuesto en global)
+  window.testAmazonAPI = function () {
+    const asin = 'B00E8KEYPC';        // ASIN de ejemplo
+    const tag  = 'tu-asociate-id-21'; // <-- pon aquí tu tag (con comillas)
+    const url  = buildAffiliateUrl(asin, tag);
+    console.log('🧪 testAmazonAPI →', url);
+    return { ok: true, url };
+  };
+
+  // Por si lo quieres luego en consola:
+  window.buildAffiliateUrl = buildAffiliateUrl;
+
+  console.log('✅ Afiliado listo: testAmazonAPI() disponible');
+})();
+</script>
+
+</body>
+</html>
+
+
+
+
+
+
 
