@@ -472,11 +472,11 @@ function renderAllfunction renderAll(){
     if(ar <= 1.6) return '4 / 3';
     return '16 / 9';
   }
-  
   function fitImage(img){
     try{
       const media = img.closest('.media'); if(!media) return;
       media.classList.remove('loading');
+
       const key = prFitKey(media, img);
       const saved = prFitLoad(key);
       if(saved && (saved.fit || saved.ar)){
@@ -484,24 +484,6 @@ function renderAllfunction renderAll(){
         if(saved.fit) media.dataset.fit = saved.fit;
         return;
       }
-      const w = img.naturalWidth||1, h = img.naturalHeight||1, ar = w/h;
-      media.style.setProperty('--ar', prBucketFromAR(ar));
-
-      // Global setting takes effect when there is no per-item override
-      const mode = (settings && settings.imageFit) ? settings.imageFit : 'auto';
-      if(mode === 'cover' || mode === 'contain'){
-        media.dataset.fit = mode;
-        return;
-      }
-
-      // Auto: decide by comparing with container ratio
-      const rect = media.getBoundingClientRect();
-      const arBox = (rect.width||1)/(rect.height||1);
-      const diff = Math.abs(ar - arBox) / Math.max(arBox, 1);
-      media.dataset.fit = diff > 0.12 ? 'contain' : 'cover';
-    }catch(e){}
-  }
-
 
       const w = img.naturalWidth||1, h = img.naturalHeight||1;
       const ar = w/h;
