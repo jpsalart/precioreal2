@@ -88,6 +88,10 @@
     .toast .act{margin-left:6px;text-decoration:underline;cursor:pointer}
 
     @media (prefers-reduced-motion: reduce){ .opts-panel{transition:none} }
+    /* iOS hint */
+    .ios-hint{background:#10192b;border:1px dashed var(--bd);color:var(--muted);margin:8px auto 0;max-width:900px;padding:8px 12px;border-radius:10px;font-size:.9rem;display:none}
+    .ios-hint b{color:#e7edf7}
+
   </style>
 </head>
 <body>
@@ -101,6 +105,8 @@
       <button id="btnInstall" class="btn" aria-label="Instalar aplicación" style="display:none">⬇️ Instalar</button>
     </div>
   </header>
+
+  <div id="iosHint" class="ios-hint" role="note">En iPhone/iPad: abre <b>Compartir</b> y elige <b>“Añadir a pantalla de inicio”</b> para instalar la app.</div>
 
   <main>
     <!-- Controles superiores: Escáner + Configuración -->
@@ -528,6 +534,18 @@
     deferredPrompt = null;
     $('btnInstall').style.display = 'none';
   });
+
+  // iOS hint: mostrar ayuda para añadir a pantalla de inicio
+  function showIOSHintIfNeeded(){
+    const ua = window.navigator.userAgent || '';
+    const isIOS = /iPad|iPhone|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const inStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    if(isIOS && !inStandalone){
+      const el = $('iosHint'); if(el) el.style.display = 'block';
+      const btn = $('btnInstall'); if(btn) btn.style.display = 'none';
+    }
+  }
+  document.addEventListener('DOMContentLoaded', showIOSHintIfNeeded);
 
   </script>
 </body>
