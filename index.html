@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>PrecioReal · Escanea y abre en Amazon (C)</title>
+  <title>PrecioReal · Escanea y abre en Amazon (D)</title>
   <meta name="description" content="Escanea EAN/UPC/ISBN, encuentra el ASIN y abre la ficha de Amazon con tu enlace de afiliado.">
   <meta name="theme-color" content="#0b0f14">
   <meta name="mobile-web-app-capable" content="yes">
@@ -35,9 +35,9 @@
     /* ===== Cards ===== */
     .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
     .card{position:relative;background:var(--panel);border:1px solid var(--bd);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
-    /* Versión C: recorte controlado (cover) y altura compacta uniforme */
-    .cover{width:100%;height:clamp(120px,28vw,150px); background:#0a1220;display:flex;align-items:center;justify-content:center;color:#4a5c7a}
-    .cover img{width:100%;height:100%;object-fit:cover;object-position:top center;display:block}
+    /* Versión D: adaptativa sin recorte, con tope de alto y skeleton mínimo */
+    .cover{width:100%;min-height:120px;background:#0a1220;display:flex;align-items:center;justify-content:center;color:#4a5c7a;padding:8px}
+    .cover img{display:block;max-width:100%;height:auto;max-height:clamp(170px,42vw,230px)}
     .card .body{padding:12px;display:flex;flex-direction:column;gap:8px}
     .title{font-weight:600;font-size:.95rem;line-height:1.25rem}
     .cat{font-size:.8rem;color:var(--muted)}
