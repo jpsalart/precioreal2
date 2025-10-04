@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>PrecioReal · Escanea y abre en Amazon (E2 – cuadrado centrado)</title>
+  <title>PrecioReal · Escanea y abre en Amazon (E1 compact)</title>
   <meta name="description" content="Escanea EAN/UPC/ISBN, encuentra el ASIN y abre la ficha de Amazon con tu enlace de afiliado.">
   <meta name="theme-color" content="#0b0f14">
   <meta name="mobile-web-app-capable" content="yes">
@@ -35,11 +35,9 @@
     /* ===== Cards ===== */
     .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
     .card{position:relative;background:var(--panel);border:1px solid var(--bd);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
-
-    /* E2: cuadrado blanco centrado, tamaño controlado */
-    .cover{width:100%;aspect-ratio:1/1;background:#ffffff;display:flex;align-items:center;justify-content:center;padding:12px;overflow:hidden}
-    .cover img{display:block;width:100%;height:100%;object-fit:contain;transform:scale(var(--fit,0.92));transform-origin:center} 
-
+    /* E1 compact: lienzo blanco cuadrado (1:1) algo más pequeño del ancho */
+    .cover{width:92%;aspect-ratio:1/1;background:#ffffff;display:flex;align-items:center;justify-content:center;padding:12px;overflow:hidden;margin:8px auto}
+    .cover img{display:block;width:100%;height:100%;object-fit:contain;transform:scale(var(--fit,0.92));transform-origin:center}
     .card .body{padding:12px;display:flex;flex-direction:column;gap:8px}
     .title{font-weight:600;font-size:.95rem;line-height:1.25rem}
     .cat{font-size:.8rem;color:var(--muted)}
@@ -94,12 +92,12 @@
     .toast.error{border-color:#5a2727;background:#2a0f0f;color:#ffbdbd}
     .toast .act{margin-left:6px;text-decoration:underline;cursor:pointer}
 
-    /* Botón Escáner: tamaño medio (ligeramente mayor que las tabs) */
+    /* Botón Escáner: tamaño medio */
     #btnScan{ min-height:48px; padding:10px 14px; font-weight:900 }
     .btn.scan-on{ background:linear-gradient(180deg,#ffd84d,#ffb300); color:#1a1200; border:none; min-height:48px; padding:10px 14px; font-weight:900 }
 
     /* iOS hint */
-    .ios-hint{background:#10192b;border:1px dashed var(--bd);color:#muted;margin:8px auto 0;max-width:900px;padding:8px 12px;border-radius:10px;font-size:.9rem;display:none}
+    .ios-hint{background:#10192b;border:1px dashed var(--bd);color:var(--muted);margin:8px auto 0;max-width:900px;padding:8px 12px;border-radius:10px;font-size:.9rem;display:none}
     .ios-hint b{color:#e7edf7}
 
     @media (prefers-reduced-motion: reduce){ .opts-panel{transition:none} }
@@ -264,18 +262,6 @@
     $('viewComparar').style.display = isComparar?'block':'none';
     $('viewLista').style.display = isComparar?'none':'block';
     renderAll();
-  // Ajuste visual para que ninguna imagen quede "gigante" en E1
-  function tuneCardImages(){
-    const adjust=(img)=>{
-      const w=img.naturalWidth||0,h=img.naturalHeight||0; if(!w||!h) return;
-      const r=h/w; let fit=0.92; // base con aire
-      if(r>1.35||r<0.75) fit=0.96; // muy vertical u horizontal: un poco más grande
-      else fit=0.88; // casi cuadradas: un poco más pequeñas para evitar sensación gigante
-      img.style.setProperty('--fit', String(fit));
-    };
-    document.querySelectorAll('.card .cover img').forEach(img=>{ img.complete?adjust(img):img.addEventListener('load',()=>adjust(img),{once:true}); });
-  }
-  tuneCardImages();
   }
   $('tabComparar').addEventListener('click', ()=>switchTab('comparar'));
   $('tabLista').addEventListener('click', ()=>switchTab('lista'));
@@ -313,6 +299,19 @@
   }
   renderAll();
 
+  // Ajuste visual para que ninguna imagen quede "gigante"
+  function tuneCardImages(){
+    const adjust=(img)=>{
+      const w=img.naturalWidth||0,h=img.naturalHeight||0; if(!w||!h) return;
+      const r=h/w; let fit=0.92; // base con aire
+      if(r>1.35||r<0.75) fit=0.96; // muy vertical u horizontal: un poco más grande
+      else fit=0.88; // casi cuadradas: un poco más pequeñas para evitar sensación gigante
+      img.style.setProperty('--fit', String(fit));
+    };
+    document.querySelectorAll('.card .cover img').forEach(img=>{ img.complete?adjust(img):img.addEventListener('load',()=>adjust(img),{once:true}); });
+  }
+  tuneCardImages();
+
   // Click handling (incluye favorito con stopPropagation)
   document.addEventListener('click', (e)=>{
     const fav = e.target.closest('.fav-btn');
@@ -325,7 +324,7 @@
         const base = recientes.find(x=>x.id===id) || favoritos.find(x=>x.id===id);
         if(base){ favoritos.unshift({...base}); saveArr('pr-favs-v1', favoritos); }
       }
-      renderAll();
+      renderAll(); tuneCardImages();
       return;
     }
 
@@ -337,12 +336,12 @@
     if(action==='add-price' && id){
       const item = recientes.find(x=>x.id===id) || favoritos.find(x=>x.id===id); if(!item) return;
       const val = prompt('Precio manual (€, usa punto o coma):', item.userPrice!=null? String(item.userPrice):'');
-      if(val!=null){ const n = Number(String(val).replace(',','.')); if(!isNaN(n)){ item.userPrice = Math.round(n*100)/100; item.userPriceAt = now(); persistItem(item); renderAll(); } }
+      if(val!=null){ const n = Number(String(val).replace(',','.')); if(!isNaN(n)){ item.userPrice = Math.round(n*100)/100; item.userPriceAt = now(); persistItem(item); renderAll(); tuneCardImages(); } }
     }
 
     if(action==='toggle-comprado' && id){
       const item = favoritos.find(x=>x.id===id); if(!item) return;
-      item.completed = btn.checked; item.completedAt = item.completed ? now() : null; saveArr('pr-favs-v1', favoritos); renderAll();
+      item.completed = btn.checked; item.completedAt = item.completed ? now() : null; saveArr('pr-favs-v1', favoritos); renderAll(); tuneCardImages();
     }
   });
 
@@ -350,12 +349,12 @@
   $('btnVaciarLista').addEventListener('click', ()=>{
     if(!recientes.length) return;
     if(confirm('¿Seguro que quieres vaciar la lista de escaneados (Comparar)?')){
-      recientes = []; saveArr('pr-recent-v1', recientes); renderAll();
+      recientes = []; saveArr('pr-recent-v1', recientes); renderAll(); tuneCardImages();
       showToast({ message: 'Lista vaciada', type:'success', timeout:1500 });
     }
   });
 
-  $('btnMostrarComprados').addEventListener('click', ()=>{ showComprados = !showComprados; $('btnMostrarComprados').textContent = 'Ver comprados: ' + (showComprados?'ON':'OFF'); renderAll(); });
+  $('btnMostrarComprados').addEventListener('click', ()=>{ showComprados = !showComprados; $('btnMostrarComprados').textContent = 'Ver comprados: ' + (showComprados?'ON':'OFF'); renderAll(); tuneCardImages(); });
 
   function persistItem(item){
     const i = recientes.findIndex(x=>x.id===item.id); if(i>=0){ recientes[i]=item; saveArr('pr-recent-v1', recientes); }
@@ -432,7 +431,7 @@
       const existing = recientes.find(x=>x.id===item.id);
       if(!existing){ recientes.unshift(item); saveArr('pr-recent-v1', recientes); }
       else { Object.assign(existing, item); saveArr('pr-recent-v1', recientes); }
-      renderAll();
+      renderAll(); tuneCardImages();
       showToast({ message: '✅ Encontrado', type:'success', timeout:1500 });
     }else{
       showToast({ message: '❌ No encontrado', type:'error', timeout:1800 });
@@ -460,10 +459,10 @@
     }catch(err){ enqueueOffline(ean); return null; }
   }
   function enqueueOffline(ean){ const q = loadArr('pr-queue-v1'); q.push({ ean, t: now() }); saveArr('pr-queue-v1', q); }
-  async function reprocesarCola(){ const q = loadArr('pr-queue-v1'); if(!q.length) return; const next = q.shift(); saveArr('pr-queue-v1', q); const item = await resolveEAN(next.ean); if(item){ if(!recientes.find(x=>x.id===item.id)){ recientes.unshift(item); saveArr('pr-recent-v1', recientes); renderAll(); } } setTimeout(reprocesarCola, 500); }
+  async function reprocesarCola(){ const q = loadArr('pr-queue-v1'); if(!q.length) return; const next = q.shift(); saveArr('pr-queue-v1', q); const item = await resolveEAN(next.ean); if(item){ if(!recientes.find(x=>x.id===item.id)){ recientes.unshift(item); saveArr('pr-recent-v1', recientes); renderAll(); tuneCardImages(); } } setTimeout(reprocesarCola, 500); }
   window.addEventListener('online', reprocesarCola); reprocesarCola();
 
-  $('btnManualGo').addEventListener('click', async ()=>{ const code = sanitizeCode($('inputManual').value); if(!code) return; const item = await resolveEAN(code); if(item){ if(!recientes.find(x=>x.id===item.id)){ recientes.unshift(item); saveArr('pr-recent-v1', recientes); renderAll(); } showToast({ message: '✅ Encontrado', type:'success', timeout:1500 }); } else { showToast({ message: '❌ No encontrado', type:'error', timeout:1800 }); } });
+  $('btnManualGo').addEventListener('click', async ()=>{ const code = sanitizeCode($('inputManual').value); if(!code) return; const item = await resolveEAN(code); if(item){ if(!recientes.find(x=>x.id===item.id)){ recientes.unshift(item); saveArr('pr-recent-v1', recientes); renderAll(); tuneCardImages(); } showToast({ message: '✅ Encontrado', type:'success', timeout:1500 }); } else { showToast({ message: '❌ No encontrado', type:'error', timeout:1800 }); } });
 
   $('btnTorch').addEventListener('click', async ()=>{ if(!stream){ alert('Inicia el escáner primero.'); return; } const track = stream.getVideoTracks()[0]; const caps = track.getCapabilities?.(); if(!caps || !('torch' in caps)){ alert('Este dispositivo/navegador no soporta linterna.'); return; } torchOn = !torchOn; try{ await track.applyConstraints({ advanced:[{ torch: torchOn }] }); $('btnTorch').textContent = 'Linterna: ' + (torchOn?'ON':'OFF'); }catch(e){ alert('No se pudo activar la linterna.'); } });
 
@@ -485,16 +484,8 @@
   window.addEventListener('appinstalled', ()=>{ $('btnInstall').style.display = 'none'; showToast({ message: '✅ App instalada', type:'success' }); });
   $('btnInstall').addEventListener('click', async ()=>{ if(!deferredPrompt){ showToast({ message:'Instalación no disponible en este navegador', type:'error' }); return; } deferredPrompt.prompt(); try{ await deferredPrompt.userChoice; }catch(_){} deferredPrompt = null; $('btnInstall').style.display = 'none'; });
 
-  // iOS hint: mostrar ayuda para añadir a pantalla de inicio
-  function showIOSHintIfNeeded(){
-    const ua = window.navigator.userAgent || '';
-    const isIOS = /iPad|iPhone|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    const inStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-    if(isIOS && !inStandalone){
-      const el = $('iosHint'); if(el) el.style.display = 'block';
-      const btn = $('btnInstall'); if(btn) btn.style.display = 'none';
-    }
-  }
+  // iOS hint
+  function showIOSHintIfNeeded(){ const ua = window.navigator.userAgent || ''; const isIOS = /iPad|iPhone|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); const inStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone; if(isIOS && !inStandalone){ const el = $('iosHint'); if(el) el.style.display = 'block'; const btn = $('btnInstall'); if(btn) btn.style.display = 'none'; } }
   document.addEventListener('DOMContentLoaded', showIOSHintIfNeeded);
 
   </script>
