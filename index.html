@@ -318,30 +318,39 @@ function isAndroidChromeStrict(){
 function isAndroidChrome(){ return isAndroidChromeStrict(); }
 
 function openAmazon(item){
-  const web = buildWebLink(item);               // ya incluye ?tag=...
-  const asin = item.asin || extractASIN(web) || '';
-  const useStrictChrome = isAndroidChromeStrict();
+  // SAFE mode: only HTTPS. If the Amazon app has verified links enabled,
+  // Android abrirá la app; si no, se quedará en web. Evita Play Store.
+  const web = buildWebLink(item);
+  location.href = web;
+}
 
-  if (!useStrictChrome || !asin) {
-    location.href = web;
-    return;
-  }
+// Opcional: modo "forzar app" solo en Chrome/Edge oficiales (puede abrir Play Store en algunos casos)
+// Úsalo solo si el usuario lo quiere explícitamente (p.ej., desde un switch/ajuste).
+function openAmazonForceApp(item){
+  const web = buildWebLink(item);
+  const asin = item.asin || extractASIN(web) || '';
+  if (!isAndroidChromeStrict() || !asin) { location.href = web; return; }
 
   let hidden = false;
-  const onVis = () => { hidden = (document.visibilityState === 'hidden'); };
-  document.addEventListener('visibilitychange', onVis, { once: true });
+  const onHide = () => { hidden = true; };
+  window.addEventListener('pagehide', onHide, { once: true });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') hidden = true;
+  }, { once: true });
 
+  // Intento 1: https (si la app está asociada, se abrirá)
   location.href = web;
 
+  // Intento 2: intent:// solo si seguimos visibles tras un margen
   setTimeout(() => {
     if (hidden) return;
-    const pathAndQuery = web.replace(/^https?:\/\//i, ''); // dominio + path + query
+    const pathAndQuery = web.replace(/^https?:\/\//i, '');
     const appIntent =
       `intent://${pathAndQuery}` +
       `#Intent;scheme=https;package=com.amazon.mShop.android.shopping;` +
       `S.browser_fallback_url=${encodeURIComponent(web)};end`;
     try { location.href = appIntent; } catch(_) { location.href = web; }
-  }, 250);
+  }, 500);
 }
 
 
