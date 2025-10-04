@@ -6,66 +6,67 @@
   <title>PrecioReal · Escanea y abre en Amazon</title>
   <meta name="description" content="Escanea EAN/UPC/ISBN, encuentra el ASIN y abre la ficha de Amazon con tu enlace de afiliado.">
   <meta name="theme-color" content="#0b0f14">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
   <style>
     :root{
       --bg:#0b0f14; --panel:#121824; --text:#e7edf7; --muted:#a8b3c7;
       --brand:#3aa1ff; --brand2:#1e78d5; --bd:#1a2434; --ok:#9fe29f; --bad:#ffb3b3;
-      --accent:#2b6cb0; --accent-2:#245b94;
-      --header-h: 48px;
     }
     *{box-sizing:border-box}
-    body{margin:0;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial; background:var(--bg); color:var(--text);
-      padding-top: calc(var(--header-h) + env(safe-area-inset-top));}
+    body{margin:0;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial; background:var(--bg); color:var(--text)}
 
-    /* ===== Header fijo con marquee ===== */
-    header.ticker{position:fixed;top:0;left:0;right:0;z-index:1000;height:calc(var(--header-h) + env(safe-area-inset-top));
-      padding-top:env(safe-area-inset-top);background:var(--panel);border-bottom:1px solid var(--bd);overflow:hidden;
-      box-shadow: 0 2px 0 rgba(26,36,52,.65), 0 10px 24px rgba(0,0,0,.35)}
-    .ticker-wrap{position:relative;width:100%;height:var(--header-h);display:grid;align-items:center}
-    .ticker-track{display:inline-block;white-space:nowrap;animation:ticker 18s linear infinite;will-change:transform}
-    .ticker-track span{margin-right:32px;color:var(--muted)}
-    .ticker-track b{color:#cfe2ff}
-    .ticker-track:hover{animation-play-state:paused}
-    @keyframes ticker{0%{transform:translateX(100%)}100%{transform:translateX(-100%)}}
-    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-
-    main{max-width:900px;margin:0 auto;padding:12px}
-    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-
-    .btn{appearance:none;border:1px solid var(--bd);background:#182131;color:var(--text); padding:10px 12px;border-radius:10px;cursor:pointer}
-    .btn.primary{background:linear-gradient(180deg,var(--brand),var(--brand2));border:none;color:#001225;font-weight:600}
+    /* ===== AppBar (estática, profesional) ===== */
+    header.appbar{background:var(--panel);border-bottom:1px solid var(--bd);height:56px;padding:0 12px;display:flex;align-items:center;justify-content:space-between}
+    .brand{display:flex;align-items:center;gap:10px}
+    .brand .logo{width:28px;height:28px;border-radius:8px;background:#0f1726;border:1px solid var(--bd);display:block;object-fit:cover}
+    .brand .title{font-weight:700;letter-spacing:.2px}
+    .app-actions{display:flex;gap:8px}
+    .btn{appearance:none;border:1px solid var(--bd);background:#182131;color:var(--text); padding:8px 10px;border-radius:10px;cursor:pointer}
+    .btn.primary{background:linear-gradient(180deg,var(--brand),var(--brand2));border:none;color:#001225;font-weight:700}
     .btn.secondary{background:#162033}
     .btn.warn{background:#3a1c1c;border-color:#6b2a2a}
     .btn:active{transform:translateY(1px)}
 
+    main{max-width:900px;margin:0 auto;padding:12px}
+    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
     .muted{color:var(--muted)}
-    .pill{display:inline-flex;gap:6px;align-items:center;padding:8px 10px;border:1px dashed var(--bd); border-radius:999px;color:var(--muted)}
-    input[type="text"], input[type="number"]{background:#0f1726;border:1px solid var(--bd); color:var(--text);border-radius:10px;padding:10px 12px}
 
-    video{width:100%;max-height:50vh;background:#000;border-radius:12px;border:1px solid var(--bd)}
-
-    .section-title{display:flex;align-items:center;justify-content:space-between;margin:16px 0 8px}
+    /* ===== Cards ===== */
     .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
-    .card{background:var(--panel);border:1px solid var(--bd);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
-    .card .cover{aspect-ratio:16/10;background:#0a1220;display:flex;align-items:center;justify-content:center;color:#4a5c7a}
+    .card{position:relative;background:var(--panel);border:1px solid var(--bd);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
+    .cover{width:100%;height:clamp(140px,34vw,190px); background:#0a1220;display:flex;align-items:center;justify-content:center;color:#4a5c7a}
+    .cover img{width:100%;height:100%;object-fit:cover;display:block}
     .card .body{padding:12px;display:flex;flex-direction:column;gap:8px}
     .title{font-weight:600;font-size:.95rem;line-height:1.25rem}
     .cat{font-size:.8rem;color:var(--muted)}
-    .row.actions{margin-top:auto}
+    .row.actions{display:flex;gap:8px;margin-top:auto}
     .chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--bd);padding:4px 8px;border-radius:999px;font-size:.8rem;color:var(--muted)}
     .price{font-family:ui-monospace,Menlo,Consolas;font-size:.95rem}
+    .btn.cta{min-height:46px;padding:10px 14px;font-weight:800;margin-left:auto}
+
+    /* ===== Botón favorito (overlay) ===== */
+    .fav-btn{position:absolute;top:8px;right:8px;width:40px;height:40px;border-radius:10px;border:1px solid var(--bd);background:#0f1726;
+      display:grid;place-items:center;font-size:18px;cursor:pointer}
+    .fav-btn[aria-pressed="true"]{background:#11233a;border-color:#2a4a7a;color:#ffd166}
+    .fav-btn:focus-visible{outline:2px solid #3aa1ff;outline-offset:2px}
+
     .tabs{display:flex;gap:8px;margin-top:10px}
     .tab{padding:8px 12px;border-radius:12px;border:1px solid var(--bd);cursor:pointer;color:var(--muted)}
     .tab.active{background:#162033;color:var(--text)}
-    .divider{height:1px;background:var(--bd);margin:12px 0}
+    .section-title{display:flex;align-items:center;justify-content:space-between;margin:16px 0 8px}
     .counter{font-size:.85rem;color:var(--muted)}
+
+    .divider{height:1px;background:var(--bd);margin:12px 0}
     .flex{display:flex;align-items:center;gap:8px}
-    .grow{flex:1}
+
     footer{padding:40px 12px;color:var(--muted);text-align:center}
     .link{color:#9ecbff;text-decoration:none}
 
-    /* ===== Panel de opciones (pestaña al lado del PvP) ===== */
+    /* ===== Panel de configuración ===== */
     .opts-anchor{position:relative}
     #btnOpts{display:inline-flex;align-items:center;gap:6px}
     .opts-panel{position:relative;width:100%;background:#10192b;border:1px solid var(--bd);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.35);margin-top:8px; overflow:hidden; max-height:0; transition:max-height .24s ease}
@@ -74,50 +75,67 @@
     .opts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}
     .opts-note{font-size:.85rem;color:var(--muted)}
 
+    /* ===== Cámara ===== */
+    video#video{width:100%;height:100%;max-height:none;object-fit:cover;display:block;background:#000;border:0}
+    #cameraControls{display:none;align-items:center;gap:10px;margin-top:8px}
+    #zoomSlider{width:220px}
+
     /* ===== Toasts ===== */
     #toasts{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;display:flex;flex-direction:column;gap:8px;z-index:9999;pointer-events:none}
-    .toast{pointer-events:auto;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;border:1px solid var(--bd);background:#10192b;color:var(--text);box-shadow:0 8px 24px rgba(0,0,0,.3)}
+    .toast{pointer-events:auto;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;border:1px solid var(--bd);background:#10192b;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.3)}
     .toast.success{border-color:#22553a;background:#0f2a1d;color:#a6f3b3}
     .toast.error{border-color:#5a2727;background:#2a0f0f;color:#ffbdbd}
     .toast .act{margin-left:6px;text-decoration:underline;cursor:pointer}
 
-    /* ===== Cámara ===== */
-    #cameraControls{display:none;align-items:center;gap:10px}
-    #zoomSlider{width:220px}
+    @media (prefers-reduced-motion: reduce){ .opts-panel{transition:none} }
+    /* iOS hint */
+    .ios-hint{background:#10192b;border:1px dashed var(--bd);color:var(--muted);margin:8px auto 0;max-width:900px;padding:8px 12px;border-radius:10px;font-size:.9rem;display:none}
+    .ios-hint b{color:#e7edf7}
 
-    /* Reduce motion */
-    @media (prefers-reduced-motion: reduce){ .ticker-track{animation:none} .opts-panel{transition:none} }
+    /* layout tweaks: colocar Escáner a la derecha y panel debajo */
+    .opts-anchor #btnOpts{ order:1; margin-left:auto }
+    .opts-anchor #btnScan{ order:2 }
+    .opts-anchor #optsPanel{ order:3; width:100% }
+    .grow{ flex:1 }
+
+    /* cámara rectangular controlada por contenedor */
+    .cam-wrap{ margin-top:10px }
+    .cam-frame{ position:relative; width:100%; aspect-ratio:16/9; max-height:34vh; margin:0 auto; background:#000; border:1px solid var(--bd); border-radius:16px; overflow:hidden }
+
+    /* Tabs coloreadas + estado del escáner */
+    #tabComparar.tab{ border-color:#1e78d5 }
+    #tabComparar.tab.active{ background:linear-gradient(180deg,var(--brand),var(--brand2)); color:#001225; font-weight:800 }
+    #tabLista.tab{ border-color:#6b4dd6 }
+    #tabLista.tab.active{ background:linear-gradient(180deg,#b59aff,#6b4dd6); color:#0b0720; font-weight:800 }
+    .btn.scan-on{ background:linear-gradient(180deg,#ffd84d,#ffb300); color:#1a1200; border:none; min-height:56px; padding:12px 16px; font-weight:900 }
+
   </style>
 </head>
 <body>
-  <!-- Header fijo con texto en movimiento -->
-  <header class="ticker" aria-label="Mensaje informativo">
-    <div class="ticker-wrap">
-      <div class="ticker-track">
-        <span><b>PrecioReal</b> · Escanea y abre en Amazon</span> •
-        <span><b>PrecioReal</b> · Escanea y abre en Amazon</span> •
-        <span><b>PrecioReal</b> · Escanea y abre en Amazon</span>
-      </div>
+  <!-- App bar estática (sin texto en movimiento) -->
+  <header class="appbar" aria-label="Barra de la app">
+    <div class="brand">
+      <img class="logo" src="/icons/icon-192.png" alt="Logo" onerror="this.style.background='#122038'; this.src=''; this.outerHTML='<div class=\'logo\' style=\"display:grid;place-items:center;font-weight:800\">PR</div>'">
+      <div class="title">PrecioReal</div>
+    </div>
+    <div class="app-actions">
+      <button id="btnInstall" class="btn" aria-label="Instalar aplicación" style="display:none">⬇️ Instalar</button>
     </div>
   </header>
-  <h1 class="sr-only">PrecioReal · Escanea y abre en Amazon</h1>
+
+  <div id="iosHint" class="ios-hint" role="note">En iPhone/iPad: abre <b>Compartir</b> y elige <b>“Añadir a pantalla de inicio”</b> para instalar la app.</div>
 
   <main>
-    <!-- Fila principal: Escáner + PvP + pestaña de Opciones -->
-    <div class="row opts-anchor">
+    <!-- Controles superiores: Escáner + Configuración -->
+    <div class="row opts-anchor" style="margin-top:12px">
       <button id="btnScan" class="btn primary">📷 Escáner</button>
+      <button id="btnOpts" class="btn secondary" aria-expanded="false" aria-controls="optsPanel" aria-label="Abrir configuración">⚙️ Configuración</button>
 
-      <div class="pill">PvP Tienda
-        <input id="inputPrice" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0,00" style="width:110px">
-      </div>
-
-      <button id="btnOpts" class="btn secondary" aria-expanded="false" aria-controls="optsPanel">⚙️ Opciones ▾</button>
-
-      <!-- Panel ocultable con código manual + switches -->
-      <div id="optsPanel" class="opts-panel" role="region" aria-label="Opciones avanzadas">
+      <!-- Panel de configuración -->
+      <div id="optsPanel" class="opts-panel" role="region" aria-label="Opciones de configuración">
         <div class="opts-inner">
           <div class="row">
-            <input id="inputManual" class="grow" type="text" placeholder="Introducir código manual" aria-label="Código manual">
+            <input id="inputManual" class="btn grow" type="text" placeholder="Introducir código manual" aria-label="Código manual">
             <button id="btnManualGo" class="btn">➕ Añadir</button>
           </div>
 
@@ -130,16 +148,18 @@
             <button class="btn secondary" id="btnTestCam">Test cámara</button>
           </div>
 
-          <div class="opts-note">Consejo: activa “Escáner continuo” para leer varios códigos seguidos. Abre en app usa el intent de Android si está disponible.</div>
+          <div class="opts-note">Consejo: activa “Escáner continuo” para leer varios códigos seguidos. “Abrir en app” usa el intent de Android si está disponible.</div>
         </div>
       </div>
     </div>
 
-    <div style="margin-top:10px">
-      <video id="video" playsinline muted></video>
+    <div class="cam-wrap">
+      <div class="cam-frame">
+        <video id="video" playsinline muted></video>
+      </div>
     </div>
 
-    <div id="cameraControls" class="row" style="margin-top:8px">
+    <div id="cameraControls" class="row">
       <span class="muted">Zoom</span>
       <input type="range" id="zoomSlider" min="1" max="1" step="0.1" value="1">
       <span id="zoomVal" class="muted">1×</span>
@@ -148,13 +168,13 @@
 
     <div class="tabs">
       <div id="tabComparar" class="tab active">Comparar</div>
-      <div id="tabLista" class="tab">Lista de la compra</div>
+      <div id="tabLista" class="tab">Favoritos</div>
     </div>
 
     <div id="viewComparar">
       <div class="section-title">
         <div class="flex"><span class="counter" id="countComparar">0 ítems</span></div>
-        <div class="flex"><button id="btnClearFilters" class="btn">Limpiar filtros (0)</button></div>
+        <div class="flex"><button id="btnVaciarLista" class="btn warn">🗑️ Vaciar lista</button></div>
       </div>
       <div class="cards" id="cardsComparar"></div>
     </div>
@@ -168,7 +188,7 @@
     </div>
 
     <div class="divider"></div>
-    <div class="muted">Cumplimiento Amazon Afiliados: no mostramos precios de Amazon; el PvP indicado es manual, introducido por el usuario.</div>
+    <div class="muted">Cumplimiento Amazon Afiliados: no mostramos precios de Amazon; los datos de precio son manuales del usuario.</div>
   </main>
 
   <footer>
@@ -202,18 +222,17 @@
     $('btnOpenInApp').addEventListener('click', ()=>{ settings.openInApp=!settings.openInApp; saveSettings(settings); renderToggles(); });
   }
 
-  // Pestaña de opciones
+  // Panel de configuración
   const btnOpts = $('btnOpts');
   const optsPanel = $('optsPanel');
   btnOpts.addEventListener('click', ()=>{
     const open = optsPanel.classList.toggle('open');
     btnOpts.setAttribute('aria-expanded', open ? 'true' : 'false');
-    btnOpts.textContent = open ? '⚙️ Opciones ▴' : '⚙️ Opciones ▾';
   });
   document.addEventListener('click', (e)=>{
     if(!optsPanel.classList.contains('open')) return;
-    const within = e.target.closest('.opts-anchor');
-    if(!within){ optsPanel.classList.remove('open'); btnOpts.setAttribute('aria-expanded','false'); btnOpts.textContent = '⚙️ Opciones ▾'; }
+    const within = e.target.closest('.opts-anchor, .opts-panel');
+    if(!within){ optsPanel.classList.remove('open'); btnOpts.setAttribute('aria-expanded','false'); }
   });
 
   renderToggles(); attachToggleEvents();
@@ -263,14 +282,30 @@
   $('tabComparar').addEventListener('click', ()=>switchTab('comparar'));
   $('tabLista').addEventListener('click', ()=>switchTab('lista'));
 
+  function isFav(id){ return favoritos.some(f=>f.id===id); }
+
   function itemCardHTML(item, inList=false){
-    const img = item.image ? `<img src="${item.image}" alt="" style="width:100%;height:100%;object-fit:cover">` : `<div class="cover">Sin imagen</div>`;
-    const price = item.userPrice!=null ? `<div class="price">PvP Tienda: ${item.userPrice.toFixed(2)} €</div>` : `<div class="price muted">Añadir precio</div>`;
-    const tags = (item.tags||[]).map(t=>`<span class="chip">#${escapeHtml(t)}</span>`).join(' ');
-    const star = inList ? `<span class="chip">Comprado: <input type="checkbox" ${item.completed?'checked':''} data-action="toggle-comprado" data-id="${item.id}"></span>` : `<span class="chip" title="Añadir a lista" data-action="fav" data-id="${item.id}">⭐</span>`;
-    const btnLabel = inList ? 'Comprar en Amazon' : 'Ver en Amazon';
-    return `<div class="card" data-id="${item.id}">${img}<div class="body"><div class="title">${escapeHtml(item.title||'Sin título')}</div><div class="cat">${escapeHtml(item.category||'')}</div>${price}<div class="row actions"><button class="btn" data-action="open" data-id="${item.id}">🛒 ${btnLabel}</button><button class="btn" data-action="add-price" data-id="${item.id}">€ Precio</button>${star}</div><div class="row">${tags || ''}</div></div></div>`;
+    const img = item.image ? `<img src="${item.image}" alt="">` : '';
+    const favPressed = isFav(item.id) ? 'true' : 'false';
+    const price = item.userPrice!=null ? `<div class="price">PvP Tienda: ${item.userPrice.toFixed(2)} €</div>` : '';
+    const bought = inList ? `<span class="chip">Comprado: <input type="checkbox" ${item.completed?'checked':''} data-action="toggle-comprado" data-id="${item.id}"></span>` : '';
+    return `
+      <div class="card" data-id="${item.id}">
+        <button class="fav-btn" data-action="fav-toggle" data-id="${item.id}" aria-pressed="${favPressed}" title="${isFav(item.id)?'Quitar de favoritos':'Añadir a favoritos'}">${isFav(item.id)?'★':'☆'}</button>
+        <div class="cover">${img || 'Sin imagen'}</div>
+        <div class="body">
+          <div class="title">${escapeHtml(item.title||'Sin título')}</div>
+          <div class="cat">${escapeHtml(item.category||'')}</div>
+          ${price}
+          <div class="row actions">
+            <button class="btn" data-action="add-price" data-id="${item.id}">€ Precio</button>
+            ${bought}
+            <button class="btn primary cta" data-action="open" data-id="${item.id}">🛒 Ver en Amazon</button>
+          </div>
+        </div>
+      </div>`;
   }
+
   function renderAll(){
     $('cardsComparar').innerHTML = recientes.map(it=>itemCardHTML(it,false)).join('');
     $('countComparar').textContent = `${recientes.length} ítems`;
@@ -280,24 +315,45 @@
   }
   renderAll();
 
+  // Click handling (incluye favorito con stopPropagation)
   document.addEventListener('click', (e)=>{
-    const btn = e.target.closest('button,span[data-action],input[type="checkbox"][data-action]'); if(!btn) return;
-    const action = btn.dataset.action; const id = btn.dataset.id; if(!action || !id) return;
-    const item = recientes.find(x=>x.id===id) || favoritos.find(x=>x.id===id); if(!item) return;
-
-    if(action==='open'){ openAmazonSmart(item); }
-    else if(action==='add-price'){
-      const val = prompt('Precio manual (€, usa punto o coma):', item.userPrice!=null? String(item.userPrice):'');
-      if(val!=null){
-        const n = Number(String(val).replace(',','.'));
-        if(!isNaN(n)){ item.userPrice = Math.round(n*100)/100; item.userPriceAt = now(); persistItem(item); renderAll(); }
+    const fav = e.target.closest('.fav-btn');
+    if(fav){
+      e.stopPropagation(); e.preventDefault();
+      const id = fav.dataset.id; if(!id) return;
+      const exists = favoritos.findIndex(x=>x.id===id);
+      if(exists>=0){ favoritos.splice(exists,1); saveArr('pr-favs-v1', favoritos); }
+      else{
+        const base = recientes.find(x=>x.id===id) || favoritos.find(x=>x.id===id);
+        if(base){ favoritos.unshift({...base}); saveArr('pr-favs-v1', favoritos); }
       }
+      renderAll();
+      return;
     }
-    else if(action==='fav'){
-      if(!favoritos.find(x=>x.id===item.id)){ const copy = {...item, completed:false, completedAt:null}; favoritos.unshift(copy); saveArr('pr-favs-v1', favoritos); renderAll(); }
+
+    const btn = e.target.closest('button,span[data-action],input[type="checkbox"][data-action]'); if(!btn) return;
+    const action = btn.dataset.action; const id = btn.dataset.id;
+
+    if(action==='open' && id){ const item = recientes.find(x=>x.id===id) || favoritos.find(x=>x.id===id); if(item) openAmazonSmart(item); }
+
+    if(action==='add-price' && id){
+      const item = recientes.find(x=>x.id===id) || favoritos.find(x=>x.id===id); if(!item) return;
+      const val = prompt('Precio manual (€, usa punto o coma):', item.userPrice!=null? String(item.userPrice):'');
+      if(val!=null){ const n = Number(String(val).replace(',','.')); if(!isNaN(n)){ item.userPrice = Math.round(n*100)/100; item.userPriceAt = now(); persistItem(item); renderAll(); } }
     }
-    else if(action==='toggle-comprado'){
+
+    if(action==='toggle-comprado' && id){
+      const item = favoritos.find(x=>x.id===id); if(!item) return;
       item.completed = btn.checked; item.completedAt = item.completed ? now() : null; saveArr('pr-favs-v1', favoritos); renderAll();
+    }
+  });
+
+  // Vaciar lista (solo Comparar)
+  $('btnVaciarLista').addEventListener('click', ()=>{
+    if(!recientes.length) return;
+    if(confirm('¿Seguro que quieres vaciar la lista de escaneados (Comparar)?')){
+      recientes = []; saveArr('pr-recent-v1', recientes); renderAll();
+      showToast({ message: 'Lista vaciada', type:'success', timeout:1500 });
     }
   });
 
@@ -315,18 +371,18 @@
   const video = $('video');
   async function startScan(){
     if(scanning) return; scanning = true;
-    $('btnScan').textContent = '⛔ Detener'; $('btnScan').classList.add('warn');
+    $('btnScan').textContent = '⛔ Detener'; $('btnScan').classList.add('scan-on');
     try{
       stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' }, audio:false });
       video.srcObject = stream; await video.play(); scheduleAutostop(); await requestWakeLock();
       currentTrack = stream.getVideoTracks()[0]; setupCameraControls(currentTrack).catch(()=>{});
       if(detector){ scanLoopBarcodeDetector(); } else { scanLoopZXing(); }
     }catch(e){
-      scanning = false; $('btnScan').textContent = '📷 Escáner'; $('btnScan').classList.remove('warn'); alert('No se pudo iniciar la cámara.');
+      scanning = false; $('btnScan').textContent = '📷 Escáner'; $('btnScan').classList.remove('scan-on'); alert('No se pudo iniciar la cámara.');
     }
   }
   function stopScan(){
-    scanning = false; $('btnScan').textContent = '📷 Escáner'; $('btnScan').classList.remove('warn');
+    scanning = false; $('btnScan').textContent = '📷 Escáner'; $('btnScan').classList.remove('scan-on');
     try{ if(stream){ stream.getTracks().forEach(t=>t.stop()); } stream = null; currentTrack = null; }catch(e){}
     clearAutostop(); torchOff(); releaseWakeLock(); $('cameraControls').style.display = 'none';
   }
@@ -472,7 +528,44 @@
   function escapeHtml(s){ return String(s||'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
   async function torchOff(){ try{ if(!stream) return; const track = stream.getVideoTracks()[0]; await track.applyConstraints({ advanced:[{ torch:false }] }); $('btnTorch').textContent = 'Linterna: OFF'; torchOn = false; }catch(e){} }
 
-  if('serviceWorker' in navigator){ navigator.serviceWorker.register('/sw.js').catch(()=>{}); }
+  /* ===== PWA: botón Instalar + registro automático de SW ===== */
+  // Registro silencioso del SW en /sw.js
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(()=>{});
+  }
+
+  // Botón Instalar (solo cuando el navegador lo permite)
+  let deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', (e)=>{
+    e.preventDefault();
+    deferredPrompt = e;
+    const installed = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    if(!installed) $('btnInstall').style.display = 'inline-flex';
+  });
+  window.addEventListener('appinstalled', ()=>{
+    $('btnInstall').style.display = 'none';
+    showToast({ message: '✅ App instalada', type:'success' });
+  });
+  $('btnInstall').addEventListener('click', async ()=>{
+    if(!deferredPrompt){ showToast({ message:'Instalación no disponible en este navegador', type:'error' }); return; }
+    deferredPrompt.prompt();
+    try{ await deferredPrompt.userChoice; }catch(_){}
+    deferredPrompt = null;
+    $('btnInstall').style.display = 'none';
+  });
+
+  // iOS hint: mostrar ayuda para añadir a pantalla de inicio
+  function showIOSHintIfNeeded(){
+    const ua = window.navigator.userAgent || '';
+    const isIOS = /iPad|iPhone|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const inStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    if(isIOS && !inStandalone){
+      const el = $('iosHint'); if(el) el.style.display = 'block';
+      const btn = $('btnInstall'); if(btn) btn.style.display = 'none';
+    }
+  }
+  document.addEventListener('DOMContentLoaded', showIOSHintIfNeeded);
+
   </script>
 </body>
 </html>
