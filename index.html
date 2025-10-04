@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>PrecioReal · Escanea y abre en Amazon (E1 – cuadrado full-width)</title>
+  <title>PrecioReal · Escanea y abre en Amazon (E2 – cuadrado centrado)</title>
   <meta name="description" content="Escanea EAN/UPC/ISBN, encuentra el ASIN y abre la ficha de Amazon con tu enlace de afiliado.">
   <meta name="theme-color" content="#0b0f14">
   <meta name="mobile-web-app-capable" content="yes">
@@ -35,9 +35,11 @@
     /* ===== Cards ===== */
     .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
     .card{position:relative;background:var(--panel);border:1px solid var(--bd);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
-    /* E1: lienzo blanco cuadrado (1:1) a todo el ancho */
-    .cover{width:100%;aspect-ratio:1/1;background:#ffffff;display:flex;align-items:center;justify-content:center;padding:12px}
-    .cover img{display:block;max-width:100%;max-height:100%;height:auto}
+
+    /* E2: cuadrado blanco centrado, tamaño controlado */
+    .cover{aspect-ratio:1/1; width:clamp(220px,68vw,320px); background:#ffffff; display:flex; align-items:center; justify-content:center; padding:12px; margin:10px auto; border-radius:12px}
+    .cover img{display:block; max-width:92%; max-height:92%; height:auto; object-fit:contain}
+
     .card .body{padding:12px;display:flex;flex-direction:column;gap:8px}
     .title{font-weight:600;font-size:.95rem;line-height:1.25rem}
     .cat{font-size:.8rem;color:var(--muted)}
@@ -97,7 +99,7 @@
     .btn.scan-on{ background:linear-gradient(180deg,#ffd84d,#ffb300); color:#1a1200; border:none; min-height:48px; padding:10px 14px; font-weight:900 }
 
     /* iOS hint */
-    .ios-hint{background:#10192b;border:1px dashed var(--bd);color:var(--muted);margin:8px auto 0;max-width:900px;padding:8px 12px;border-radius:10px;font-size:.9rem;display:none}
+    .ios-hint{background:#10192b;border:1px dashed var(--bd);color:#muted;margin:8px auto 0;max-width:900px;padding:8px 12px;border-radius:10px;font-size:.9rem;display:none}
     .ios-hint b{color:#e7edf7}
 
     @media (prefers-reduced-motion: reduce){ .opts-panel{transition:none} }
@@ -471,8 +473,16 @@
   window.addEventListener('appinstalled', ()=>{ $('btnInstall').style.display = 'none'; showToast({ message: '✅ App instalada', type:'success' }); });
   $('btnInstall').addEventListener('click', async ()=>{ if(!deferredPrompt){ showToast({ message:'Instalación no disponible en este navegador', type:'error' }); return; } deferredPrompt.prompt(); try{ await deferredPrompt.userChoice; }catch(_){} deferredPrompt = null; $('btnInstall').style.display = 'none'; });
 
-  // iOS hint
-  function showIOSHintIfNeeded(){ const ua = window.navigator.userAgent || ''; const isIOS = /iPad|iPhone|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); const inStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone; if(isIOS && !inStandalone){ const el = $('iosHint'); if(el) el.style.display = 'block'; const btn = $('btnInstall'); if(btn) btn.style.display = 'none'; } }
+  // iOS hint: mostrar ayuda para añadir a pantalla de inicio
+  function showIOSHintIfNeeded(){
+    const ua = window.navigator.userAgent || '';
+    const isIOS = /iPad|iPhone|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const inStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    if(isIOS && !inStandalone){
+      const el = $('iosHint'); if(el) el.style.display = 'block';
+      const btn = $('btnInstall'); if(btn) btn.style.display = 'none';
+    }
+  }
   document.addEventListener('DOMContentLoaded', showIOSHintIfNeeded);
 
   </script>
