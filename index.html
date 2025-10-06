@@ -158,7 +158,28 @@
     .swatch[data-color="gray"]{background:#5b6678}
 
     @media (prefers-reduced-motion: reduce){ .opts-panel{transition:none} }
-  </style>
+  
+/* === Favoritos por carpetas + tarjetas horizontales === */
+.folder-list{ display:flex; flex-direction:column; gap:8px; margin-top:8px; }
+.folder-row{ display:flex; align-items:center; justify-content:space-between;
+  padding:12px; border:1px solid var(--bd); border-radius:12px; background:var(--panel); cursor:pointer; }
+.folder-row:hover{ background:#152038; }
+.folder-name{ font-weight:700; font-size:.95rem; }
+.folder-count{ color:var(--muted); font-size:.85rem; }
+
+.breadcrumb{ display:flex; align-items:center; gap:8px; margin:8px 0; }
+.cards-hz{ display:flex; flex-direction:column; gap:8px; }
+
+.mini-list{ display:flex; flex-direction:column; gap:8px; margin-top:6px }
+.mini-card{ display:flex; gap:10px; align-items:center; background:var(--panel); border:1px solid var(--bd); border-radius:14px; padding:8px }
+.mini-thumb{ width:78px; aspect-ratio:1/1; background:#fff; border-radius:10px; overflow:hidden; border:1px solid #e6e6e6; display:flex; align-items:center; justify-content:center }
+.mini-thumb img{ width:100%; height:100%; object-fit:contain }
+.mini-main{ flex:1; display:flex; flex-direction:column; gap:4px }
+.mini-title{ font-weight:600; font-size:.95rem; line-height:1.2rem; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden }
+.mini-cat{ font-size:.8rem; color:var(--muted); display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden }
+.mini-actions{ display:flex; gap:6px; flex-wrap:wrap }
+
+</style>
 </head>
 <body>
   <!-- App bar estática -->
@@ -255,7 +276,120 @@
   <div id="toasts" aria-live="polite" aria-atomic="true"></div>
 
   <!-- Modal de etiquetas -->
-  <div id="tagModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="tagModalTitle">
+  <div id="tagModal" class="modal" role="dialog" aria-modal="true"
+  // === Favoritos como carpetas (por tags string) ===
+  let selectedTag = null; // carpeta activa
+  let foldersOrder = JSON.parse(localStorage.getItem('pr-folders-v1')||'[]') || [];
+
+  function saveFoldersOrder(){
+    try{ localStorage.setItem('pr-folders-v1', JSON.stringify(foldersOrder||[])); }catch(e){}
+  }
+
+  function getFoldersFromFavs(){
+    const set = new Set();
+    (window.favoritos||[]).forEach(it => (it.tags||[]).forEach(t => { const s = (t||'').trim(); if(s) set.add(s); }));
+    // Orden: respetar foldersOrder y añadir nuevos al final
+    const all = Array.from(set);
+    const known = foldersOrder.filter(f => all.includes(f));
+    const unknown = all.filter(f => !foldersOrder.includes(f));
+    if (unknown.length){ foldersOrder = known.concat(unknown); saveFoldersOrder(); }
+    return foldersOrder.slice();
+  }
+
+  function renderFolders(){
+    const root = document.getElementById('foldersBar');
+    if(!root) return;
+    root.classList.add('folder-list');
+    const folders = getFoldersFromFavs();
+    const html = folders.map(tag => {
+      const count = (window.favoritos||[]).filter(it => (it.tags||[]).includes(tag) && (!window.showComprados ? !it.completed : true)).length;
+      return `<div class="folder-row" data-action="open-folder" data-tag="${escapeHtml(tag)}">
+        <div class="folder-name">📁 ${escapeHtml(tag)}</div>
+        <div class="folder-count">${count}</div>
+      </div>`;
+    }).join('');
+    root.innerHTML = html || `<div class="muted">No hay carpetas. Usa ⭐ y asigna una carpeta.</div>`;
+    const countEl = document.getElementById('countLista'); if(countEl){ countEl.textContent = `${folders.length} carpetas`; }
+  }
+
+  function miniCardHTML(item){
+    const href = item.affiliateLink || ('/api/go/' + encodeURIComponent(item.asin || '') + '?d=' + encodeURIComponent(item.domain || '9'));
+    const btnLabel = 'Comprar en Amazon';
+    return `<div class="mini-card" data-id="${item.id}">
+      <a class="mini-thumb" href="${href}" data-action="open" data-id="${item.id}" rel="nofollow sponsored noopener">
+        ${ item.image ? `<img src="${item.image}" alt="" loading="lazy" decoding="async">` : `<div class="cover">Sin imagen</div>` }
+      </a>
+      <div class="mini-main">
+        <div class="mini-title"><a href="${href}" data-action="open" data-id="${item.id}" rel="nofollow sponsored noopener">${escapeHtml(item.title||'Sin título')}</a></div>
+        <div class="mini-cat">${escapeHtml(item.category||'')}</div>
+        <div class="mini-actions">
+          <button class="btn" data-action="open" data-id="${item.id}">🛒 ${btnLabel}</button>
+          <button class="btn" data-action="add-price" data-id="${item.id}">€ Precio</button>
+          <span class="chip">Comprado: <input type="checkbox" ${item.completed?'checked':''} data-action="toggle-comprado" data-id="${item.id}"></span>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function renderFavList(){
+    const cont = document.getElementById('miniList');
+    if(!cont) return;
+    if(!selectedTag){ cont.innerHTML = ''; return; }
+    const list = (window.favoritos||[]).filter(it => (it.tags||[]).includes(selectedTag) && (!window.showComprados ? !it.completed : true));
+    cont.innerHTML = `
+      <div class="breadcrumb">
+        <button class="btn" data-action="back-folders">← Carpetas</button>
+        <span class="muted">/ ${escapeHtml(selectedTag)}</span>
+      </div>
+      ${ list.map(miniCardHTML).join('') }`;
+    const countEl = document.getElementById('countLista'); if(countEl){ countEl.textContent = `${list.length} ítems`; }
+  }
+
+  // Hook: al cambiar a pestaña Favoritos, pintamos carpetas
+  (function(){
+    const _switchTab = window.switchTab;
+    window.switchTab = function(name){
+      _switchTab?.(name);
+      if(name==='lista'){ selectedTag = null; renderFolders(); renderFavList(); }
+    };
+  })();
+
+  // Interceptar clicks para abrir carpeta / volver y para forzar etiqueta en ⭐
+  document.addEventListener('click', function(e){
+    const el = e.target.closest('[data-action]');
+    if(!el) return;
+    const act = el.dataset.action;
+    if(act==='open-folder'){
+      selectedTag = el.dataset.tag || null;
+      renderFolders(); renderFavList();
+      e.preventDefault(); return;
+    }
+    if(act==='back-folders'){
+      selectedTag = null;
+      renderFolders(); renderFavList();
+      e.preventDefault(); return;
+    }
+    if((act==='fav' || act==='fav-toggle') && el.dataset.id){
+      const id = el.dataset.id;
+      const getItemById = (id)=> (window.recientes||[]).find(x=>x.id===id) || (window.favoritos||[]).find(x=>x.id===id);
+      const it = getItemById(id);
+      if(!it) return;
+      const hasTag = Array.isArray(it.tags) && it.tags.some(t => t && String(t).trim());
+      if(!hasTag){
+        const folders = getFoldersFromFavs();
+        const promptText = `Elige o crea carpeta:\\n${folders.map(a=>('• '+a)).join('\\n')}\\n\\nEscribe el nombre:`;
+        let name = (prompt(promptText) || '').trim();
+        if(!name){ e.preventDefault(); e.stopPropagation(); return; } // si no elige, no añadimos a favoritos
+        // añade tag al item (string)
+        it.tags = Array.from(new Set([...(it.tags||[]), name]));
+        // añade al orden si es nuevo
+        if(!foldersOrder.includes(name)){ foldersOrder.push(name); saveFoldersOrder(); }
+      }
+      // dejamos que el handler original haga el toggle de favoritos
+    }
+  }, {passive:true});
+
+ aria-labelledby="tagModalTitle">
     <div class="modal-card">
       <div class="modal-head">
         <div id="tagModalTitle" class="modal-title">Etiquetas del producto</div>
