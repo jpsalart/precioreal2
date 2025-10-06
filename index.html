@@ -304,6 +304,35 @@ html{ font-size:17px; } /* leve subida global */
   }
 }
 
+  
+/* === Ajustes: menos espacio, acciones cerca del título, 'Añadir etiqueta' debajo === */
+.mini-card{
+  display:grid !important;
+  grid-template-columns: 92px minmax(0,1fr);
+  grid-template-areas:
+    "thumb text"
+    "thumb actions"
+    "cat   tags";
+  column-gap:10px;
+  row-gap:6px;
+  align-items:start;
+}
+@media (min-width:520px){
+  .mini-card{
+    grid-template-columns: 92px minmax(0,1fr) auto;
+    grid-template-areas:
+      "thumb text actions"
+      "cat   tags  actions";
+  }
+}
+.mini-thumb{ grid-area: thumb; width:92px; align-self:start; }
+.mini-main{ display: contents !important; min-width:0; }
+.mini-title{ grid-area:text; min-width:0; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:1; overflow:hidden; text-overflow:ellipsis; line-height:1.2; }
+.mini-actions{ grid-area:actions; justify-self:end; align-self:start; margin-left:0; display:flex; gap:8px; }
+.mini-cat{ grid-area:cat; font-size:.85rem; color:var(--muted); margin-top:2px; }
+.mini-tags{ grid-area:tags; display:flex; flex-wrap:wrap; gap:6px; }
+.mini-tags .tag-empty{ color:var(--muted); text-decoration:underline; cursor:pointer; }
+
   </style>
 </head>
 <body>
@@ -519,6 +548,50 @@ document.addEventListener('click', (e)=>{
   const val = resp.trim();
   if(val===''){
     // eliminar SOLO del producto (no de otras referencias)
+    item.tags = (item.tags||[]).filter(tid => tid !== tag.id);
+    save(); renderAll();
+    return;
+  }
+  if(val !== tag.name){
+    tag.name = val; save(); renderAll();
+  }
+});
+
+
+// Crear etiqueta desde "Añadir etiqueta" (color auto)
+document.addEventListener('click', (e)=>{
+  const el = e.target.closest('[data-action="add-first-tag"]');
+  if(!el) return;
+  e.preventDefault(); e.stopPropagation();
+  const id = el.dataset.id; if(!id) return;
+  const item = (window.recientes||[]).find(x=>x.id===id) || (window.favoritos||[]).find(x=>x.id===id);
+  if(!item) return;
+  let name = prompt('Nombre de la etiqueta:');
+  if(name===null) return;
+  name = name.trim(); if(!name) return;
+  let tag = (window.tags||[]).find(t => (t.name||'').toLowerCase()===name.toLowerCase());
+  if(!tag){
+    const colors = ['blue','green','purple','orange','red','yellow','gray'];
+    const color = colors[(window.tags||[]).length % colors.length];
+    tag = createTag(name, color);
+  }
+  item.tags = Array.from(new Set([...(item.tags||[]), tag.id]));
+  save(); renderAll();
+});
+
+// Editar o eliminar etiqueta tocando la chip (sin X)
+document.addEventListener('click', (e)=>{
+  const chip = e.target.closest('[data-action="edit-tag"]');
+  if(!chip) return;
+  const itemId = chip.dataset.item;
+  const tagId = chip.dataset.tag;
+  const item = (window.recientes||[]).find(x=>x.id===itemId) || (window.favoritos||[]).find(x=>x.id===itemId);
+  const tag = (window.tags||[]).find(t=>t.id===tagId);
+  if(!item || !tag) return;
+  const resp = prompt('Renombrar etiqueta (deja vacío para eliminar del producto):', tag.name);
+  if(resp===null) return;
+  const val = resp.trim();
+  if(val===''){
     item.tags = (item.tags||[]).filter(tid => tid !== tag.id);
     save(); renderAll();
     return;
