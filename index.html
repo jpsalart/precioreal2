@@ -237,43 +237,46 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
 }
 
   
-/* === FIX DEFINITIVO TITULOS (responsive) ===
-   - En móvil: acciones abajo para dejar ancho completo al texto
-   - En pantallas anchas: acciones a la derecha
-*/
+/* === Títulos más cortos + etiquetas debajo del botón === */
 .mini-card{
-  display: grid !important;
-  grid-template-columns: 72px minmax(0,1fr);
+  display:grid !important;
+  grid-template-columns:72px minmax(0,1fr);
   grid-template-areas:
     "thumb text"
-    "thumb actions";
-  column-gap: 10px;
-  align-items: start;
+    "thumb actions"
+    "thumb tags";
+  column-gap:10px;
+  align-items:start;
 }
-.mini-thumb{ grid-area: thumb; width:72px; align-self:start; }
-.mini-main{ display: contents !important; min-width:0; }
-.mini-title, .mini-cat, .mini-tags{ grid-area: text; min-width:0; }
-.mini-title{
-  white-space: normal;
-  word-break: break-word;
-  overflow-wrap: break-word;
-  line-height: 1.25;
-}
-.mini-actions{
-  grid-area: actions;
-  align-self: start;
-  justify-self: start;
-  margin-left: 0;
-  flex: initial;
-}
+.mini-thumb{ grid-area:thumb; width:72px; align-self:start; }
+.mini-main{ display:contents !important; min-width:0; }
 
-/* >=520px: volvemos a acciones a la derecha */
+/* Título con 3 líneas máx. (clamp) */
+.mini-title{
+  grid-area:text;
+  min-width:0;
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:3;
+  overflow:hidden;
+  white-space:normal;
+  line-height:1.25;
+}
+.mini-cat{ grid-area:text; }
+.mini-tags{
+  grid-area:tags;
+  display:flex; flex-wrap:wrap; gap:6px;
+}
+.mini-actions{ grid-area:actions; justify-self:start; align-self:start; margin-left:0; }
+
+/* Pantallas anchas: acciones a la derecha, tags debajo de acciones */
 @media (min-width:520px){
   .mini-card{
-    grid-template-columns: 72px minmax(0,1fr) auto;
-    grid-template-areas: "thumb text actions";
+    grid-template-columns:72px minmax(0,1fr) auto;
+    grid-template-areas:"thumb text actions"
+                        "thumb text tags";
   }
-  .mini-actions{ justify-self: end; grid-row:auto; }
+  .mini-actions{ justify-self:end; }
 }
 
   </style>
