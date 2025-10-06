@@ -171,6 +171,28 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
 #btnScan{ padding:6px 10px; font-size:.92rem; }        /* botón Escáner más pequeño */
 #btnScan.warn{ padding:6px 10px; }
 
+  
+/* === Fix de títulos: grid en mini-main + acciones a la derecha (no colapsa) === */
+.mini-card{ align-items: stretch; }
+.mini-thumb{ align-self: start; width: 72px; }
+.mini-main{
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 8px;
+  row-gap: 4px;
+  align-items: start;
+  min-width: 0;
+}
+.mini-title, .mini-cat, .mini-tags{ grid-column: 1 / 2; min-width: 0; }
+.mini-title{
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  -webkit-line-clamp: unset;
+  display: block;
+}
+.mini-actions{ grid-column: 2 / 3; grid-row: 1 / 3; align-self: start; margin-left: 0; flex: initial; }
+
   </style>
 </head>
 <body>
