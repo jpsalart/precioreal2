@@ -273,6 +273,37 @@ html{ font-size:17px; } /* leve subida global */
 /* estilo del placeholder "Sin etiqueta" clicable */
 .mini-tags .tag-empty{ color:var(--muted); text-decoration:underline; cursor:pointer; }
 
+  
+/* === FIX: mini-card grid rectangular (mobile first) === */
+.mini-card{
+  display:grid !important;
+  grid-template-columns: 92px minmax(0,1fr);
+  grid-template-areas:
+    "thumb text"
+    "cat   text"
+    ".     actions"
+    ".     tags";
+  column-gap:10px;
+  align-items:start;
+}
+.mini-thumb{ grid-area: thumb; width:92px; align-self:start; }
+.mini-main{ display: contents !important; min-width:0; }
+.mini-title{ grid-area: text; min-width:0; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:1; overflow:hidden; text-overflow:ellipsis; line-height:1.25; }
+.mini-cat{ grid-area: cat; font-size:.85rem; color:var(--muted); }
+.mini-actions{ grid-area: actions; justify-self: end; align-self: start; margin-left:0; display:flex; gap:8px; }
+.mini-tags{ grid-area: tags; display:flex; flex-wrap:wrap; gap:6px; }
+.mini-tags .tag-empty{ color:var(--muted); text-decoration:underline; cursor:pointer; }
+
+/* ≥520px: acciones a la derecha en la misma fila del título; tags debajo de acciones */
+@media (min-width:520px){
+  .mini-card{
+    grid-template-columns: 92px minmax(0,1fr) auto;
+    grid-template-areas:
+      "thumb text actions"
+      "cat   text tags";
+  }
+}
+
   </style>
 </head>
 <body>
@@ -440,6 +471,61 @@ document.addEventListener('click', (e)=>{
   saveTags(); // helper existente si lo tienes; si no, usamos save();
   save();
   renderAll();
+});
+
+
+// === Etiquetas en mini-card ===
+// Crear etiqueta desde "Sin etiqueta" (color automático)
+document.addEventListener('click', (e)=>{
+  const el = e.target.closest('[data-action="add-first-tag"]');
+  if(!el) return;
+  e.preventDefault(); e.stopPropagation();
+  const id = el.dataset.id; if(!id) return;
+  const item = (window.recientes||[]).find(x=>x.id===id) || (window.favoritos||[]).find(x=>x.id===id);
+  if(!item) return;
+  let name = prompt('Nombre de la etiqueta:');
+  if(name===null) return;
+  name = name.trim();
+  if(!name) return;
+  // buscar etiqueta por nombre (insensible a mayúsculas)
+  let tag = (window.tags||[]).find(t => (t.name||'').toLowerCase() === name.toLowerCase());
+  if(!tag){
+    const colors = ['blue','green','purple','orange','red','yellow','gray'];
+    const idx = (window.tags||[]).length % colors.length;
+    tag = createTag(name, colors[idx]); // tu helper existente
+  }
+  item.tags = Array.from(new Set([...(item.tags||[]), tag.id]));
+  save(); renderAll();
+});
+
+// Editar/Eliminar etiqueta al tocar la chip (sin X para evitar borrados accidentales)
+document.addEventListener('click', (e)=>{
+  const chip = e.target.closest('.mini-tags .tag');
+  if(!chip) return;
+  // localizar item por proximidad DOM
+  const card = e.target.closest('.mini-card'); if(!card) return;
+  const id = card.dataset.id;
+  const item = (window.recientes||[]).find(x=>x.id===id) || (window.favoritos||[]).find(x=>x.id===id);
+  if(!item) return;
+  // localizar etiqueta por texto (mejor guardar data-id, pero el HTML ahora solo lleva color y nombre)
+  const nameNode = chip.querySelector('span'); const current = nameNode ? nameNode.textContent.replace(/^\s*🏷️\s*/, '') : '';
+  let tag = (window.tags||[]).find(t => t.name === current);
+  if(!tag){ // fallback: primer id del item que matchee nombre
+    tag = (window.tags||[]).find(t => (item.tags||[]).includes(t.id) && t.name===current);
+  }
+  if(!tag) return;
+  const resp = prompt('Renombrar etiqueta (deja vacío para eliminarla de este producto):', tag.name);
+  if(resp===null) return;
+  const val = resp.trim();
+  if(val===''){
+    // eliminar SOLO del producto (no de otras referencias)
+    item.tags = (item.tags||[]).filter(tid => tid !== tag.id);
+    save(); renderAll();
+    return;
+  }
+  if(val !== tag.name){
+    tag.name = val; save(); renderAll();
+  }
 });
 
 </script>
