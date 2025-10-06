@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>PrecioReal · Escanea y abre en Amazon (E2 – cuadrado centrado)</title>
-  <meta name="description" content="Escanea EAN/UPC/ISBN, encuentra el ASIN y abre la ficha de Amazon con tu enlace de afiliado.">
+  <title>PrecioReal · Favoritos con carpetas y etiquetas</title>
+  <meta name="description" content="Escanea EAN/UPC/ISBN, guarda en favoritos, organiza por etiquetas y abre en Amazon.">
   <meta name="theme-color" content="#0b0f14">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -32,14 +32,12 @@
     .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
     .muted{color:var(--muted)}
 
-    /* ===== Cards ===== */
+    /* ===== Cards (Comparar) ===== */
     .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
     .card{position:relative;background:var(--panel);border:1px solid var(--bd);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
-
-    /* E2: cuadrado blanco centrado, tamaño controlado */
-    .cover{width:100%;aspect-ratio:1/1;background:#ffffff;display:flex;align-items:center;justify-content:center;padding:2px 2px 2px;overflow:hidden}
-    .cover img{display:block;width:100%;height:100%;object-fit:contain;transform:scale(var(--fit,0.92));transform-origin:center} 
-
+    /* E2 cover (Comparar): 1:1, full width */
+    .cover{width:100%;aspect-ratio:1/1;background:#ffffff;display:flex;align-items:center;justify-content:center;padding:12px;overflow:hidden}
+    .cover img{display:block;width:100%;height:100%;object-fit:contain;transform:scale(var(--fit,0.92));transform-origin:center}
     .card .body{padding:12px;display:flex;flex-direction:column;gap:8px}
     .title{font-weight:600;font-size:.95rem;line-height:1.25rem}
     .cat{font-size:.8rem;color:var(--muted)}
@@ -48,7 +46,7 @@
     .price{font-family:ui-monospace,Menlo,Consolas;font-size:.95rem}
     .btn.cta{min-height:46px;padding:10px 14px;font-weight:800;margin-left:auto}
 
-    /* ===== Botón favorito (overlay) ===== */
+    /* ===== Botón favorito (overlay en cards) ===== */
     .fav-btn{position:absolute;top:8px;right:8px;width:40px;height:40px;border-radius:10px;border:1px solid var(--bd);background:#0f1726;display:grid;place-items:center;font-size:18px;cursor:pointer}
     .fav-btn[aria-pressed="true"]{background:#11233a;border-color:#2a4a7a;color:#ffd166}
     .fav-btn:focus-visible{outline:2px solid #3aa1ff;outline-offset:2px}
@@ -94,13 +92,70 @@
     .toast.error{border-color:#5a2727;background:#2a0f0f;color:#ffbdbd}
     .toast .act{margin-left:6px;text-decoration:underline;cursor:pointer}
 
-    /* Botón Escáner: tamaño medio (ligeramente mayor que las tabs) */
+    /* Botón Escáner: tamaño medio */
     #btnScan{ min-height:48px; padding:10px 14px; font-weight:900 }
     .btn.scan-on{ background:linear-gradient(180deg,#ffd84d,#ffb300); color:#1a1200; border:none; min-height:48px; padding:10px 14px; font-weight:900 }
 
     /* iOS hint */
-    .ios-hint{background:#10192b;border:1px dashed var(--bd);color:#muted;margin:8px auto 0;max-width:900px;padding:8px 12px;border-radius:10px;font-size:.9rem;display:none}
+    .ios-hint{background:#10192b;border:1px dashed var(--bd);color:var(--muted);margin:8px auto 0;max-width:900px;padding:8px 12px;border-radius:10px;font-size:.9rem;display:none}
     .ios-hint b{color:#e7edf7}
+
+    /* ===== FAVORITOS: Carpetas + lista compacta ===== */
+    .folders-bar{display:flex;gap:10px;overflow-x:auto;padding:6px 2px 8px}
+    .folder-card{flex:0 0 auto;min-width:140px;max-width:170px;background:#0f1626;border:1px solid var(--bd);border-radius:14px;padding:10px;cursor:pointer;position:relative}
+    .folder-card.active{outline:2px solid #3aa1ff; outline-offset:2px}
+    .folder-head{display:flex;align-items:center;gap:8px}
+    .folder-dot{width:10px;height:10px;border-radius:999px;border:1px solid rgba(255,255,255,.25)}
+    .folder-name{font-weight:700;font-size:.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .folder-count{margin-left:auto;font-size:.8rem;color:var(--muted)}
+    .thumbs{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:8px}
+    .thumb{aspect-ratio:1/1;background:#fff;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;border:1px solid #e6e6e6}
+    .thumb img{width:100%;height:100%;object-fit:contain}
+
+    .mini-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+    .mini-card{display:flex;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--bd);border-radius:14px;padding:8px}
+    .mini-thumb{width:92px;aspect-ratio:1/1;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e6e6e6;display:flex;align-items:center;justify-content:center}
+    .mini-thumb img{width:100%;height:100%;object-fit:contain}
+    .mini-main{flex:1;display:flex;flex-direction:column;gap:6px}
+    .mini-title{font-weight:600;font-size:.95rem;line-height:1.2rem}
+    .mini-cat{font-size:.8rem;color:var(--muted)}
+    .mini-tags{display:flex;flex-wrap:wrap;gap:6px}
+    .tag{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;border:1px solid #2a3347;font-size:.78rem}
+    .tag .x{opacity:.8;cursor:pointer}
+    .mini-actions{display:flex;gap:8px;margin-left:auto;align-items:center}
+    .mini-fav{width:36px;height:36px;border-radius:10px;border:1px solid var(--bd);background:#0f1726;display:grid;place-items:center;cursor:pointer}
+    .mini-fav[aria-pressed="true"]{background:#11233a;border-color:#2a4a7a;color:#ffd166}
+
+    /* Paleta de colores para etiquetas */
+    [data-color="red"]{--tbg:#33171a;--tbd:#6b2a33;--ttx:#ffb4b8}
+    [data-color="orange"]{--tbg:#332419;--tbd:#6b4a2a;--ttx:#ffd2a6}
+    [data-color="yellow"]{--tbg:#332f19;--tbd:#6b612a;--ttx:#ffe9a6}
+    [data-color="green"]{--tbg:#1a3321;--tbd:#2a6b3e;--ttx:#a6f3bf}
+    [data-color="blue"]{--tbg:#182336;--tbd:#2a4a7a;--ttx:#a6c7ff}
+    [data-color="purple"]{--tbg:#241b33;--tbd:#4a2a6b;--ttx:#d6b6ff}
+    [data-color="gray"]{--tbg:#252a33;--tbd:#3a4454;--ttx:#c8d0dc}
+    .tag{background:var(--tbg);border-color:var(--tbd);color:var(--ttx)}
+    .folder-dot{background:var(--tbd)}
+
+    /* Modal etiquetas */
+    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.5);z-index:10000}
+    .modal.open{display:flex}
+    .modal-card{width:min(520px,92vw);background:#10192b;border:1px solid var(--bd);border-radius:16px;padding:14px}
+    .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+    .modal-title{font-weight:700}
+    .modal-body{display:grid;gap:10px}
+    .tag-list{display:flex;flex-wrap:wrap;gap:8px}
+    .tag-opt{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;border:1px solid #2a3347;cursor:pointer}
+    .tag-opt input{accent-color:#3aa1ff}
+    .palette{display:flex;gap:8px;align-items:center}
+    .swatch{width:24px;height:24px;border-radius:999px;border:2px solid rgba(255,255,255,.2);cursor:pointer}
+    .swatch[data-color="red"]{background:#d33c4c}
+    .swatch[data-color="orange"]{background:#d37a3c}
+    .swatch[data-color="yellow"]{background:#d3b23c}
+    .swatch[data-color="green"]{background:#2aa764}
+    .swatch[data-color="blue"]{background:#2f67d1}
+    .swatch[data-color="purple"]{background:#7b3cd3}
+    .swatch[data-color="gray"]{background:#5b6678}
 
     @media (prefers-reduced-motion: reduce){ .opts-panel{transition:none} }
   </style>
@@ -165,6 +220,7 @@
       <div id="tabLista" class="tab">Favoritos</div>
     </div>
 
+    <!-- ===== Vista COMPARAR ===== -->
     <div id="viewComparar">
       <div class="section-title">
         <div class="flex"><span class="counter" id="countComparar">0 ítems</span></div>
@@ -173,12 +229,17 @@
       <div class="cards" id="cardsComparar"></div>
     </div>
 
+    <!-- ===== Vista FAVORITOS (carpetas + lista compacta) ===== -->
     <div id="viewLista" style="display:none">
       <div class="section-title">
         <div class="flex"><span class="counter" id="countLista">0 ítems</span></div>
-        <div class="flex"><button id="btnMostrarComprados" class="btn">Ver comprados: OFF</button></div>
+        <div class="flex">
+          <button id="btnNewTag" class="btn">🏷️ Nueva etiqueta</button>
+          <button id="btnMostrarComprados" class="btn">Ver comprados: OFF</button>
+        </div>
       </div>
-      <div class="cards" id="cardsLista"></div>
+      <div id="foldersBar" class="folders-bar" aria-label="Carpetas de etiquetas"></div>
+      <div id="miniList" class="mini-list"></div>
     </div>
 
     <div class="divider"></div>
@@ -193,15 +254,48 @@
 
   <div id="toasts" aria-live="polite" aria-atomic="true"></div>
 
+  <!-- Modal de etiquetas -->
+  <div id="tagModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="tagModalTitle">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div id="tagModalTitle" class="modal-title">Etiquetas del producto</div>
+        <button id="tagModalClose" class="btn">✖</button>
+      </div>
+      <div class="modal-body">
+        <div class="muted">Activa/desactiva etiquetas para este producto. También puedes crear una nueva.</div>
+        <div id="tagOptions" class="tag-list"></div>
+        <div class="divider"></div>
+        <div class="row">
+          <input id="newTagName" class="btn grow" placeholder="Nombre de nueva etiqueta (p.ej. Casa)" />
+          <button id="createTagBtn" class="btn">➕ Crear</button>
+        </div>
+        <div class="palette">
+          <span class="muted">Color:</span>
+          <div class="swatch" data-color="red" title="Rojo"></div>
+          <div class="swatch" data-color="orange" title="Naranja"></div>
+          <div class="swatch" data-color="yellow" title="Amarillo"></div>
+          <div class="swatch" data-color="green" title="Verde"></div>
+          <div class="swatch" data-color="blue" title="Azul"></div>
+          <div class="swatch" data-color="purple" title="Morado"></div>
+          <div class="swatch" data-color="gray" title="Gris"></div>
+        </div>
+        <div class="row" style="justify-content:flex-end">
+          <button id="tagModalSave" class="btn primary">Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="/api/zxing.js" defer></script>
   <script>
   const $ = sel => document.getElementById(sel);
+  const qs = (s,root=document)=>root.querySelector(s);
+  const qsa = (s,root=document)=>Array.from(root.querySelectorAll(s));
   const sleep = ms => new Promise(r=>setTimeout(r,ms));
   const now = () => Date.now();
 
   function loadSettings(){ try { return JSON.parse(localStorage.getItem('pr-settings-v1')||'{}'); } catch(e){ return {}; } }
   function saveSettings(s){ localStorage.setItem('pr-settings-v1', JSON.stringify(s||{})); }
-
   let settings = Object.assign({ noSound:false, noVibra:false, continuous:true, openInApp:false }, loadSettings());
   function renderToggles(){
     $('btnToggleSound').textContent = 'Sonido: ' + (settings.noSound ? 'OFF' : 'ON');
@@ -245,6 +339,16 @@
   let favoritos = loadArr('pr-favs-v1');
   let showComprados = false;
 
+  // ===== Etiquetas =====
+  function loadTags(){ try{return JSON.parse(localStorage.getItem('pr-tags-v1')||'[]')}catch(e){return[]} }
+  function saveTags(t){ localStorage.setItem('pr-tags-v1', JSON.stringify(t||[])); }
+  let tags = loadTags();
+  const COLORS = ['red','orange','yellow','green','blue','purple','gray'];
+  function createTag(name,color){ const id = 't'+now(); const c = COLORS.includes(color)?color:'blue'; const t={id,name:String(name).trim(),color:c}; tags.unshift(t); saveTags(tags); return t; }
+
+  function ensureItemTags(item){ if(!Array.isArray(item.tags)) item.tags = []; }
+  favoritos.forEach(ensureItemTags); recientes.forEach(ensureItemTags);
+
   function vibrate(ms=40){ try{ if(!settings.noVibra && navigator.vibrate) navigator.vibrate(ms); }catch(e){} }
   async function beep(){ if(settings.noSound) return; try{ const ctx = new (window.AudioContext||window.webkitAudioContext)(); const o = ctx.createOscillator(); const g = ctx.createGain(); o.connect(g); g.connect(ctx.destination); o.type='sine'; o.frequency.value=880; g.gain.value=0.02; o.start(); setTimeout(()=>{ o.stop(); ctx.close(); },120); }catch(e){} }
 
@@ -263,19 +367,11 @@
     $('tabLista').classList.toggle('active', !isComparar);
     $('viewComparar').style.display = isComparar?'block':'none';
     $('viewLista').style.display = isComparar?'none':'block';
+    // Mostrar/ocultar cámara; además detener escáner para ahorrar batería
+    if(!isComparar){ stopScan(); $('cameraControls').style.display='none'; qs('.cam-wrap').style.display='none'; }
+    else { qs('.cam-wrap').style.display='block'; }
     renderAll();
-  // Ajuste visual para que ninguna imagen quede "gigante" en E1
-  function tuneCardImages(){
-    const adjust=(img)=>{
-      const w=img.naturalWidth||0,h=img.naturalHeight||0; if(!w||!h) return;
-      const r=h/w; let fit=0.92; // base con aire
-      if(r>1.35||r<0.75) fit=0.96; // muy vertical u horizontal: un poco más grande
-      else fit=0.88; // casi cuadradas: un poco más pequeñas para evitar sensación gigante
-      img.style.setProperty('--fit', String(fit));
-    };
-    document.querySelectorAll('.card .cover img').forEach(img=>{ img.complete?adjust(img):img.addEventListener('load',()=>adjust(img),{once:true}); });
-  }
-  tuneCardImages();
+    if(!isComparar) { renderFolders(); renderFavList(); }
   }
   $('tabComparar').addEventListener('click', ()=>switchTab('comparar'));
   $('tabLista').addEventListener('click', ()=>switchTab('lista'));
@@ -308,13 +404,95 @@
     $('cardsComparar').innerHTML = recientes.map(it=>itemCardHTML(it,false)).join('');
     $('countComparar').textContent = `${recientes.length} ítems`;
     const list = favoritos.filter(f=> showComprados ? true : !f.completed);
-    $('cardsLista').innerHTML = list.map(it=>itemCardHTML(it,true)).join('');
     $('countLista').textContent = `${list.length} ítems`;
+    tuneCardImages();
   }
-  renderAll();
 
-  // Click handling (incluye favorito con stopPropagation)
+  // Ajuste visual para imágenes en COMPARAR (E1/E2)
+  function tuneCardImages(){
+    const adjust=(img)=>{
+      const w=img.naturalWidth||0,h=img.naturalHeight||0; if(!w||!h) return;
+      const r=h/w; let fit=0.92; // base con aire
+      if(r>1.35||r<0.75) fit=0.96; else fit=0.88; // ajuste suave
+      img.style.setProperty('--fit', String(fit));
+    };
+    document.querySelectorAll('.card .cover img').forEach(img=>{ img.complete?adjust(img):img.addEventListener('load',()=>adjust(img),{once:true}); });
+  }
+
+  // ===== FAVORITOS: Carpetas =====
+  let selectedTag = 'all'; // 'all' | 'none' | tagId
+  function renderFolders(){
+    const bar = $('foldersBar');
+    const list = favoritos.filter(f=> showComprados ? true : !f.completed);
+    // Construir índice por tagId
+    const byTag = new Map();
+    const untagged = [];
+    for(const it of list){ ensureItemTags(it); if(!it.tags.length){ untagged.push(it); } for(const tId of it.tags){ if(!byTag.has(tId)) byTag.set(tId, []); byTag.get(tId).push(it); } }
+
+    const makeThumbs = (items)=>{
+      const picks = items.slice(0,4);
+      return `<div class="thumbs">${picks.map(p=>`<div class="thumb">${p.image?`<img src="${p.image}" alt="">`:'<span class="muted" style="font-size:.7rem">Sin img</span>'}</div>`).join('')}</div>`;
+    };
+
+    const parts = [];
+    // Carpeta TODOS
+    parts.push(folderCardHTML({ id:'all', name:'Todos', color:'blue', count:list.length, thumbsHTML: makeThumbs(list) }));
+    // Carpeta SIN ETIQUETA
+    parts.push(folderCardHTML({ id:'none', name:'Sin etiqueta', color:'gray', count:untagged.length, thumbsHTML: makeThumbs(untagged) }));
+    // Carpeta por cada tag
+    for(const t of tags){ const arr = byTag.get(t.id)||[]; parts.push(folderCardHTML({ id:t.id, name:t.name, color:t.color, count:arr.length, thumbsHTML: makeThumbs(arr) })); }
+
+    bar.innerHTML = parts.join('');
+    // Activar selección visual
+    qsa('.folder-card', bar).forEach(el=>{ el.classList.toggle('active', el.dataset.id===selectedTag); });
+  }
+
+  function folderCardHTML({id,name,color,count,thumbsHTML}){
+    return `<div class="folder-card" data-id="${id}">
+      <div class="folder-head" data-color="${color}">
+        <div class="folder-dot" data-color="${color}"></div>
+        <div class="folder-name">${escapeHtml(name)}</div>
+        <div class="folder-count">${count}</div>
+      </div>
+      ${thumbsHTML}
+    </div>`;
+  }
+
+  // ===== FAVORITOS: Lista compacta =====
+  function renderFavList(){
+    const root = $('miniList');
+    const base = favoritos.filter(f=> showComprados ? true : !f.completed);
+    let items = base;
+    if(selectedTag==='none') items = base.filter(it=>!it.tags || !it.tags.length);
+    else if(selectedTag!=='all') items = base.filter(it=> (it.tags||[]).includes(selectedTag));
+
+    root.innerHTML = items.map(it=> miniCardHTML(it)).join('');
+  }
+
+  function miniCardHTML(item){
+    const tagsHtml = (item.tags||[]).map(tid=>{
+      const t = tags.find(x=>x.id===tid); if(!t) return '';
+      return `<span class="tag" data-color="${t.color}"><span>🏷️ ${escapeHtml(t.name)}</span><span class="x" data-action="tag-remove" data-id="${item.id}" data-tag="${t.id}">×</span></span>`;
+    }).join('');
+    return `<div class="mini-card" data-id="${item.id}">
+      <div class="mini-thumb">${item.image?`<img src="${item.image}" alt="">`:'<span class="muted" style="font-size:.75rem">Sin imagen</span>'}</div>
+      <div class="mini-main">
+        <div class="mini-title">${escapeHtml(item.title||'Sin título')}</div>
+        <div class="mini-cat">${escapeHtml(item.category||'')}</div>
+        <div class="mini-tags">${tagsHtml || '<span class="muted">Sin etiquetas</span>'}</div>
+      </div>
+      <div class="mini-actions">
+        <button class="btn" data-action="add-price" data-id="${item.id}">€</button>
+        <button class="btn" data-action="tag-manage" data-id="${item.id}">🏷️</button>
+        <button class="btn primary" data-action="open" data-id="${item.id}">🛒</button>
+        <button class="mini-fav" data-action="fav-toggle" data-id="${item.id}" aria-pressed="true">★</button>
+      </div>
+    </div>`;
+  }
+
+  // Click handling global
   document.addEventListener('click', (e)=>{
+    // Fav en cards (Comparar)
     const fav = e.target.closest('.fav-btn');
     if(fav){
       e.stopPropagation(); e.preventDefault();
@@ -325,37 +503,49 @@
         const base = recientes.find(x=>x.id===id) || favoritos.find(x=>x.id===id);
         if(base){ favoritos.unshift({...base}); saveArr('pr-favs-v1', favoritos); }
       }
-      renderAll();
+      renderAll(); if($('viewLista').style.display!=='none'){ renderFolders(); renderFavList(); }
       return;
     }
 
-    const btn = e.target.closest('button,span[data-action],input[type="checkbox"][data-action]'); if(!btn) return;
+    const btn = e.target.closest('button,span[data-action],input[type="checkbox"][data-action],.folder-card'); if(!btn) return;
     const action = btn.dataset.action; const id = btn.dataset.id;
+
+    // Carpeta seleccionada
+    if(btn.classList.contains('folder-card')){
+      selectedTag = btn.dataset.id; renderFolders(); renderFavList(); return;
+    }
 
     if(action==='open' && id){ const item = recientes.find(x=>x.id===id) || favoritos.find(x=>x.id===id); if(item) openAmazonSmart(item); }
 
     if(action==='add-price' && id){
       const item = recientes.find(x=>x.id===id) || favoritos.find(x=>x.id===id); if(!item) return;
       const val = prompt('Precio manual (€, usa punto o coma):', item.userPrice!=null? String(item.userPrice):'');
-      if(val!=null){ const n = Number(String(val).replace(',','.')); if(!isNaN(n)){ item.userPrice = Math.round(n*100)/100; item.userPriceAt = now(); persistItem(item); renderAll(); } }
+      if(val!=null){ const n = Number(String(val).replace(',','.')); if(!isNaN(n)){ item.userPrice = Math.round(n*100)/100; item.userPriceAt = now(); persistItem(item); renderAll(); if($('viewLista').style.display!=='none'){ renderFavList(); } } }
     }
 
     if(action==='toggle-comprado' && id){
       const item = favoritos.find(x=>x.id===id); if(!item) return;
-      item.completed = btn.checked; item.completedAt = item.completed ? now() : null; saveArr('pr-favs-v1', favoritos); renderAll();
+      item.completed = btn.checked; item.completedAt = item.completed ? now() : null; saveArr('pr-favs-v1', favoritos); renderAll(); if($('viewLista').style.display!=='none'){ renderFolders(); renderFavList(); }
     }
+
+    if(action==='fav-toggle' && id){
+      const exists = favoritos.findIndex(x=>x.id===id);
+      if(exists>=0){ favoritos.splice(exists,1); saveArr('pr-favs-v1', favoritos); }
+      else{
+        const base = recientes.find(x=>x.id===id) || favoritos.find(x=>x.id===id);
+        if(base){ favoritos.unshift({...base}); saveArr('pr-favs-v1', favoritos); }
+      }
+      renderAll(); if($('viewLista').style.display!=='none'){ renderFolders(); renderFavList(); }
+    }
+
+    // Gestionar etiquetas
+    if(action==='tag-manage' && id){ openTagModal(id); }
+    if(action==='tag-remove'){ const item = favoritos.find(x=>x.id===id); if(!item) return; const tagId = btn.dataset.tag; item.tags = (item.tags||[]).filter(t=>t!==tagId); persistItem(item); renderFolders(); renderFavList(); }
   });
 
-  // Vaciar lista (solo Comparar)
-  $('btnVaciarLista').addEventListener('click', ()=>{
-    if(!recientes.length) return;
-    if(confirm('¿Seguro que quieres vaciar la lista de escaneados (Comparar)?')){
-      recientes = []; saveArr('pr-recent-v1', recientes); renderAll();
-      showToast({ message: 'Lista vaciada', type:'success', timeout:1500 });
-    }
-  });
-
-  $('btnMostrarComprados').addEventListener('click', ()=>{ showComprados = !showComprados; $('btnMostrarComprados').textContent = 'Ver comprados: ' + (showComprados?'ON':'OFF'); renderAll(); });
+  // Botones de Favoritos
+  $('btnMostrarComprados').addEventListener('click', ()=>{ showComprados = !showComprados; $('btnMostrarComprados').textContent = 'Ver comprados: ' + (showComprados?'ON':'OFF'); renderFolders(); renderFavList(); });
+  $('btnNewTag').addEventListener('click', ()=>{ openTagModal(null); });
 
   function persistItem(item){
     const i = recientes.findIndex(x=>x.id===item.id); if(i>=0){ recientes[i]=item; saveArr('pr-recent-v1', recientes); }
@@ -485,25 +675,49 @@
   window.addEventListener('appinstalled', ()=>{ $('btnInstall').style.display = 'none'; showToast({ message: '✅ App instalada', type:'success' }); });
   $('btnInstall').addEventListener('click', async ()=>{ if(!deferredPrompt){ showToast({ message:'Instalación no disponible en este navegador', type:'error' }); return; } deferredPrompt.prompt(); try{ await deferredPrompt.userChoice; }catch(_){} deferredPrompt = null; $('btnInstall').style.display = 'none'; });
 
-  // iOS hint: mostrar ayuda para añadir a pantalla de inicio
-  function showIOSHintIfNeeded(){
-    const ua = window.navigator.userAgent || '';
-    const isIOS = /iPad|iPhone|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    const inStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-    if(isIOS && !inStandalone){
-      const el = $('iosHint'); if(el) el.style.display = 'block';
-      const btn = $('btnInstall'); if(btn) btn.style.display = 'none';
-    }
-  }
+  // iOS hint
+  function showIOSHintIfNeeded(){ const ua = window.navigator.userAgent || ''; const isIOS = /iPad|iPhone|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); const inStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone; if(isIOS && !inStandalone){ const el = $('iosHint'); if(el) el.style.display = 'block'; const btn = $('btnInstall'); if(btn) btn.style.display = 'none'; } }
   document.addEventListener('DOMContentLoaded', showIOSHintIfNeeded);
+
+  // ===== Modal de etiquetas =====
+  let modalTargetId = null; // id del item que estamos editando
+  function openTagModal(itemId){ modalTargetId = itemId; buildTagOptions(itemId); $('tagModal').classList.add('open'); }
+  $('tagModalClose').addEventListener('click', ()=> $('tagModal').classList.remove('open'));
+  $('tagModal').addEventListener('click', (e)=>{ if(e.target === $('tagModal')) $('tagModal').classList.remove('open'); });
+
+  function buildTagOptions(itemId){
+    const root = $('tagOptions'); const item = favoritos.find(x=>x.id===itemId);
+    const assigned = new Set(item?.tags||[]);
+    root.innerHTML = tags.map(t=>`<label class="tag-opt" data-color="${t.color}"><input type="checkbox" value="${t.id}" ${assigned.has(t.id)?'checked':''}/> <span class="tag" data-color="${t.color}">🏷️ ${escapeHtml(t.name)}</span></label>`).join('') || '<span class="muted">No hay etiquetas. Crea una abajo.</span>';
+    // Preseleccionar color por defecto
+    qsa('.swatch').forEach(s=> s.classList.toggle('sel', false));
+    qs('.swatch[data-color="blue"]').classList.add('sel');
+  }
+
+  qsa('.swatch').forEach(s=>{
+    s.addEventListener('click', ()=>{
+      qsa('.swatch').forEach(x=>x.classList.remove('sel'));
+      s.classList.add('sel');
+    });
+  });
+
+  $('createTagBtn').addEventListener('click', ()=>{
+    const name = $('newTagName').value.trim(); if(!name){ alert('Pon un nombre'); return; }
+    const chosen = qs('.swatch.sel')?.getAttribute('data-color') || 'blue';
+    const t = createTag(name, chosen); $('newTagName').value=''; buildTagOptions(modalTargetId); renderFolders();
+  });
+
+  $('tagModalSave').addEventListener('click', ()=>{
+    if(!modalTargetId){ $('tagModal').classList.remove('open'); return; }
+    const item = favoritos.find(x=>x.id===modalTargetId); if(!item){ $('tagModal').classList.remove('open'); return; }
+    const checks = qsa('#tagOptions input[type="checkbox"]');
+    item.tags = checks.filter(c=>c.checked).map(c=>c.value);
+    persistItem(item); $('tagModal').classList.remove('open'); renderFolders(); renderFavList();
+  });
+
+  // ===== Inicio =====
+  renderAll();
 
   </script>
 </body>
 </html>
-
-
-
-
-
-
-
