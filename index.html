@@ -236,6 +236,46 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
   flex: initial;
 }
 
+  
+/* === FIX DEFINITIVO TITULOS (responsive) ===
+   - En móvil: acciones abajo para dejar ancho completo al texto
+   - En pantallas anchas: acciones a la derecha
+*/
+.mini-card{
+  display: grid !important;
+  grid-template-columns: 72px minmax(0,1fr);
+  grid-template-areas:
+    "thumb text"
+    "thumb actions";
+  column-gap: 10px;
+  align-items: start;
+}
+.mini-thumb{ grid-area: thumb; width:72px; align-self:start; }
+.mini-main{ display: contents !important; min-width:0; }
+.mini-title, .mini-cat, .mini-tags{ grid-area: text; min-width:0; }
+.mini-title{
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.25;
+}
+.mini-actions{
+  grid-area: actions;
+  align-self: start;
+  justify-self: start;
+  margin-left: 0;
+  flex: initial;
+}
+
+/* >=520px: volvemos a acciones a la derecha */
+@media (min-width:520px){
+  .mini-card{
+    grid-template-columns: 72px minmax(0,1fr) auto;
+    grid-template-areas: "thumb text actions";
+  }
+  .mini-actions{ justify-self: end; grid-row:auto; }
+}
+
   </style>
 </head>
 <body>
