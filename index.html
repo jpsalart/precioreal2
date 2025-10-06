@@ -195,6 +195,47 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
 }
 .mini-actions{ grid-column: 2 / 3; grid-row: 1 / 3; align-self: start; margin-left: 0; flex: initial; }
 
+  
+/* === FIX TITULOS HORIZONTALES · Opción B (grid 3 columnas: thumb | texto | acciones) === */
+.mini-card{
+  display: grid !important;
+  grid-template-columns: 72px minmax(0, 1fr) auto; /* thumb | texto fluido | acciones */
+  column-gap: 10px;
+  align-items: start;
+}
+.mini-thumb{
+  grid-column: 1 / 2;
+  grid-row: 1 / 3;
+  width: 72px;
+  height: auto;
+  align-self: start;
+  flex: initial; /* anula posibles reglas previas */
+}
+/* Aplanamos el contenedor para posicionar sus hijos directamente en la grid */
+.mini-main{
+  display: contents !important;
+  min-width: 0;
+}
+.mini-title, .mini-cat, .mini-tags{
+  grid-column: 2 / 3;
+  min-width: 0;
+}
+.mini-title{
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.25;
+  -webkit-line-clamp: unset;
+  display: block;
+}
+.mini-actions{
+  grid-column: 3 / 4;
+  grid-row: 1 / 3;            /* ocupa el alto del texto */
+  align-self: start;
+  margin-left: 0;
+  flex: initial;
+}
+
   </style>
 </head>
 <body>
