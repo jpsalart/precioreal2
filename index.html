@@ -237,47 +237,41 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
 }
 
   
-/* === Títulos más cortos + etiquetas debajo del botón === */
+/* === UI tweaks: titulo 1 línea, categoría bajo imagen, acciones a la derecha, tipografía ++ === */
+html{ font-size:17px; } /* leve subida global */
 .mini-card{
   display:grid !important;
   grid-template-columns:72px minmax(0,1fr);
   grid-template-areas:
     "thumb text"
+    "cat   text"
     "thumb actions"
     "thumb tags";
   column-gap:10px;
   align-items:start;
 }
-.mini-thumb{ grid-area:thumb; width:72px; align-self:start; }
-.mini-main{ display:contents !important; min-width:0; }
-
-/* Título con 3 líneas máx. (clamp) */
-.mini-title{
-  grid-area:text;
-  min-width:0;
-  display:-webkit-box;
-  -webkit-box-orient:vertical;
-  -webkit-line-clamp:3;
-  overflow:hidden;
-  white-space:normal;
-  line-height:1.25;
-}
-.mini-cat{ grid-area:text; }
-.mini-tags{
-  grid-area:tags;
-  display:flex; flex-wrap:wrap; gap:6px;
-}
-.mini-actions{ grid-area:actions; justify-self:start; align-self:start; margin-left:0; }
-
-/* Pantallas anchas: acciones a la derecha, tags debajo de acciones */
 @media (min-width:520px){
   .mini-card{
     grid-template-columns:72px minmax(0,1fr) auto;
-    grid-template-areas:"thumb text actions"
-                        "thumb text tags";
+    grid-template-areas:
+      "thumb text actions"
+      "cat   text tags";
   }
-  .mini-actions{ justify-self:end; }
 }
+.mini-thumb{ grid-area:thumb; width:72px; align-self:start; }
+.mini-main{ display:contents !important; min-width:0; }
+.mini-title{
+  grid-area:text; min-width:0;
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:1;
+  overflow:hidden; text-overflow:ellipsis; white-space:normal;
+  font-size:1.06rem; line-height:1.25;
+}
+.mini-cat{ grid-area:cat; font-size:.82rem; color:var(--muted); margin-top:4px; }
+.mini-actions{ grid-area:actions; justify-self:end; align-self:start; margin-left:0; }
+.mini-tags{ grid-area:tags; display:flex; flex-wrap:wrap; gap:6px; }
+
+/* estilo del placeholder "Sin etiqueta" clicable */
+.mini-tags .tag-empty{ color:var(--muted); text-decoration:underline; cursor:pointer; }
 
   </style>
 </head>
@@ -407,7 +401,48 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
     </div>
   </div>
 
-  <script src="/api/zxing.js" defer></script>
+  <script src="/api/zxing.js" defer>
+// === Etiquetas: crear desde "Sin etiqueta" con color automático; editar nombre tocando la chip ===
+document.addEventListener('click', (e)=>{
+  const el = e.target.closest('[data-action="add-first-tag"]');
+  if(el){
+    e.preventDefault(); e.stopPropagation();
+    const id = el.dataset.id; if(!id) return;
+    const item = (window.recientes||[]).find(x=>x.id===id) || (window.favoritos||[]).find(x=>x.id===id);
+    if(!item) return;
+    let name = prompt('Nombre de la etiqueta:');
+    if(!name) return;
+    name = name.trim(); if(!name) return;
+    // busca etiqueta existente (por nombre, case-insensitive)
+    let tag = (window.tags||[]).find(t => t.name.toLowerCase()===name.toLowerCase());
+    if(!tag){
+      const colors = ['blue','green','purple','orange','red','yellow','gray'];
+      const color = colors[(window.tags||[]).length % colors.length];
+      tag = createTag(name, color); // usa tu helper existente
+    }
+    item.tags = Array.from(new Set([...(item.tags||[]), tag.id]));
+    save();
+    renderAll();
+  }
+});
+
+// Editar etiqueta tocando el chip (no la X)
+document.addEventListener('click', (e)=>{
+  const chip = e.target.closest('.tag'); if(!chip) return;
+  const remove = e.target.closest('[data-action="tag-remove"]'); if(remove) return;
+  const tid = chip.querySelector('[data-action="tag-remove"]')?.dataset.tag;
+  if(!tid) return;
+  const tag = (window.tags||[]).find(t=>t.id===tid);
+  if(!tag) return;
+  const name = prompt('Renombrar etiqueta:', tag.name);
+  if(!name) return;
+  tag.name = name.trim() || tag.name;
+  saveTags(); // helper existente si lo tienes; si no, usamos save();
+  save();
+  renderAll();
+});
+
+</script>
   <script>
   const $ = sel => document.getElementById(sel);
   const qs = (s,root=document)=>root.querySelector(s);
@@ -594,7 +629,8 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
   function miniCardHTML(item){
     const tagsHtml = (item.tags||[]).map(tid=>{
       const t = tags.find(x=>x.id===tid); if(!t) return '';
-      return `<span class="tag" data-color="${t.color}"><span>🏷️ ${escapeHtml(t.name)}</span><span class="x" data-action="tag-remove" data-id="${item.id}" data-tag="${t.id}">×</span></span>`;
+      return `<span class="tag" data-color="${t.color}
+"><span>🏷️ ${escapeHtml(t.name)}</span><span class="x" data-action="tag-remove" data-id="${item.id}" data-tag="${t.id}">×</span></span>`;
     }).join('');
     return `<div class="mini-card" data-id="${item.id}">
       <div class="mini-thumb">${item.image?`<img src="${item.image}" alt="">`:'<span class="muted" style="font-size:.75rem">Sin imagen</span>'}</div>
