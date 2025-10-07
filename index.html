@@ -426,7 +426,7 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
   </div>
 
   <script src="/api/zxing.js" defer></script>
-  <script src="./amazon-api.drbit.v3.js"></script>
+  <script src="./amazon-api.drbit.v2.js"></script>
 <script>
   const $ = sel => document.getElementById(sel);
   const qs = (s,root=document)=>root.querySelector(s);
@@ -983,7 +983,181 @@ let item; try{ item = await resolveEAN(code, { allowEnqueueOnFail:false }); } fi
       setTimeout(()=>{ try { AmazonAPI.processQueue(); } catch(_) {} }, 1200);
     }
   });
+
+  // === Ajuste: Abrir Amazon automáticamente tras escanear (toggle) ===
+  (function(){
+    const KEY = 'pr-setting-autoOpenAfterScan';
+    const state = (localStorage.getItem(KEY) === '1');
+    window.SETTINGS = window.SETTINGS || {};
+    window.SETTINGS.autoOpenAfterScan = state;
+
+    function applyToggleUI(){
+      const targets = [
+        '#settingsPanel', '#settings', '#configPanel', '#optionsPanel', '#settingsContent', '#panel-config'
+      ];
+      let host = null;
+      for (const sel of targets){
+        const el = document.querySelector(sel);
+        if (el) { host = el; break; }
+      }
+      if (!host) host = document.body;
+
+      if (document.getElementById('autoOpenAfterScanRow')) return;
+
+      const row = document.createElement('div');
+      row.id = 'autoOpenAfterScanRow';
+      row.style.cssText = 'margin:8px 0; padding:8px; border:1px dashed #ccc; border-radius:8px;';
+      row.innerHTML = `
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+          <input type="checkbox" id="autoOpenAfterScanChk" ${state ? 'checked':''} />
+          <span>Abrir Amazon automáticamente tras escanear</span>
+        </label>
+        <small style="display:block; opacity:.7; margin-top:4px;">Si está desactivado, el escaneo nunca abrirá Amazon sin tu toque.</small>
+      `;
+      host.appendChild(row);
+
+      const chk = row.querySelector('#autoOpenAfterScanChk');
+      chk.addEventListener('change', () => {
+        window.SETTINGS.autoOpenAfterScan = !!chk.checked;
+        localStorage.setItem(KEY, chk.checked ? '1' : '0');
+        if (typeof showToast === 'function') showToast('Preferencia guardada');
+        console.debug('[PR setting] autoOpenAfterScan =', window.SETTINGS.autoOpenAfterScan);
+      });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', applyToggleUI);
+    } else {
+      applyToggleUI();
+    }
+  })();
+
+  // === Diagnóstico y guard de aperturas (gesto reciente requerido si autoOpenAfterScan=false) ===
+  (function(){
+    window.__openDiagnostics = window.__openDiagnostics || { log: [] };
+    window.__lastUserGestureTs = 0;
+    window.__lastUserGestureType = '';
+
+    function markGesture(type){
+      window.__lastUserGestureTs = Date.now();
+      window.__lastUserGestureType = type || 'click';
+    }
+    ['click','touchstart','keydown'].forEach(ev => {
+      document.addEventListener(ev, (e)=> {
+        if (ev==='keydown' && !(e.key==='Enter' || e.key===' ')) return;
+        markGesture(ev);
+      }, {capture:true});
+    });
+
+    function allowOpenByGesture(){
+      if (window.SETTINGS && window.SETTINGS.autoOpenAfterScan) return true;
+      const dt = Date.now() - (window.__lastUserGestureTs||0);
+      return dt < 2000; // 2s desde el último gesto del usuario
+    }
+
+    function diag(source, url, decision, reason){
+      const item = { t: new Date().toISOString(), source, url, decision, reason, gesture: window.__lastUserGestureType || null };
+      window.__openDiagnostics.log.push(item);
+      console.debug('[PR open]', item);
+    }
+
+    // Wrap AmazonAPI.openSmart si existe
+    function wrapAPIOpenSmart(){
+      if (!window.AmazonAPI || !AmazonAPI.openSmart || AmazonAPI.openSmart.__wrapped) return;
+      const orig = AmazonAPI.openSmart.bind(AmazonAPI);
+      const wrapped = function(url, newTab){
+        const src = (window.__openSource || 'unknown');
+        const ok = allowOpenByGesture();
+        if (!ok){
+          diag(src, url, 'blocked', 'no recent gesture & autoOpenAfterScan=false');
+          // opcional: almacenar último enlace pendiente
+          window.__pendingOpen = { url, at: Date.now(), src };
+          if (typeof showToast==='function') showToast('Listo para abrir. Toca el elemento o botón “Abrir”.');
+          return { blocked: true };
+        }
+        diag(src, url, 'allowed', 'gesture ok');
+        return orig(url, newTab);
+      };
+      wrapped.__wrapped = true;
+      AmazonAPI.openSmart = wrapped;
+    }
+
+    // Wrap openAmazonSmart (del index) de igual modo
+    function wrapIndexOpenSmart(){
+      if (!window.openAmazonSmart || window.openAmazonSmart.__wrapped) return;
+      const orig = window.openAmazonSmart;
+      const wrapped = function(item){
+        let url = '';
+        try {
+          url = (item && (item.affiliateLink || item.webHref || item.url)) ? new URL(item.affiliateLink || item.webHref || item.url, location.href).toString() : '';
+        } catch(e){}
+        const src = (window.__openSource || 'unknown');
+        const ok = allowOpenByGesture();
+        if (!ok){
+          diag(src, url, 'blocked', 'no recent gesture & autoOpenAfterScan=false');
+          window.__pendingOpen = { url, at: Date.now(), src, item };
+          if (typeof showToast==='function') showToast('Listo para abrir. Toca el elemento o botón “Abrir”.');
+          return { blocked:true };
+        }
+        diag(src, url, 'allowed', 'gesture ok');
+        try { return orig(item); } catch(e){ console.error(e); }
+      };
+      wrapped.__wrapped = true;
+      window.openAmazonSmart = wrapped;
+    }
+
+    // Intentar detectar contexto de “scan”
+    function markScanContext(){
+      window.__openSource = 'scan';
+      setTimeout(()=>{ if (window.__openSource==='scan') window.__openSource = null; }, 2500);
+    }
+
+    // Si Quagga está presente, intenta interceptar callbacks para marcar contexto
+    function hookScanner(){
+      if (window.Quagga && !window.__scannerHooked){
+        try {
+          if (typeof Quagga.onDetected === 'function'){
+            const oldOnDetected = Quagga.onDetected.bind(Quagga);
+            Quagga.onDetected = function(cb){
+              const wrappedCb = function(res){ markScanContext(); return cb(res); };
+              return oldOnDetected(wrappedCb);
+            };
+          }
+          window.__scannerHooked = true;
+        } catch(e){}
+      }
+      // BarcodeDetector nativo: marca al entrar en función común si existe
+      if (window.startScan && !window.__startScanHooked){
+        try{
+          const old = window.startScan;
+          window.startScan = function(){
+            markScanContext();
+            return old.apply(this, arguments);
+          };
+          window.__startScanHooked = true;
+        }catch(e){}
+      }
+    }
+
+    function init(){
+      wrapAPIOpenSmart();
+      wrapIndexOpenSmart();
+      hookScanner();
+    }
+
+    if (document.readyState === 'loading'){
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+
+    // Reintentar hooks cuando cargue la API externa (por si llega tarde)
+    const iv = setInterval(()=>{
+      wrapAPIOpenSmart();
+      hookScanner();
+      if (AmazonAPI && AmazonAPI.openSmart && AmazonAPI.openSmart.__wrapped) clearInterval(iv);
+    }, 400);
+  })();
 </script>
 </body>
 </html>
-
