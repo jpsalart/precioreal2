@@ -832,15 +832,14 @@ function miniCardHTML(item){
       const item = { id: asin || ean, ean, asin, domain, title: prod.title || ('EAN ' + ean), image: prod.image || null, category: prod.category || '',
         affiliateLink: prod.affiliateLink || ('/api/go/'+encodeURIComponent(asin)+'?d='+encodeURIComponent(domain)), userPrice: null, userPriceAt: null,
         tags: [], completed: false, completedAt: null, ts: now() };
-      localStorage.setItem(cacheKey, JSON.stringify({ t:now(), item })); cacheHousekeep(500, 30*60*1000); return item;
+      localStorage.setItem(cacheKey, JSON.stringify({ t:now(), item })); return item;
     }catch(err){ try{ if(!opts || opts.allowEnqueueOnFail!==false) enqueueOffline(ean); }catch(_){} return null; }
   }
   function enqueueOffline(ean){ const q = loadArr('pr-queue-v1'); q.push({ ean, t: now() }); saveArr('pr-queue-v1', q); }
-  async function reprocesarCola(){ purgeQueue(); const q = loadArr('pr-queue-v1'); if(!q.length){ setTimeout(reprocesarCola, 2500); return; } const next = q.shift(); saveArr('pr-queue-v1', q); const item = await resolveEAN(next.ean, { allowEnqueueOnFail:false }); if(item){ if(!recientes.find(x=>x.id===item.id)){ recientes.unshift(item); saveArr('pr-recent-v1', recientes); renderAll(); } } setTimeout(reprocesarCola, 500); }
+  async function reprocesarCola(){ const q = loadArr('pr-queue-v1'); if(!q.length){ setTimeout(reprocesarCola, 2500); return; } const next = q.shift(); saveArr('pr-queue-v1', q); const item = await resolveEAN(next.ean, { allowEnqueueOnFail:false }); if(item){ if(!recientes.find(x=>x.id===item.id)){ recientes.unshift(item); saveArr('pr-recent-v1', recientes); renderAll(); } } setTimeout(reprocesarCola, 500); }
   window.addEventListener('online', reprocesarCola); reprocesarCola();
 
-  $('btnManualGo').addEventListener('click', async ()=>{ const code = sanitizeCode($('inputManual').value); if(!code) return; const __btn=$('btnManualGo'); if(__btn){ __btn.disabled=true; __btn.classList.add('loading'); }
-let item; try{ item = await resolveEAN(code, { allowEnqueueOnFail:false }); } finally { if(__btn){ __btn.disabled=false; __btn.classList.remove('loading'); } } if(item){ if(!recientes.find(x=>x.id===item.id)){ recientes.unshift(item); saveArr('pr-recent-v1', recientes); renderAll(); } showToast({ message: '✅ Encontrado', type:'success', timeout:1500 }); } else { showToast({ message: '❌ No encontrado', type:'error', timeout:1800 }); } });
+  $('btnManualGo').addEventListener('click', async ()=>{ const code = sanitizeCode($('inputManual').value); if(!code) return; const item = await resolveEAN(code, { allowEnqueueOnFail:false }); if(item){ if(!recientes.find(x=>x.id===item.id)){ recientes.unshift(item); saveArr('pr-recent-v1', recientes); renderAll(); } showToast({ message: '✅ Encontrado', type:'success', timeout:1500 }); } else { showToast({ message: '❌ No encontrado', type:'error', timeout:1800 }); } });
 
   $('btnTorch').addEventListener('click', async ()=>{ if(!stream){ alert('Inicia el escáner primero.'); return; } const track = stream.getVideoTracks()[0]; const caps = track.getCapabilities?.(); if(!caps || !('torch' in caps)){ alert('Este dispositivo/navegador no soporta linterna.'); return; } torchOn = !torchOn; try{ await track.applyConstraints({ advanced:[{ torch: torchOn }] }); $('btnTorch').textContent = 'Linterna: ' + (torchOn?'ON':'OFF'); }catch(e){ alert('No se pudo activar la linterna.'); } });
 
@@ -852,9 +851,8 @@ let item; try{ item = await resolveEAN(code, { allowEnqueueOnFail:false }); } fi
   function AmazonAPI.tldFromKeepa(domainIdx){ const map = {1:'com',2:'co.uk',3:'de',4:'fr',5:'co.jp',6:'ca',7:'cn',8:'it',9:'es',10:'in',11:'com.mx',12:'com.br',13:'com.au',14:'nl',15:'se',16:'pl',17:'com.tr',18:'sg',19:'sa',20:'ae'}; return map[String(domainIdx||9)] || 'es'; }
   function openAmazonSmart(item){
   // Preferir API externa si está presente
-  
- try{ const webHref = item?.affiliateLink ? new URL(item.affiliateLink, location.origin).href : `https://www.amazon.${AmazonAPI.tldFromKeepa(item?.domain)}/dp/${encodeURIComponent(item?.asin || '')}`;
-    if (window.AmazonAPI && AmazonAPI.openSmart) { try { AmazonAPI.openSmart(webHref); } catch(_){} return; } if (settings.openInApp && isAndroidIntentCapable() && (item?.asin)){ const tld = AmazonAPI.tldFromKeepa(item?.domain); const asin = item.asin; const intentUrl = `intent://www.amazon.${tld}/dp/${encodeURIComponent(asin)}#Intent;scheme=https;package=com.amazon.mShop.android.shopping;S.browser_fallback_url=${encodeURIComponent(webHref)};end`; location.href = intentUrl; return; } location.href = webHref; }catch(e){} }
+  if (window.AmazonAPI && AmazonAPI.openSmart) { try { AmazonAPI.openSmart(webHref); } catch(_){} return; }
+ try{ const webHref = item?.affiliateLink ? new URL(item.affiliateLink, location.origin).href : `https://www.amazon.${AmazonAPI.tldFromKeepa(item?.domain)}/dp/${encodeURIComponent(item?.asin || '')}`; if (settings.openInApp && isAndroidIntentCapable() && (item?.asin)){ const tld = AmazonAPI.tldFromKeepa(item?.domain); const asin = item.asin; const intentUrl = `intent://www.amazon.${tld}/dp/${encodeURIComponent(asin)}#Intent;scheme=https;package=com.amazon.mShop.android.shopping;S.browser_fallback_url=${encodeURIComponent(webHref)};end`; location.href = intentUrl; return; } location.href = webHref; }catch(e){} }
 
   function escapeHtml(s){ return String(s||'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
   async function torchOff(){ try{ if(!stream) return; const track = stream.getVideoTracks()[0]; await track.applyConstraints({ advanced:[{ torch:false }] }); $('btnTorch').textContent = 'Linterna: OFF'; torchOn = false; }catch(e){} }
@@ -926,49 +924,6 @@ let item; try{ item = await resolveEAN(code, { allowEnqueueOnFail:false }); } fi
       }
     }
   });
-
-  // === Helpers de mantenimiento ===
-  function cacheHousekeep(limit=500, ttlMs=30*60*1000){
-    try{
-      const keep = [];
-      for(let i=0;i<localStorage.length;i++){
-        const k = localStorage.key(i);
-        if(k && k.startsWith('pr-cache-')){
-          try{
-            const v = JSON.parse(localStorage.getItem(k));
-            const t = v && v.t || 0;
-            if(!v || typeof v !== 'object' || !('item' in v) || (Date.now()-t)>ttlMs){
-              localStorage.removeItem(k);
-            }else{
-              keep.push({k,t});
-            }
-          }catch(_){
-            localStorage.removeItem(k);
-          }
-        }
-      }
-      if(keep.length>limit){
-        keep.sort((a,b)=>a.t-b.t);
-        const extra = keep.length - limit;
-        for(let i=0;i<extra;i++){
-          localStorage.removeItem(keep[i].k);
-        }
-      }
-    }catch(_){}
-  }
-  function purgeQueue(maxItems=50, maxAgeMs=7*24*60*60*1000){
-    try{
-      let q = loadArr('pr-queue-v1');
-      const nowMs = Date.now();
-      q = q.filter(x => x && x.ean && (nowMs - (x.t||0)) <= maxAgeMs);
-      if(q.length>maxItems){
-        // deja los más recientes
-        q.sort((a,b)=>(a.t||0)-(b.t||0));
-        q = q.slice(q.length-maxItems);
-      }
-      saveArr('pr-queue-v1', q);
-    }catch(_){}
-  }
 </script>
 </body>
 </html>
