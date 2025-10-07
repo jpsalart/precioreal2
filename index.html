@@ -446,6 +446,7 @@ function deleteTag(tagId, opts){
 }
 
 
+// Eliminar etiqueta desde el modal
 document.addEventListener('click', (e)=>{
   const btn = e.target.closest('.tag-del');
   if(!btn) return;
@@ -458,19 +459,14 @@ document.addEventListener('click', (e)=>{
     renderFolders(); renderFavList();
   }
 });
-// Open modal from chips or placeholder (unified)
+// Abrir modal desde chips o "Añadir etiqueta"
 document.addEventListener('click', (e)=>{
   const trg = e.target.closest('[data-action="tag-manage"]');
   if(!trg) return;
   e.preventDefault(); e.stopPropagation();
   const id = trg.dataset.id || trg.closest('.mini-card')?.dataset?.id;
   if(!id) return;
-  if(typeof openTagModal === 'function'){ openTagModal(id); }
-  else {
-    modalTargetId = id;
-    buildTagOptions(id);
-    $('tagModal').classList.add('open');
-  }
+  openTagModal(id);
 });
 
 </script>
@@ -634,64 +630,19 @@ recientes.forEach(ensurePrimaryTag);
   // ===== FAVORITOS: Carpetas =====
   let selectedFolder = 'all'; // 'all' | 'none' | tagId
   
+
 function renderFolders(){
   const bar = $('foldersBar');
   const list = favoritos.filter(f=> showComprados ? true : !f.completed);
 
+  // Índice por carpeta (primaryTagId)
   const byFolder = new Map();
   const noFolder = [];
   for(const it of list){
     ensurePrimaryTag(it);
     if(!it.primaryTagId || it.primaryTagId==='_none'){ noFolder.push(it); continue; }
-    if(!byFolder.has(it.primaryTagId)) byFolder.set(it.primaryTagId, []);
-    byFolder.get(it.primaryTagId).push(it);
-  }
 
-  const makeThumbs = (items)=>{
-    const picks = items.slice(0,4);
-    return `<div class="thumbs">${picks.map(p=>`<div class="thumb">${p.image?`<img src="${p.image}" alt="">`:'<span class="muted" style="font-size:.7rem">Sin img</span>'}</div>`).join('')}</div>`;
-  };
-
-  const parts = [];
-  parts.push(folderCardHTML({ id:'all', name:'Todos', color:'blue', count:list.length, thumbsHTML: makeThumbs(list) }));
-  if(noFolder.length>0){
-    parts.push(folderCardHTML({ id:'none', name:'Sin carpeta', color:'gray', count:noFolder.length, thumbsHTML: makeThumbs(noFolder) }));
-  }
-  for(const t of tags){
-    const arr = byFolder.get(t.id)||[];
-    if(arr.length>0){
-      parts.push(folderCardHTML({ id:t.id, name:t.name, color:t.color, count:arr.length, thumbsHTML: makeThumbs(arr) }));
-    }
-  }
-  bar.innerHTML = parts.join('');
-  qsa('.folder-card', bar).forEach(el=>{ el.classList.toggle('active', el.dataset.id===selectedFolder); });
-}
-if(!byFolder.has(it.primaryTagId)) byFolder.set(it.primaryTagId, []);
-      byFolder.get(it.primaryTagId).push(it);
-    }
-
-    const makeThumbs = (items)=>{
-      const picks = items.slice(0,4);
-      return `<div class="thumbs">${picks.map(p=>`<div class="thumb">${p.image?`<img src="${p.image}" alt="">`:'<span class="muted" style="font-size:.7rem">Sin img</span>'}</div>`).join('')}</div>`;
-    };
-
-    const parts = [];
-    // Carpeta TODOS
-    parts.push(folderCardHTML({ id:'all', name:'Todos', color:'blue', count:list.length, thumbsHTML: makeThumbs(list) }));
-    // Carpeta SIN CARPETA
-    parts.push(folderCardHTML({ id:'none', name:'Sin carpeta', color:'gray', count:noFolder.length, thumbsHTML: makeThumbs(noFolder) }));
-
-    // Una tarjeta por cada carpeta (tag) que tenga items asignados
-    for(const t of tags){
-      const arr = byFolder.get(t.id)||[];
-      parts.push(folderCardHTML({ id:t.id, name:t.name, color:t.color, count:arr.length, thumbsHTML: makeThumbs(arr) }));
-    }
-
-    bar.innerHTML = parts.join('');
-    qsa('.folder-card', bar).forEach(el=>{ el.classList.toggle('active', el.dataset.id===selectedFolder); });
-  }
-
-  function folderCardHTML({id,name,color,count,thumbsHTML}){
+function folderCardHTML({id,name,color,count,thumbsHTML}){
     return `<div class="folder-card" data-id="${id}">
       <div class="folder-head" data-color="${color}">
         <div class="folder-dot" data-color="${color}"></div>
@@ -940,52 +891,12 @@ function miniCardHTML(item){
   $('tagModal').addEventListener('click', (e)=>{ if(e.target === $('tagModal')) $('tagModal').classList.remove('open'); });
 
   
+
 function buildTagOptions(itemId){
   const root = $('tagOptions'); const item = favoritos.find(x=>x.id===itemId);
   const assigned = new Set(item?.tags||[]);
   root.innerHTML = tags.map(t=>`
-    <label class="tag-opt" data-color="${t.color}">
-      <input type="checkbox" value="${t.id}" ${assigned.has(t.id)?'checked':''}/>
-      <span class="tag" data-color="${t.color}">${escapeHtml(t.name)}</span>
-      <button class="x tag-del" type="button" data-tag="${t.id}" aria-label="Eliminar etiqueta">🗑</button>
-    </label>`).join('') || '<span class="muted">No hay etiquetas. Crea una abajo.</span>';
-  const sel = $('folderSelect');
-  if(sel){
-    sel.innerHTML = '<option value="_none">Sin carpeta</option>' + tags.map(t=>`<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
-    sel.value = item?.primaryTagId || '_none';
-    let delBtn = $('folderDeleteBtn');
-    if(!delBtn){
-      delBtn = document.createElement('button');
-      delBtn.id = 'folderDeleteBtn';
-      delBtn.className = 'btn danger';
-      delBtn.type = 'button';
-      delBtn.style.marginLeft = '8px';
-      delBtn.textContent = 'Eliminar carpeta';
-      sel.parentElement.appendChild(delBtn);
-    }
-    const updateDelVisibility = ()=>{ delBtn.style.display = (sel.value && sel.value!=='_none') ? 'inline-flex' : 'none'; };
-    sel.onchange = updateDelVisibility; updateDelVisibility();
-    delBtn.onclick = ()=>{
-      if(sel.value && sel.value!=='_none'){
-        if(confirm('¿Eliminar la carpeta seleccionada? Los productos pasarán a "Sin carpeta".')){
-          deleteTag(sel.value, {asFolder:true});
-          buildTagOptions(itemId);
-        }
-      }
-    };
-  }
-  qsa('.swatch').forEach(s=> s.classList.toggle('sel', false));
-  const sw = qs('.swatch[data-color="blue"]'); if(sw) sw.classList.add('sel');
-}
-"><input type="checkbox" value="${t.id}" ${assigned.has(t.id)?'checked':''}/> <span class="tag" data-color="${t.color}">${escapeHtml(t.name)}</span></label>`).join('') || '<span class="muted">No hay etiquetas. Crea una abajo.</span>';
-    // Carpeta (select)
-    const sel = $('folderSelect'); if(sel){ sel.innerHTML = '<option value="_none">Sin carpeta</option>' + tags.map(t=>`<option value="${t.id}">${escapeHtml(t.name)}</option>`).join(''); sel.value = item?.primaryTagId || '_none'; }
-    // Preseleccionar color por defecto para creación
-    qsa('.swatch').forEach(s=> s.classList.toggle('sel', false));
-    qs('.swatch[data-color="blue"]').classList.add('sel');
-  }
-
-  qsa('.swatch').forEach(s=>{
+    <label class="tag-opt" data-color="${t.color}qsa('.swatch').forEach(s=>{
     s.addEventListener('click', ()=>{
       qsa('.swatch').forEach(x=>x.classList.remove('sel'));
       s.classList.add('sel');
