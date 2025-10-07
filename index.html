@@ -836,7 +836,14 @@ function miniCardHTML(item){
     }catch(err){ try{ if(!opts || opts.allowEnqueueOnFail!==false) enqueueOffline(ean); }catch(_){} return null; }
   }
   function enqueueOffline(ean){ const q = loadArr('pr-queue-v1'); q.push({ ean, t: now() }); saveArr('pr-queue-v1', q); }
-  async function reprocesarCola(){ purgeQueue(); const q = loadArr('pr-queue-v1'); if(!q.length){ setTimeout(reprocesarCola, 2500); return; } const next = q.shift(); saveArr('pr-queue-v1', q); const item = await resolveEAN(next.ean, { allowEnqueueOnFail:false }); if(item){ if(!recientes.find(x=>x.id===item.id)){ recientes.unshift(item); saveArr('pr-recent-v1', recientes); renderAll(); } } setTimeout(reprocesarCola, 500); }
+  async function reprocesarCola(){
+  // Si existe la API externa, delega el reprocesado (manteniendo tu backoff)
+  if (window.AmazonAPI && AmazonAPI.processQueue) {
+    try { AmazonAPI.processQueue(); } catch(_) {}
+    setTimeout(reprocesarCola, 2500);
+    return;
+  }
+ purgeQueue(); const q = loadArr('pr-queue-v1'); if(!q.length){ setTimeout(reprocesarCola, 2500); return; } const next = q.shift(); saveArr('pr-queue-v1', q); const item = await resolveEAN(next.ean, { allowEnqueueOnFail:false }); if(item){ if(!recientes.find(x=>x.id===item.id)){ recientes.unshift(item); saveArr('pr-recent-v1', recientes); renderAll(); } } setTimeout(reprocesarCola, 500); }
   window.addEventListener('online', reprocesarCola); reprocesarCola();
 
   $('btnManualGo').addEventListener('click', async ()=>{ const code = sanitizeCode($('inputManual').value); if(!code) return; const __btn=$('btnManualGo'); if(__btn){ __btn.disabled=true; __btn.classList.add('loading'); }
@@ -968,6 +975,14 @@ let item; try{ item = await resolveEAN(code, { allowEnqueueOnFail:false }); } fi
       saveArr('pr-queue-v1', q);
     }catch(_){}
   }
+
+  // === Cola: reintento al volver a primer plano (delegamos en AmazonAPI si existe) ===
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && window.AmazonAPI && AmazonAPI.processQueue) {
+      try { AmazonAPI.processQueue(); } catch(_) {}
+      setTimeout(()=>{ try { AmazonAPI.processQueue(); } catch(_) {} }, 1200);
+    }
+  });
 </script>
 </body>
 </html>
