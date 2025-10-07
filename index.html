@@ -237,145 +237,21 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
 }
 
   
-/* === UI tweaks: titulo 1 línea, categoría bajo imagen, acciones a la derecha, tipografía ++ === */
-html{ font-size:17px; } /* leve subida global */
-.mini-card{
-  display:grid !important;
-  grid-template-columns:72px minmax(0,1fr);
-  grid-template-areas:
-    "thumb text"
-    "cat   text"
-    "thumb actions"
-    "thumb tags";
-  column-gap:10px;
-  align-items:start;
-}
-@media (min-width:520px){
-  .mini-card{
-    grid-template-columns:72px minmax(0,1fr) auto;
-    grid-template-areas:
-      "thumb text actions"
-      "cat   text tags";
-  }
-}
-.mini-thumb{ grid-area:thumb; width:72px; align-self:start; }
-.mini-main{ display:contents !important; min-width:0; }
-.mini-title{
-  grid-area:text; min-width:0;
-  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:1;
-  overflow:hidden; text-overflow:ellipsis; white-space:normal;
-  font-size:1.06rem; line-height:1.25;
-}
-.mini-cat{ grid-area:cat; font-size:.82rem; color:var(--muted); margin-top:4px; }
-.mini-actions{ grid-area:actions; justify-self:end; align-self:start; margin-left:0; }
-.mini-tags{ grid-area:tags; display:flex; flex-wrap:wrap; gap:6px; }
-
-/* estilo del placeholder "Sin etiqueta" clicable */
-.mini-tags .tag-empty{ color:var(--muted); text-decoration:underline; cursor:pointer; }
-
-  
-/* === FIX: mini-card grid rectangular (mobile first) === */
-.mini-card{
-  display:grid !important;
-  grid-template-columns: 92px minmax(0,1fr);
-  grid-template-areas:
-    "thumb text"
-    "cat   text"
-    ".     actions"
-    ".     tags";
-  column-gap:10px;
-  align-items:start;
-}
-.mini-thumb{ grid-area: thumb; width:92px; align-self:start; }
-.mini-main{ display: contents !important; min-width:0; }
-.mini-title{ grid-area: text; min-width:0; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:1; overflow:hidden; text-overflow:ellipsis; line-height:1.25; }
-.mini-cat{ grid-area: cat; font-size:.85rem; color:var(--muted); }
-.mini-actions{ grid-area: actions; justify-self: end; align-self: start; margin-left:0; display:flex; gap:8px; }
-.mini-tags{ grid-area: tags; display:flex; flex-wrap:wrap; gap:6px; }
-.mini-tags .tag-empty{ color:var(--muted); text-decoration:underline; cursor:pointer; }
-
-/* ≥520px: acciones a la derecha en la misma fila del título; tags debajo de acciones */
-@media (min-width:520px){
-  .mini-card{
-    grid-template-columns: 92px minmax(0,1fr) auto;
-    grid-template-areas:
-      "thumb text actions"
-      "cat   text tags";
-  }
-}
-
-  
-/* === Ajustes: menos espacio, acciones cerca del título, 'Añadir etiqueta' debajo === */
-.mini-card{
-  display:grid !important;
-  grid-template-columns: 92px minmax(0,1fr);
-  grid-template-areas:
-    "thumb text"
-    "thumb actions"
-    "cat   tags";
-  column-gap:10px;
-  row-gap:6px;
-  align-items:start;
-}
-@media (min-width:520px){
-  .mini-card{
-    grid-template-columns: 92px minmax(0,1fr) auto;
-    grid-template-areas:
-      "thumb text actions"
-      "cat   tags  actions";
-  }
-}
-.mini-thumb{ grid-area: thumb; width:92px; align-self:start; }
-.mini-main{ display: contents !important; min-width:0; }
-.mini-title{ grid-area:text; min-width:0; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:1; overflow:hidden; text-overflow:ellipsis; line-height:1.2; }
-.mini-actions{ grid-area:actions; justify-self:end; align-self:start; margin-left:0; display:flex; gap:8px; }
-.mini-cat{ grid-area:cat; font-size:.85rem; color:var(--muted); margin-top:2px; }
-.mini-tags{ grid-area:tags; display:flex; flex-wrap:wrap; gap:6px; }
-.mini-tags .tag-empty{ color:var(--muted); text-decoration:underline; cursor:pointer; }
-
-  
-/* Ocultar botón 'Nueva etiqueta' en Favoritos */
-#btnNewTag{ display:none !important; }
-
-  
-/* === FAVORITOS · Mini-card compacta: thumb | título | acciones (fila 1) · categoría | etiquetas | acciones (fila 2) === */
-.mini-card{
-  display:grid !important;
-  grid-template-columns:92px minmax(0,1fr) auto;
-  grid-template-areas:
-    "thumb text actions"
-    "cat   tags  actions";
-  column-gap:10px;
-  row-gap:6px;
-  align-items:start;
-}
-.mini-thumb{ grid-area:thumb; width:92px; align-self:start; }
-.mini-main{ display:contents !important; min-width:0; }
-.mini-title{ grid-area:text; min-width:0; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:1; overflow:hidden; text-overflow:ellipsis; line-height:1.2; font-weight:700; }
-.mini-cat{ grid-area:cat; font-size:.85rem; color:var(--muted); margin-top:2px; }
-.mini-tags{ grid-area:tags; display:flex; flex-wrap:wrap; gap:6px; }
-.mini-actions{ grid-area:actions; justify-self:end; align-self:start; display:flex; gap:8px; }
-
-/* Chips de etiqueta sin icono, usando color */
-.mini-tags .tag{ display:inline-flex; align-items:center; padding:4px 8px; border-radius:999px; border:1px solid var(--tbd); background:var(--tbg); color:var(--ttx); font-size:.82rem; cursor:pointer; }
-.mini-tags .tag-empty{ color:var(--muted); text-decoration:underline; cursor:pointer; }
-
-  
 /* === Mini-card FLEX v4 (thumb | [title+actions] | meta) === */
 .mini-card{ display:flex !important; gap:10px; align-items:flex-start; }
 .mini-thumb{ flex:0 0 92px; width:92px; align-self:start; }
 .mini-body{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:6px; }
 .mini-top{ display:flex; align-items:center; gap:8px; }
 .mini-title{ flex:1 1 auto; min-width:0; }
-.mini-title a{ display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; text-overflow:ellipsis; line-height:1.2; font-weight:700; pointer-events:auto; }
-.mini-actions{ margin-left:auto; display:flex; gap:8px; flex:0 0 auto; align-self:flex-start; position:relative; z-index:0; }
+.mini-title a{
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2;
+  overflow:hidden; text-overflow:ellipsis; line-height:1.2; font-weight:700;
+}
+.mini-actions{ margin-left:auto; display:flex; gap:8px; flex:0 0 auto; align-self:flex-start; }
 .mini-cat{ font-size:.85rem; color:var(--muted); }
 .mini-tags{ display:flex; flex-wrap:wrap; gap:6px; }
 .mini-tags .tag{ display:inline-flex; align-items:center; padding:4px 8px; border-radius:999px; border:1px solid var(--tbd); background:var(--tbg); color:var(--ttx); font-size:.82rem; cursor:pointer; }
 .mini-tags .tag-empty{ color:var(--muted); text-decoration:underline; cursor:pointer; }
-@media (max-width:359px){
-  .mini-actions .btn{ padding:8px 10px; }
-}
 
   </style>
 </head>
@@ -453,7 +329,7 @@ html{ font-size:17px; } /* leve subida global */
       <div class="section-title">
         <div class="flex"><span class="counter" id="countLista">0 ítems</span></div>
         <div class="flex">
-          <button id="btnNewTag" class="btn" style="display:none">🏷️ Nueva etiqueta</button>
+          <button id="btnNewTag" class="btn">🏷️ Nueva etiqueta</button>
           <button id="btnMostrarComprados" class="btn">Ver comprados: OFF</button>
         </div>
       </div>
@@ -506,193 +382,9 @@ html{ font-size:17px; } /* leve subida global */
   </div>
 
   <script src="/api/zxing.js" defer>
-// === Etiquetas: crear desde "Sin etiqueta" con color automático; editar nombre tocando la chip ===
-document.addEventListener('click', (e)=>{
-  const el = e.target.closest('[data-action="add-first-tag"]');
-  if(el){
-    e.preventDefault(); e.stopPropagation();
-    const id = el.dataset.id; if(!id) return;
-    const item = (window.recientes||[]).find(x=>x.id===id) || (window.favoritos||[]).find(x=>x.id===id);
-    if(!item) return;
-    let name = prompt('Nombre de la etiqueta:');
-    if(!name) return;
-    name = name.trim(); if(!name) return;
-    // busca etiqueta existente (por nombre, case-insensitive)
-    let tag = (window.tags||[]).find(t => t.name.toLowerCase()===name.toLowerCase());
-    if(!tag){
-      const colors = ['blue','green','purple','orange','red','yellow','gray'];
-      const color = colors[(window.tags||[]).length % colors.length];
-      tag = createTag(name, color); // usa tu helper existente
-    }
-    item.tags = Array.from(new Set([...(item.tags||[]), tag.id]));
-    save();
-    renderAll();
-  }
-});
-
-// Editar etiqueta tocando el chip (no la X)
-document.addEventListener('click', (e)=>{
-  const chip = e.target.closest('.tag'); if(!chip) return;
-  const remove = e.target.closest('[data-action="tag-remove"]'); if(remove) return;
-  const tid = chip.querySelector('[data-action="tag-remove"]')?.dataset.tag;
-  if(!tid) return;
-  const tag = (window.tags||[]).find(t=>t.id===tid);
-  if(!tag) return;
-  const name = prompt('Renombrar etiqueta:', tag.name);
-  if(!name) return;
-  tag.name = name.trim() || tag.name;
-  saveTags(); // helper existente si lo tienes; si no, usamos save();
-  save();
-  renderAll();
-});
-
-
-// === Etiquetas en mini-card ===
-// Crear etiqueta desde "Sin etiqueta" (color automático)
-document.addEventListener('click', (e)=>{
-  const el = e.target.closest('[data-action="add-first-tag"]');
-  if(!el) return;
-  e.preventDefault(); e.stopPropagation();
-  const id = el.dataset.id; if(!id) return;
-  const item = (window.recientes||[]).find(x=>x.id===id) || (window.favoritos||[]).find(x=>x.id===id);
-  if(!item) return;
-  let name = prompt('Nombre de la etiqueta:');
-  if(name===null) return;
-  name = name.trim();
-  if(!name) return;
-  // buscar etiqueta por nombre (insensible a mayúsculas)
-  let tag = (window.tags||[]).find(t => (t.name||'').toLowerCase() === name.toLowerCase());
-  if(!tag){
-    const colors = ['blue','green','purple','orange','red','yellow','gray'];
-    const idx = (window.tags||[]).length % colors.length;
-    tag = createTag(name, colors[idx]); // tu helper existente
-  }
-  item.tags = Array.from(new Set([...(item.tags||[]), tag.id]));
-  save(); renderAll();
-});
-
-// Editar/Eliminar etiqueta al tocar la chip (sin X para evitar borrados accidentales)
-document.addEventListener('click', (e)=>{
-  const chip = e.target.closest('.mini-tags .tag');
-  if(!chip) return;
-  // localizar item por proximidad DOM
-  const card = e.target.closest('.mini-card'); if(!card) return;
-  const id = card.dataset.id;
-  const item = (window.recientes||[]).find(x=>x.id===id) || (window.favoritos||[]).find(x=>x.id===id);
-  if(!item) return;
-  // localizar etiqueta por texto (mejor guardar data-id, pero el HTML ahora solo lleva color y nombre)
-  const nameNode = chip.querySelector('span'); const current = nameNode ? nameNode.textContent.replace(/^\s*🏷️\s*/, '') : '';
-  let tag = (window.tags||[]).find(t => t.name === current);
-  if(!tag){ // fallback: primer id del item que matchee nombre
-    tag = (window.tags||[]).find(t => (item.tags||[]).includes(t.id) && t.name===current);
-  }
-  if(!tag) return;
-  const resp = prompt('Renombrar etiqueta (deja vacío para eliminarla de este producto):', tag.name);
-  if(resp===null) return;
-  const val = resp.trim();
-  if(val===''){
-    // eliminar SOLO del producto (no de otras referencias)
-    item.tags = (item.tags||[]).filter(tid => tid !== tag.id);
-    save(); renderAll();
-    return;
-  }
-  if(val !== tag.name){
-    tag.name = val; save(); renderAll();
-  }
-});
-
-
-// Crear etiqueta desde "Añadir etiqueta" (color auto)
-document.addEventListener('click', (e)=>{
-  const el = e.target.closest('[data-action="add-first-tag"]');
-  if(!el) return;
-  e.preventDefault(); e.stopPropagation();
-  const id = el.dataset.id; if(!id) return;
-  const item = (window.recientes||[]).find(x=>x.id===id) || (window.favoritos||[]).find(x=>x.id===id);
-  if(!item) return;
-  let name = prompt('Nombre de la etiqueta:');
-  if(name===null) return;
-  name = name.trim(); if(!name) return;
-  let tag = (window.tags||[]).find(t => (t.name||'').toLowerCase()===name.toLowerCase());
-  if(!tag){
-    const colors = ['blue','green','purple','orange','red','yellow','gray'];
-    const color = colors[(window.tags||[]).length % colors.length];
-    tag = createTag(name, color);
-  }
-  item.tags = Array.from(new Set([...(item.tags||[]), tag.id]));
-  save(); renderAll();
-});
-
-// Editar o eliminar etiqueta tocando la chip (sin X)
-document.addEventListener('click', (e)=>{
-  const chip = e.target.closest('[data-action="edit-tag"]');
-  if(!chip) return;
-  const itemId = chip.dataset.item;
-  const tagId = chip.dataset.tag;
-  const item = (window.recientes||[]).find(x=>x.id===itemId) || (window.favoritos||[]).find(x=>x.id===itemId);
-  const tag = (window.tags||[]).find(t=>t.id===tagId);
-  if(!item || !tag) return;
-  const resp = prompt('Renombrar etiqueta (deja vacío para eliminar del producto):', tag.name);
-  if(resp===null) return;
-  const val = resp.trim();
-  if(val===''){
-    item.tags = (item.tags||[]).filter(tid => tid !== tag.id);
-    save(); renderAll();
-    return;
-  }
-  if(val !== tag.name){
-    tag.name = val; save(); renderAll();
-  }
-});
-
-
-// === Gestión de etiquetas en Favoritos ===
-// 3a) Crear etiqueta desde 'Añadir etiqueta' (color automático)
-document.addEventListener('click', (e)=>{
-  const el = e.target.closest('[data-action="add-first-tag"]');
-  if(!el) return;
-  e.preventDefault(); e.stopPropagation();
-  const id = el.dataset.id; if(!id) return;
-  const item = (window.recientes||[]).find(x=>x.id===id) || (window.favoritos||[]).find(x=>x.id===id);
-  if(!item) return;
-  let name = prompt('Nombre de la etiqueta:');
-  if(name===null) return;
-  name = name.trim(); if(!name) return;
-  let tag = (window.tags||[]).find(t => (t.name||'').toLowerCase()===name.toLowerCase());
-  if(!tag){
-    const colors = ['blue','green','purple','orange','red','yellow','gray'];
-    const color = colors[(window.tags||[]).length % colors.length];
-    tag = createTag(name, color);
-  }
-  item.tags = Array.from(new Set([...(item.tags||[]), tag.id]));
-  save(); renderAll();
-});
-
-// 3b) Editar/Eliminar etiqueta tocando la chip (sin X para evitar borrados accidentales)
-document.addEventListener('click', (e)=>{
-  const chip = e.target.closest('[data-action="edit-tag"]');
-  if(!chip) return;
-  const itemId = chip.dataset.item;
-  const tagId = chip.dataset.tag;
-  const item = (window.recientes||[]).find(x=>x.id===itemId) || (window.favoritos||[]).find(x=>x.id===itemId);
-  const tag = (window.tags||[]).find(t=>t.id===tagId);
-  if(!item || !tag) return;
-  const resp = prompt('Renombrar etiqueta (deja vacío para eliminar del producto):', tag.name);
-  if(resp===null) return;
-  const val = resp.trim();
-  if(val===''){
-    item.tags = (item.tags||[]).filter(tid => tid !== tag.id);
-    save(); renderAll();
-    return;
-  }
-  if(val !== tag.name){
-    tag.name = val; save(); renderAll();
-  }
-});
-
-
-// === Favoritos: añadir/editar etiquetas (acciones nuevas) ===
-if (!window.__favTagHandlersInstalled) {
+// === Favoritos: añadir/editar etiquetas (handlers únicos) ===
+(function(){
+  if (window.__favTagHandlersInstalled) return;
   document.addEventListener('click', (e)=>{
     const add = e.target.closest('[data-action="tag-add"]');
     if(!add) return;
@@ -705,15 +397,14 @@ if (!window.__favTagHandlersInstalled) {
     name = name.trim(); if(!name) return;
     let tag = (window.tags||[]).find(t => (t.name||'').toLowerCase()===name.toLowerCase());
     if(!tag){
-      const colors = ['blue','green','purple','orange','red','yellow','gray'];
-      const color = colors[(window.tags||[]).length % colors.length];
+      const color = COLORS[(window.tags||[]).length % COLORS.length];
       tag = createTag(name, color);
     }
-    item.tags = Array.from(new Set([...(item.tags||[]), tag.id]));
-    localStorage.setItem('pr-favs-v1', JSON.stringify(window.favoritos||[]));
+    if(!Array.isArray(item.tags)) item.tags = [];
+    if(!item.tags.includes(tag.id)) item.tags.push(tag.id);
+    persistItem(item);
     renderFolders(); renderFavList();
   });
-
   document.addEventListener('click', (e)=>{
     const chip = e.target.closest('[data-action="tag-edit"]');
     if(!chip) return;
@@ -722,24 +413,22 @@ if (!window.__favTagHandlersInstalled) {
     const item = (window.recientes||[]).find(x=>x.id===itemId) || (window.favoritos||[]).find(x=>x.id===itemId);
     const tag = (window.tags||[]).find(t=>t.id===tagId);
     if(!item || !tag) return;
-    const resp = prompt('Renombrar etiqueta (deja vacío para quitarla de este producto):', tag.name);
+    const resp = prompt('Renombrar etiqueta (deja vacío para eliminarla de este producto):', tag.name);
     if(resp===null) return;
     const val = resp.trim();
     if(val===''){
       item.tags = (item.tags||[]).filter(tid => tid !== tag.id);
-      localStorage.setItem('pr-favs-v1', JSON.stringify(window.favoritos||[]));
+      persistItem(item);
       renderFolders(); renderFavList();
       return;
     }
     if(val !== tag.name){
-      tag.name = val;
-      localStorage.setItem('pr-tags-v1', JSON.stringify(window.tags||[]));
+      tag.name = val; saveTags(tags);
       renderFolders(); renderFavList();
     }
   });
-
   window.__favTagHandlersInstalled = true;
-}
+})();
 
 </script>
   <script>
@@ -933,10 +622,9 @@ function miniCardHTML(item){
     return `<span class="tag" data-color="${t.color}" data-action="tag-edit" data-item="${item.id}" data-tag="${t.id}">`+escapeHtml(t.name)+`</span>`;
   }).join('');
   const tagsHTML = chips || `<span class="tag-empty" data-action="tag-add" data-id="${item.id}">Añadir etiqueta</span>`;
-
   return `<div class="mini-card" data-id="${item.id}">
     <a class="mini-thumb" href="${href}" data-action="open" data-id="${item.id}" rel="nofollow sponsored noopener">
-      ${item.image?`<img src="${item.image}" alt="" loading="lazy" decoding="async">`:'<span class="muted" style="font-size:.75rem">Sin imagen</span>'}
+      ${item.image?('<img src="'+item.image+'" alt="" loading="lazy" decoding="async">'):'<span class="muted" style="font-size:.75rem">Sin imagen</span>'}
     </a>
     <div class="mini-body">
       <div class="mini-top">
@@ -950,21 +638,6 @@ function miniCardHTML(item){
       </div>
       <div class="mini-cat">${escapeHtml(item.category||'')}</div>
       <div class="mini-tags">${tagsHTML}</div>
-    </div>
-  </div>`;
-}
-" data-action="tag-edit" data-item="${item.id}" data-tag="${t.id}">`+escapeHtml(t.name)+`</span>`;
-  }).join('');
-  return `<div class="mini-card" data-id="${item.id}">
-    <div class="mini-thumb">${item.image?`<img src="${item.image}" alt="">`:'<span class="muted" style="font-size:.75rem">Sin imagen</span>'}</div>
-    <div class="mini-main">
-      <div class="mini-title">${escapeHtml(item.title||'Sin título')}</div>
-      <div class="mini-cat">${escapeHtml(item.category||'')}</div>
-      <div class="mini-tags">${tagsHtml || '<span class="tag-empty" data-action="tag-add" data-id="${item.id}">Añadir etiqueta</span>'}</div>
-    </div>
-    <div class="mini-actions">
-      <button class="btn primary" data-action="open" data-id="${item.id}">🛒 Comprar</button>
-      <button class="mini-fav" data-action="fav-toggle" data-id="${item.id}" aria-pressed="true">★</button>
     </div>
   </div>`;
 }
