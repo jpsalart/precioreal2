@@ -426,7 +426,7 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
   </div>
 
   <script src="/api/zxing.js" defer></script>
-  <script src="./amazon-api.js"></script>
+  <script src="./amazon-api.drbit.js"></script>
 <script>
   const $ = sel => document.getElementById(sel);
   const qs = (s,root=document)=>root.querySelector(s);
@@ -846,7 +846,7 @@ function miniCardHTML(item){
 
   function isAndroidIntentCapable(){ const ua = navigator.userAgent || ''; return /Android/i.test(ua) && /(Chrome|EdgA|Brave|SamsungBrowser|Chromium)/i.test(ua); }
   function tldFromKeepa(domainIdx){ const map = {1:'com',2:'co.uk',3:'de',4:'fr',5:'co.jp',6:'ca',7:'cn',8:'it',9:'es',10:'in',11:'com.mx',12:'com.br',13:'com.au',14:'nl',15:'se',16:'pl',17:'com.tr',18:'sg',19:'sa',20:'ae'}; return map[String(domainIdx||9)] || 'es'; }
-  function openAmazonSmart(item){ try{ const webHref = item?.affiliateLink ? new URL(item.affiliateLink, location.origin).href : `https://www.amazon.${tldFromKeepa(item?.domain)}/dp/${encodeURIComponent(item?.asin || '')}`; if (settings.openInApp && isAndroidIntentCapable() && (item?.asin)){ const tld = tldFromKeepa(item?.domain); const asin = item.asin; const intentUrl = `intent://www.amazon.${tld}/dp/${encodeURIComponent(asin)}#Intent;scheme=https;package=com.amazon.mShop.android.shopping;S.browser_fallback_url=${encodeURIComponent(webHref)};end`; location.href = intentUrl; return; } location.href = webHref; }catch(e){} }
+  function openAmazonSmart(item){ try{ const webHref = item?.affiliateLink ? new URL(item.affiliateLink, location.origin).href : `https://www.amazon.${tldFromKeepa(item?.domain)}/dp/${encodeURIComponent(item?.asin || '')}`; if (settings.openInApp && isAndroidIntentCapable() && (item?.asin)){ const tld = tldFromKeepa(item?.domain); const asin = item.asin; const intentUrl = `intent://www.amazon.${tld}/dp/${encodeURIComponent(asin)}#Intent;scheme=https;package=com.amazon.mShop.android.shopping;S.browser_fallback_url=${encodeURIComponent(webHref)};end`; location.href = intentUrl; return; } if (window.AmazonAPI && AmazonAPI.openSmart) { AmazonAPI.openSmart(webHref); } else { location.href = webHref; } }catch(e){} }
 
   function escapeHtml(s){ return String(s||'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
   async function torchOff(){ try{ if(!stream) return; const track = stream.getVideoTracks()[0]; await track.applyConstraints({ advanced:[{ torch:false }] }); $('btnTorch').textContent = 'Linterna: OFF'; torchOn = false; }catch(e){} }
@@ -907,27 +907,6 @@ function miniCardHTML(item){
   
 
 
-
-  // --- TEST: asegura que la función exista en window ---
-  window.testAmazonAPI = async function () {
-    try {
-      if (!window.AmazonAPI) {
-        console.warn('AmazonAPI no está cargada. ¿Se incluyó el script correcto?');
-        console.log('¿Existe
- antes de este bloque?');
-        return;
-      }
-      console.log('Lanzando testAmazonAPI()…');
-      const api = new window.AmazonAPI();
-      const res = await api.searchProduct('8414533043720');
-      console.log('✅ Resultado:', res);
-      if (res?.product?.affiliateLink) {
-        console.log('🔗 Enlace afiliado:', res.product.affiliateLink);
-      }
-    } catch (err) {
-      console.error('❌ Fallo testAmazonAPI:', err);
-    }
-  };
 </script>
 </body>
 </html>
