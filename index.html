@@ -836,7 +836,17 @@ function miniCardHTML(item){
     }catch(err){ try{ if(!opts || opts.allowEnqueueOnFail!==false) enqueueOffline(ean); }catch(_){} return null; }
   }
   function enqueueOffline(ean){ const q = loadArr('pr-queue-v1'); q.push({ ean, t: now() }); saveArr('pr-queue-v1', q); }
-  async function reprocesarCola(){ purgeQueue(); const q = loadArr('pr-queue-v1'); if(!q.length){ setTimeout(reprocesarCola, 2500); return; } const next = q.shift(); saveArr('pr-queue-v1', q); const item = await resolveEAN(next.ean, { allowEnqueueOnFail:false }); if(item){ if(!recientes.find(x=>x.id===item.id)){ recientes.unshift(item); saveArr('pr-recent-v1', recientes); renderAll(); } } setTimeout(reprocesarCola, 500); }
+  async function reprocesarCola(){
+  // Delegar en la API si está disponible
+  if (window.USE_API_QUEUE && window.AmazonAPI && AmazonAPI.processQueue) {
+    try { AmazonAPI.processQueue(); } catch(_) {}
+    setTimeout(reprocesarCola, 2500);
+    return;
+  }
+  // Guard de re-entradas / pausa
+  if (window.__queueRunning || window.__queuePaused) { setTimeout(reprocesarCola, 2500); return; }
+  window.__queueRunning = true;
+ purgeQueue(); const q = loadArr('pr-queue-v1'); if(!q.length){ setTimeout(reprocesarCola, 2500); return; } const next = q.shift(); saveArr('pr-queue-v1', q); const item = await resolveEAN(next.ean, { allowEnqueueOnFail:false }); if(item){ if(!recientes.find(x=>x.id===item.id)){ recientes.unshift(item); saveArr('pr-recent-v1', recientes); renderAll(); } } setTimeout(reprocesarCola, 500); window.__queueRunning=false; }
   window.addEventListener('online', reprocesarCola); reprocesarCola();
 
   $('btnManualGo').addEventListener('click', async ()=>{ const code = sanitizeCode($('inputManual').value); if(!code) return; const __btn=$('btnManualGo'); if(__btn){ __btn.disabled=true; __btn.classList.add('loading'); }
@@ -968,6 +978,18 @@ let item; try{ item = await resolveEAN(code, { allowEnqueueOnFail:false }); } fi
       saveArr('pr-queue-v1', q);
     }catch(_){}
   }
+
+  // === Control de cola: delegar en API + pausa por pestaña oculta ===
+  window.USE_API_QUEUE = true;
+  window.__queueRunning = false;
+  window.__queuePaused = document.hidden;
+  document.addEventListener('visibilitychange', () => {
+    window.__queuePaused = document.hidden;
+    if (!document.hidden && window.USE_API_QUEUE && window.AmazonAPI && AmazonAPI.processQueue) {
+      try { AmazonAPI.processQueue(); } catch(_) {}
+      setTimeout(()=>{ try { AmazonAPI.processQueue(); } catch(_) {} }, 1000);
+    }
+  });
 </script>
 </body>
 </html>
