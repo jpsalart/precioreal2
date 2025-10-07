@@ -426,7 +426,7 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
   </div>
 
   <script src="/api/zxing.js" defer></script>
-  <script src="./amazon-api.drbit.v2.js"></script>
+  <script src="./amazon-api.drbit.v3.js"></script>
 <script>
   const $ = sel => document.getElementById(sel);
   const qs = (s,root=document)=>root.querySelector(s);
@@ -986,3 +986,4 @@ let item; try{ item = await resolveEAN(code, { allowEnqueueOnFail:false }); } fi
 </script>
 </body>
 </html>
+
