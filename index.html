@@ -921,9 +921,34 @@ function buildTagOptions(itemId){
   // ===== Inicio =====
   renderAll();
 
-  
+
+<script>
+  // --- TEST: asegura que la función exista en window ---
+  window.testAmazonAPI = async function () {
+    try {
+      if (!window.AmazonAPI) {
+        console.warn('AmazonAPI no está cargada. ¿Se incluyó el script correcto?');
+        console.log('¿Existe <script src="amazon-api.js"></script> antes de este bloque?');
+        return;
+      }
+      console.log('Lanzando testAmazonAPI()…');
+      const api = new window.AmazonAPI();
+      const res = await api.searchProduct('8414533043720');
+      console.log('✅ Resultado:', res);
+      if (res?.product?.affiliateLink) {
+        console.log('🔗 Enlace afiliado:', res.product.affiliateLink);
+      }
+    } catch (err) {
+      console.error('❌ Fallo testAmazonAPI:', err);
+    }
+  };
+</script>
+
+
+
 
 
 </script>
 </body>
 </html>
+
