@@ -322,7 +322,7 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
       <div id="optsPanel" class="opts-panel" role="region" aria-label="Opciones de configuración">
         <div class="opts-inner">
           <div class="row">
-            <input id="inputManual" class="btn grow" type="text" placeholder="Introducir código manual" aria-label="Código manual" inputmode="numeric" pattern="\d{8,18}" maxlength="18" >
+            <input id="inputManual" class="btn grow" type="text" placeholder="Introducir código manual" aria-label="Código manual">
             <button id="btnManualGo" class="btn">➕ Añadir</button>
           </div>
 
@@ -426,7 +426,7 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
   </div>
 
   <script src="/api/zxing.js" defer></script>
-  <script src="./amazon-api.drbit.v2.js"></script>
+  <script src="./amazon-api.drbit.js"></script>
 <script>
   const $ = sel => document.getElementById(sel);
   const qs = (s,root=document)=>root.querySelector(s);
@@ -821,10 +821,7 @@ function miniCardHTML(item){
     const cacheKey = 'pr-cache-' + ean;
     try{ const cached = JSON.parse(localStorage.getItem(cacheKey)||'null'); if(cached && (now()-cached.t) < 30*60*1000){ return cached.item; } }catch(e){}
     try{
-      const ctrl = new AbortController();
-      const to = setTimeout(()=>ctrl.abort('timeout'), 5000);
-      const r = await fetch('/api/lookup?ean='+encodeURIComponent(ean), { cache:'no-store', signal: ctrl.signal });
-      clearTimeout(to);
+      const r = await fetch('/api/lookup?ean='+encodeURIComponent(ean), { cache:'no-store' });
       if(!r.ok) throw new Error('lookup http '+r.status);
       const data = await r.json();
       if(!data.success) { return null; }
@@ -848,11 +845,8 @@ function miniCardHTML(item){
   async function setupCameraControls(track){ try{ const caps = track.getCapabilities?.() || {}; const settingsV = track.getSettings?.() || {}; if(caps.focusMode && Array.isArray(caps.focusMode) && caps.focusMode.includes('continuous')){ try{ await track.applyConstraints({ advanced:[{ focusMode:'continuous' }] }); $('afBadge').style.display = 'inline-flex'; }catch(e){ $('afBadge').style.display = 'none'; } }else{ $('afBadge').style.display = 'none'; } if('zoom' in caps){ const min = typeof caps.zoom.min === 'number' ? caps.zoom.min : 1; const max = typeof caps.zoom.max === 'number' ? caps.zoom.max : 1; const step = typeof caps.zoom.step === 'number' ? caps.zoom.step : 0.1; const cur = typeof settingsV.zoom === 'number' ? settingsV.zoom : min; const slider = $('zoomSlider'); slider.min = String(min); slider.max = String(max); slider.step = String(step); slider.value = String(cur); $('zoomVal').textContent = (Number(slider.value)).toFixed(1) + '×'; $('cameraControls').style.display = 'flex'; slider.addEventListener('input', async (e)=>{ const v = Number(e.target.value); $('zoomVal').textContent = v.toFixed(1) + '×'; try{ await track.applyConstraints({ zoom: v }).catch(async ()=>{ await track.applyConstraints({ advanced:[{ zoom: v }] }); }); }catch(err){} }); }else{ $('cameraControls').style.display = 'none'; } }catch(e){ $('cameraControls').style.display = 'none'; } }
 
   function isAndroidIntentCapable(){ const ua = navigator.userAgent || ''; return /Android/i.test(ua) && /(Chrome|EdgA|Brave|SamsungBrowser|Chromium)/i.test(ua); }
-  function AmazonAPI.tldFromKeepa(domainIdx){ const map = {1:'com',2:'co.uk',3:'de',4:'fr',5:'co.jp',6:'ca',7:'cn',8:'it',9:'es',10:'in',11:'com.mx',12:'com.br',13:'com.au',14:'nl',15:'se',16:'pl',17:'com.tr',18:'sg',19:'sa',20:'ae'}; return map[String(domainIdx||9)] || 'es'; }
-  function openAmazonSmart(item){
-  // Preferir API externa si está presente
-  if (window.AmazonAPI && AmazonAPI.openSmart) { try { AmazonAPI.openSmart(webHref); } catch(_){} return; }
- try{ const webHref = item?.affiliateLink ? new URL(item.affiliateLink, location.origin).href : `https://www.amazon.${AmazonAPI.tldFromKeepa(item?.domain)}/dp/${encodeURIComponent(item?.asin || '')}`; if (settings.openInApp && isAndroidIntentCapable() && (item?.asin)){ const tld = AmazonAPI.tldFromKeepa(item?.domain); const asin = item.asin; const intentUrl = `intent://www.amazon.${tld}/dp/${encodeURIComponent(asin)}#Intent;scheme=https;package=com.amazon.mShop.android.shopping;S.browser_fallback_url=${encodeURIComponent(webHref)};end`; location.href = intentUrl; return; } location.href = webHref; }catch(e){} }
+  function tldFromKeepa(domainIdx){ const map = {1:'com',2:'co.uk',3:'de',4:'fr',5:'co.jp',6:'ca',7:'cn',8:'it',9:'es',10:'in',11:'com.mx',12:'com.br',13:'com.au',14:'nl',15:'se',16:'pl',17:'com.tr',18:'sg',19:'sa',20:'ae'}; return map[String(domainIdx||9)] || 'es'; }
+  function openAmazonSmart(item){ try{ const webHref = item?.affiliateLink ? new URL(item.affiliateLink, location.origin).href : `https://www.amazon.${tldFromKeepa(item?.domain)}/dp/${encodeURIComponent(item?.asin || '')}`; if (settings.openInApp && isAndroidIntentCapable() && (item?.asin)){ const tld = tldFromKeepa(item?.domain); const asin = item.asin; const intentUrl = `intent://www.amazon.${tld}/dp/${encodeURIComponent(asin)}#Intent;scheme=https;package=com.amazon.mShop.android.shopping;S.browser_fallback_url=${encodeURIComponent(webHref)};end`; location.href = intentUrl; return; } location.href = webHref; }catch(e){} }
 
   function escapeHtml(s){ return String(s||'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
   async function torchOff(){ try{ if(!stream) return; const track = stream.getVideoTracks()[0]; await track.applyConstraints({ advanced:[{ torch:false }] }); $('btnTorch').textContent = 'Linterna: OFF'; torchOn = false; }catch(e){} }
@@ -913,17 +907,6 @@ function miniCardHTML(item){
   
 
 
-
-  // Cerrar modal con ESC
-  document.addEventListener('keydown', (e)=>{
-    if (e.key === 'Escape') {
-      const modal = document.getElementById('tagModal');
-      if (modal && modal.classList.contains('open')) {
-        const btn = document.getElementById('tagModalClose');
-        if (btn) btn.click(); else modal.classList.remove('open');
-      }
-    }
-  });
 </script>
 </body>
 </html>
