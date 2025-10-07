@@ -836,17 +836,7 @@ function miniCardHTML(item){
     }catch(err){ try{ if(!opts || opts.allowEnqueueOnFail!==false) enqueueOffline(ean); }catch(_){} return null; }
   }
   function enqueueOffline(ean){ const q = loadArr('pr-queue-v1'); q.push({ ean, t: now() }); saveArr('pr-queue-v1', q); }
-  async function reprocesarCola(){
-  // Delegar en la API si está disponible
-  if (window.USE_API_QUEUE && window.AmazonAPI && AmazonAPI.processQueue) {
-    try { AmazonAPI.processQueue(); } catch(_) {}
-    setTimeout(reprocesarCola, 2500);
-    return;
-  }
-  // Guard de re-entradas / pausa
-  if (window.__queueRunning || window.__queuePaused) { setTimeout(reprocesarCola, 2500); return; }
-  window.__queueRunning = true;
- purgeQueue(); const q = loadArr('pr-queue-v1'); if(!q.length){ setTimeout(reprocesarCola, 2500); return; } const next = q.shift(); saveArr('pr-queue-v1', q); const item = await resolveEAN(next.ean, { allowEnqueueOnFail:false }); if(item){ if(!recientes.find(x=>x.id===item.id)){ recientes.unshift(item); saveArr('pr-recent-v1', recientes); renderAll(); } } setTimeout(reprocesarCola, 500); window.__queueRunning=false; }
+  async function reprocesarCola(){ purgeQueue(); const q = loadArr('pr-queue-v1'); if(!q.length){ setTimeout(reprocesarCola, 2500); return; } const next = q.shift(); saveArr('pr-queue-v1', q); const item = await resolveEAN(next.ean, { allowEnqueueOnFail:false }); if(item){ if(!recientes.find(x=>x.id===item.id)){ recientes.unshift(item); saveArr('pr-recent-v1', recientes); renderAll(); } } setTimeout(reprocesarCola, 500); }
   window.addEventListener('online', reprocesarCola); reprocesarCola();
 
   $('btnManualGo').addEventListener('click', async ()=>{ const code = sanitizeCode($('inputManual').value); if(!code) return; const __btn=$('btnManualGo'); if(__btn){ __btn.disabled=true; __btn.classList.add('loading'); }
@@ -862,8 +852,9 @@ let item; try{ item = await resolveEAN(code, { allowEnqueueOnFail:false }); } fi
   function AmazonAPI.tldFromKeepa(domainIdx){ const map = {1:'com',2:'co.uk',3:'de',4:'fr',5:'co.jp',6:'ca',7:'cn',8:'it',9:'es',10:'in',11:'com.mx',12:'com.br',13:'com.au',14:'nl',15:'se',16:'pl',17:'com.tr',18:'sg',19:'sa',20:'ae'}; return map[String(domainIdx||9)] || 'es'; }
   function openAmazonSmart(item){
   // Preferir API externa si está presente
-  if (window.AmazonAPI && AmazonAPI.openSmart) { try { AmazonAPI.openSmart(webHref); } catch(_){} return; }
- try{ const webHref = item?.affiliateLink ? new URL(item.affiliateLink, location.origin).href : `https://www.amazon.${AmazonAPI.tldFromKeepa(item?.domain)}/dp/${encodeURIComponent(item?.asin || '')}`; if (settings.openInApp && isAndroidIntentCapable() && (item?.asin)){ const tld = AmazonAPI.tldFromKeepa(item?.domain); const asin = item.asin; const intentUrl = `intent://www.amazon.${tld}/dp/${encodeURIComponent(asin)}#Intent;scheme=https;package=com.amazon.mShop.android.shopping;S.browser_fallback_url=${encodeURIComponent(webHref)};end`; location.href = intentUrl; return; } location.href = webHref; }catch(e){} }
+  
+ try{ const webHref = item?.affiliateLink ? new URL(item.affiliateLink, location.origin).href : `https://www.amazon.${AmazonAPI.tldFromKeepa(item?.domain)}/dp/${encodeURIComponent(item?.asin || '')}`;
+    if (window.AmazonAPI && AmazonAPI.openSmart) { try { AmazonAPI.openSmart(webHref); } catch(_){} return; } if (settings.openInApp && isAndroidIntentCapable() && (item?.asin)){ const tld = AmazonAPI.tldFromKeepa(item?.domain); const asin = item.asin; const intentUrl = `intent://www.amazon.${tld}/dp/${encodeURIComponent(asin)}#Intent;scheme=https;package=com.amazon.mShop.android.shopping;S.browser_fallback_url=${encodeURIComponent(webHref)};end`; location.href = intentUrl; return; } location.href = webHref; }catch(e){} }
 
   function escapeHtml(s){ return String(s||'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
   async function torchOff(){ try{ if(!stream) return; const track = stream.getVideoTracks()[0]; await track.applyConstraints({ advanced:[{ torch:false }] }); $('btnTorch').textContent = 'Linterna: OFF'; torchOn = false; }catch(e){} }
@@ -978,18 +969,6 @@ let item; try{ item = await resolveEAN(code, { allowEnqueueOnFail:false }); } fi
       saveArr('pr-queue-v1', q);
     }catch(_){}
   }
-
-  // === Control de cola: delegar en API + pausa por pestaña oculta ===
-  window.USE_API_QUEUE = true;
-  window.__queueRunning = false;
-  window.__queuePaused = document.hidden;
-  document.addEventListener('visibilitychange', () => {
-    window.__queuePaused = document.hidden;
-    if (!document.hidden && window.USE_API_QUEUE && window.AmazonAPI && AmazonAPI.processQueue) {
-      try { AmazonAPI.processQueue(); } catch(_) {}
-      setTimeout(()=>{ try { AmazonAPI.processQueue(); } catch(_) {} }, 1000);
-    }
-  });
 </script>
 </body>
 </html>
