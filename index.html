@@ -253,7 +253,37 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
 .mini-tags .tag{ display:inline-flex; align-items:center; padding:4px 8px; border-radius:999px; border:1px solid var(--tbd); background:var(--tbg); color:var(--ttx); font-size:.82rem; cursor:pointer; }
 .mini-tags .tag-empty{ color:var(--muted); text-decoration:underline; cursor:pointer; }
 
-  </style>
+  
+/* === Mini-card: título ancho + acciones debajo a la derecha === */
+.mini-card{ display:flex !important; gap:10px; align-items:flex-start; }
+.mini-thumb{ flex:0 0 92px; width:92px; align-self:start; }
+.mini-body{ flex:1 1 auto; min-width:0; display:grid; grid-template-columns: 1fr auto; grid-template-areas:
+  "title title"
+  "meta  actions"; row-gap:6px; column-gap:10px; }
+.mini-title{ grid-area:title; min-width:0; }
+.mini-title a{ display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; text-overflow:ellipsis; line-height:1.2; font-weight:700; color:inherit; text-decoration:none; }
+.mini-title a:visited{ color:inherit; }
+.mini-meta{ grid-area:meta; display:flex; flex-direction:column; gap:4px; min-width:0; }
+.mini-cat{ font-size:.85rem; color:var(--muted); }
+.mini-tags{ display:flex; flex-wrap:wrap; gap:6px; }
+.mini-tags .tag{ display:inline-flex; align-items:center; padding:4px 8px; border-radius:999px; border:1px solid var(--tbd); background:var(--tbg); color:var(--ttx); font-size:.82rem; cursor:pointer; }
+.mini-tags .tag-empty{ color:var(--muted); text-decoration:underline; cursor:pointer; }
+.mini-actions{ grid-area:actions; justify-self:end; align-self:start; display:flex; gap:8px; }
+
+/* Modal simple para etiquetas */
+.pr-modal-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:9998; }
+.pr-modal{ position:fixed; left:12px; right:12px; bottom:12px; background:#111826; color:#e5e7eb; border:1px solid #233042; border-radius:14px; padding:14px; z-index:9999; box-shadow:0 10px 30px rgba(0,0,0,.35); }
+.pr-modal h3{ margin:0 0 8px 0; font-size:1rem; }
+.pr-row{ display:flex; gap:8px; align-items:center; margin:8px 0; }
+.pr-input{ flex:1 1 auto; min-width:0; background:#0b1220; color:#fff; border:1px solid #233042; border-radius:10px; padding:10px 12px; }
+.pr-colors{ display:flex; gap:8px; flex-wrap:wrap; }
+.pr-color{ width:28px; height:28px; border-radius:999px; border:2px solid rgba(255,255,255,.3); cursor:pointer; outline:2px solid transparent; }
+.pr-actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:10px; }
+.pr-btn{ background:#1f6feb; border:none; color:#fff; padding:10px 14px; border-radius:10px; cursor:pointer; }
+.pr-btn.secondary{ background:#2d3748; }
+.pr-btn.danger{ background:#b91c1c; }
+
+</style>
 </head>
 <body>
   <!-- App bar estática -->
@@ -567,11 +597,32 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
 
   
 
+
 function miniCardHTML(item){
   const href = item.affiliateLink || ('/api/go/' + encodeURIComponent(item.asin || '') + '?d=' + encodeURIComponent(item.domain || '9'));
   const chips = (item.tags||[]).map(tid=>{
     const t = tags.find(x=>x.id===tid); if(!t) return '';
     return `<span class="tag" data-color="${t.color}" data-action="tag-edit" data-item="${item.id}" data-tag="${t.id}">`+escapeHtml(t.name)+`</span>`;
+  }).join('');
+  const tagsHTML = chips || `<span class="tag-empty" data-action="tag-add" data-id="${item.id}">Añadir etiqueta</span>`;
+  return `<div class="mini-card" data-id="${item.id}">
+    <a class="mini-thumb" href="${href}" data-action="open" data-id="${item.id}" rel="nofollow sponsored noopener">
+      ${item.image?('<img src="'+item.image+'" alt="" loading="lazy" decoding="async">'):'<span class="muted" style="font-size:.75rem">Sin imagen</span>'}
+    </a>
+    <div class="mini-body">
+      <div class="mini-title"><a href="${href}" data-action="open" data-id="${item.id}" rel="nofollow sponsored noopener">${escapeHtml(item.title||'Sin título')}</a></div>
+      <div class="mini-meta">
+        <div class="mini-cat">${escapeHtml(item.category||'')}</div>
+        <div class="mini-tags">${tagsHTML}</div>
+      </div>
+      <div class="mini-actions">
+        <button class="btn primary" data-action="open" data-id="${item.id}">🛒 Comprar</button>
+        <button class="mini-fav" data-action="fav-toggle" data-id="${item.id}" aria-pressed="true">★</button>
+      </div>
+    </div>
+  </div>`;
+}
+" data-action="tag-edit" data-item="${item.id}" data-tag="${t.id}">`+escapeHtml(t.name)+`</span>`;
   }).join('');
   const tagsHTML = chips || `<span class="tag-empty" data-action="tag-add" data-id="${item.id}">Añadir etiqueta</span>`;
   return `<div class="mini-card" data-id="${item.id}">
@@ -870,6 +921,81 @@ function miniCardHTML(item){
     }
   });
   window.__favTagsHandlersInstalled = true;
+})();
+
+
+// === Modal de etiquetas (añadir/editar) ===
+(function(){
+  if (window.__prTagModalInstalled) return;
+
+  function openTagModal(item, tag){
+    const backdrop = document.createElement('div'); backdrop.className='pr-modal-backdrop';
+    const modal = document.createElement('div'); modal.className='pr-modal';
+    modal.innerHTML = `
+      <h3>${tag?'Editar etiqueta':'Nueva etiqueta'}</h3>
+      <div class="pr-row"><input class="pr-input" id="pr-tag-name" placeholder="Nombre" value="${tag?escapeHtml(tag.name):''}"></div>
+      <div class="pr-row pr-colors" id="pr-colors"></div>
+      <div class="pr-actions">
+        ${tag?'<button class="pr-btn danger" id="pr-del">Eliminar</button>':''}
+        <button class="pr-btn secondary" id="pr-cancel">Cancelar</button>
+        <button class="pr-btn" id="pr-ok">Guardar</button>
+      </div>`;
+    document.body.append(backdrop, modal);
+
+    const COLORS = ['red','orange','yellow','green','blue','purple','gray'];
+    const colorsEl = modal.querySelector('#pr-colors');
+    let picked = (tag && tag.color) || COLORS[(window.tags||[]).length % COLORS.length];
+    COLORS.forEach(c=>{
+      const b = document.createElement('button');
+      b.type='button'; b.className='pr-color'; b.style.background=c;
+      if (c===picked) b.style.outline='2px solid #fff';
+      b.onclick = ()=>{ picked=c; [...colorsEl.children].forEach(x=>x.style.outline='2px solid transparent'); b.style.outline='2px solid #fff'; };
+      colorsEl.appendChild(b);
+    });
+
+    function close(){ modal.remove(); backdrop.remove(); }
+    modal.querySelector('#pr-cancel').onclick = close;
+    backdrop.onclick = close;
+
+    if (tag){
+      const del = modal.querySelector('#pr-del');
+      if (del) del.onclick = ()=>{
+        item.tags = (item.tags||[]).filter(tid=>tid!==tag.id);
+        persistItem(item); renderFolders(); renderFavList(); close();
+      };
+    }
+
+    modal.querySelector('#pr-ok').onclick = ()=>{
+      const input = modal.querySelector('#pr-tag-name');
+      let name = (input.value||'').trim(); if(!name){ input.focus(); return; }
+      let t = (window.tags||[]).find(tt=>(tt.name||'').toLowerCase()===name.toLowerCase());
+      if(!t){ t = createTag(name, picked); } else { t.color=picked; saveTags(tags); }
+      if (!Array.isArray(item.tags)) item.tags = [];
+      if (!item.tags.includes(t.id)) item.tags.push(t.id);
+      persistItem(item); renderFolders(); renderFavList(); close();
+    };
+  }
+
+  document.addEventListener('click', (e)=>{
+    const add = e.target.closest('[data-action="tag-add"]');
+    if(!add) return;
+    e.preventDefault(); e.stopPropagation();
+    const id = add.dataset.id;
+    const item = (window.recientes||[]).find(x=>x.id===id) || (window.favoritos||[]).find(x=>x.id===id);
+    if(item) openTagModal(item, null);
+  });
+
+  document.addEventListener('click', (e)=>{
+    const chip = e.target.closest('[data-action="tag-edit"]');
+    if(!chip) return;
+    const itemId = chip.dataset.item;
+    const tagId = chip.dataset.tag;
+    const item = (window.recientes||[]).find(x=>x.id===itemId) || (window.favoritos||[]).find(x=>x.id===itemId);
+    const tag = (window.tags||[]).find(t=>t.id===tagId);
+    if(item && tag) openTagModal(item, tag);
+  });
+
+  window.__prTagModalInstalled = true;
 })();
 
 </script>
