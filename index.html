@@ -283,6 +283,19 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
 .pr-btn.secondary{ background:#2d3748; }
 .pr-btn.danger{ background:#b91c1c; }
 
+
+/* --- OVERRIDE FINAL mini-card (título a todo el ancho; acciones debajo derecha) --- */
+.mini-card{ display:flex !important; gap:10px; align-items:flex-start; }
+.mini-thumb{ flex:0 0 92px; width:92px; }
+.mini-body{ flex:1 1 auto; min-width:0; display:grid; grid-template-columns: 1fr auto; grid-template-areas:
+  "title title"
+  "meta  actions"; row-gap:6px; column-gap:10px; }
+.mini-title{ grid-area:title; min-width:0; }
+.mini-title a{ display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; text-overflow:ellipsis; line-height:1.2; font-weight:700; color:inherit; text-decoration:none; }
+.mini-title a:visited{ color:inherit; }
+.mini-meta{ grid-area:meta; display:flex; flex-direction:column; gap:4px; min-width:0; }
+.mini-actions{ grid-area:actions; justify-self:end; align-self:start; display:flex; gap:8px; }
+
 </style>
 </head>
 <body>
@@ -598,11 +611,12 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
   
 
 
+
 function miniCardHTML(item){
   const href = item.affiliateLink || ('/api/go/' + encodeURIComponent(item.asin || '') + '?d=' + encodeURIComponent(item.domain || '9'));
   const chips = (item.tags||[]).map(tid=>{
     const t = tags.find(x=>x.id===tid); if(!t) return '';
-    return `<span class="tag" data-color="${t.color}" data-action="tag-edit" data-item="${item.id}" data-tag="${t.id}">`+escapeHtml(t.name)+`</span>`;
+    return `<span class="tag" data-color="${t.color}" data-action="tag-edit" data-item="${item.id}" data-tag="${t.id}">${escapeHtml(t.name)}</span>`;
   }).join('');
   const tagsHTML = chips || `<span class="tag-empty" data-action="tag-add" data-id="${item.id}">Añadir etiqueta</span>`;
   return `<div class="mini-card" data-id="${item.id}">
@@ -622,30 +636,9 @@ function miniCardHTML(item){
     </div>
   </div>`;
 }
-" data-action="tag-edit" data-item="${item.id}" data-tag="${t.id}">`+escapeHtml(t.name)+`</span>`;
-  }).join('');
-  const tagsHTML = chips || `<span class="tag-empty" data-action="tag-add" data-id="${item.id}">Añadir etiqueta</span>`;
-  return `<div class="mini-card" data-id="${item.id}">
-    <a class="mini-thumb" href="${href}" data-action="open" data-id="${item.id}" rel="nofollow sponsored noopener">
-      ${item.image?('<img src="'+item.image+'" alt="" loading="lazy" decoding="async">'):'<span class="muted" style="font-size:.75rem">Sin imagen</span>'}
-    </a>
-    <div class="mini-body">
-      <div class="mini-top">
-        <div class="mini-title">
-          <a href="${href}" data-action="open" data-id="${item.id}" rel="nofollow sponsored noopener">${escapeHtml(item.title||'Sin título')}</a>
-        </div>
-        <div class="mini-actions">
-          <button class="btn primary" data-action="open" data-id="${item.id}">🛒 Comprar</button>
-          <button class="mini-fav" data-action="fav-toggle" data-id="${item.id}" aria-pressed="true">★</button>
-        </div>
-      </div>
-      <div class="mini-cat">${escapeHtml(item.category||'')}</div>
-      <div class="mini-tags">${tagsHTML}</div>
-    </div>
-  </div>`;
-}
 
-// Click handling global// Click handling global
+// Click handling global
+// Click handling global
   document.addEventListener('click', (e)=>{
     // Fav en cards (Comparar)
     const fav = e.target.closest('.fav-btn');
@@ -874,54 +867,6 @@ function miniCardHTML(item){
   renderAll();
 
   
-// === Favoritos: Añadir/editar etiquetas (handlers únicos limpios) ===
-(function(){
-  if (window.__favTagsHandlersInstalled) return;
-  document.addEventListener('click', (e)=>{
-    const add = e.target.closest('[data-action="tag-add"]');
-    if(!add) return;
-    e.preventDefault(); e.stopPropagation();
-    const id = add.dataset.id;
-    const item = (window.recientes||[]).find(x=>x.id===id) || (window.favoritos||[]).find(x=>x.id===id);
-    if(!item) return;
-    let name = prompt('Nombre de la etiqueta:');
-    if(name===null) return;
-    name = name.trim(); if(!name) return;
-    let tag = (window.tags||[]).find(t => (t.name||'').toLowerCase()===name.toLowerCase());
-    if(!tag){
-      const COLORS = ['red','orange','yellow','green','blue','purple','gray'];
-      const color = COLORS[(window.tags||[]).length % COLORS.length];
-      tag = createTag(name, color);
-    }
-    if(!Array.isArray(item.tags)) item.tags = [];
-    if(!item.tags.includes(tag.id)) item.tags.push(tag.id);
-    persistItem(item);
-    renderFolders(); renderFavList();
-  });
-  document.addEventListener('click', (e)=>{
-    const chip = e.target.closest('[data-action="tag-edit"]');
-    if(!chip) return;
-    const itemId = chip.dataset.item;
-    const tagId = chip.dataset.tag;
-    const item = (window.recientes||[]).find(x=>x.id===itemId) || (window.favoritos||[]).find(x=>x.id===itemId);
-    const tag = (window.tags||[]).find(t=>t.id===tagId);
-    if(!item || !tag) return;
-    const resp = prompt('Renombrar etiqueta (deja vacío para eliminarla de este producto):', tag.name);
-    if(resp===null) return;
-    const val = resp.trim();
-    if(val===''){
-      item.tags = (item.tags||[]).filter(tid => tid !== tag.id);
-      persistItem(item);
-      renderFolders(); renderFavList();
-      return;
-    }
-    if(val !== tag.name){
-      tag.name = val; saveTags(tags);
-      renderFolders(); renderFavList();
-    }
-  });
-  window.__favTagsHandlersInstalled = true;
-})();
 
 
 // === Modal de etiquetas (añadir/editar) ===
