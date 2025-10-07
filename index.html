@@ -381,56 +381,7 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
     </div>
   </div>
 
-  <script src="/api/zxing.js" defer>
-// === Favoritos: añadir/editar etiquetas (handlers únicos) ===
-(function(){
-  if (window.__favTagHandlersInstalled) return;
-  document.addEventListener('click', (e)=>{
-    const add = e.target.closest('[data-action="tag-add"]');
-    if(!add) return;
-    e.preventDefault(); e.stopPropagation();
-    const id = add.dataset.id;
-    const item = (window.recientes||[]).find(x=>x.id===id) || (window.favoritos||[]).find(x=>x.id===id);
-    if(!item) return;
-    let name = prompt('Nombre de la etiqueta:');
-    if(name===null) return;
-    name = name.trim(); if(!name) return;
-    let tag = (window.tags||[]).find(t => (t.name||'').toLowerCase()===name.toLowerCase());
-    if(!tag){
-      const color = COLORS[(window.tags||[]).length % COLORS.length];
-      tag = createTag(name, color);
-    }
-    if(!Array.isArray(item.tags)) item.tags = [];
-    if(!item.tags.includes(tag.id)) item.tags.push(tag.id);
-    persistItem(item);
-    renderFolders(); renderFavList();
-  });
-  document.addEventListener('click', (e)=>{
-    const chip = e.target.closest('[data-action="tag-edit"]');
-    if(!chip) return;
-    const itemId = chip.dataset.item;
-    const tagId = chip.dataset.tag;
-    const item = (window.recientes||[]).find(x=>x.id===itemId) || (window.favoritos||[]).find(x=>x.id===itemId);
-    const tag = (window.tags||[]).find(t=>t.id===tagId);
-    if(!item || !tag) return;
-    const resp = prompt('Renombrar etiqueta (deja vacío para eliminarla de este producto):', tag.name);
-    if(resp===null) return;
-    const val = resp.trim();
-    if(val===''){
-      item.tags = (item.tags||[]).filter(tid => tid !== tag.id);
-      persistItem(item);
-      renderFolders(); renderFavList();
-      return;
-    }
-    if(val !== tag.name){
-      tag.name = val; saveTags(tags);
-      renderFolders(); renderFavList();
-    }
-  });
-  window.__favTagHandlersInstalled = true;
-})();
-
-</script>
+  <script src="/api/zxing.js" defer></script>
   <script>
   const $ = sel => document.getElementById(sel);
   const qs = (s,root=document)=>root.querySelector(s);
@@ -615,6 +566,7 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
   }
 
   
+
 function miniCardHTML(item){
   const href = item.affiliateLink || ('/api/go/' + encodeURIComponent(item.asin || '') + '?d=' + encodeURIComponent(item.domain || '9'));
   const chips = (item.tags||[]).map(tid=>{
@@ -641,25 +593,8 @@ function miniCardHTML(item){
     </div>
   </div>`;
 }
-"><span>🏷️ ${escapeHtml(t.name)}</span><span class="x" data-action="tag-remove" data-id="${item.id}" data-tag="${t.id}">×</span></span>`;
-    }).join('');
-    return `<div class="mini-card" data-id="${item.id}">
-      <div class="mini-thumb">${item.image?`<img src="${item.image}" alt="">`:'<span class="muted" style="font-size:.75rem">Sin imagen</span>'}</div>
-      <div class="mini-main">
-        <div class="mini-title">${escapeHtml(item.title||'Sin título')}</div>
-        <div class="mini-cat">${escapeHtml(item.category||'')}</div>
-        <div class="mini-tags">${tagsHtml || '<span class="muted">Sin etiquetas</span>'}</div>
-      </div>
-      <div class="mini-actions">
-        <button class="btn" data-action="add-price" data-id="${item.id}">€</button>
-        <button class="btn" data-action="tag-manage" data-id="${item.id}">🏷️</button>
-        <button class="btn primary" data-action="open" data-id="${item.id}">🛒 Comprar</button>
-        <button class="mini-fav" data-action="fav-toggle" data-id="${item.id}" aria-pressed="true">★</button>
-      </div>
-    </div>`;
-  }
 
-  // Click handling global
+// Click handling global// Click handling global
   document.addEventListener('click', (e)=>{
     // Fav en cards (Comparar)
     const fav = e.target.closest('.fav-btn');
@@ -887,6 +822,56 @@ function miniCardHTML(item){
   // ===== Inicio =====
   renderAll();
 
-  </script>
+  
+// === Favoritos: Añadir/editar etiquetas (handlers únicos limpios) ===
+(function(){
+  if (window.__favTagsHandlersInstalled) return;
+  document.addEventListener('click', (e)=>{
+    const add = e.target.closest('[data-action="tag-add"]');
+    if(!add) return;
+    e.preventDefault(); e.stopPropagation();
+    const id = add.dataset.id;
+    const item = (window.recientes||[]).find(x=>x.id===id) || (window.favoritos||[]).find(x=>x.id===id);
+    if(!item) return;
+    let name = prompt('Nombre de la etiqueta:');
+    if(name===null) return;
+    name = name.trim(); if(!name) return;
+    let tag = (window.tags||[]).find(t => (t.name||'').toLowerCase()===name.toLowerCase());
+    if(!tag){
+      const COLORS = ['red','orange','yellow','green','blue','purple','gray'];
+      const color = COLORS[(window.tags||[]).length % COLORS.length];
+      tag = createTag(name, color);
+    }
+    if(!Array.isArray(item.tags)) item.tags = [];
+    if(!item.tags.includes(tag.id)) item.tags.push(tag.id);
+    persistItem(item);
+    renderFolders(); renderFavList();
+  });
+  document.addEventListener('click', (e)=>{
+    const chip = e.target.closest('[data-action="tag-edit"]');
+    if(!chip) return;
+    const itemId = chip.dataset.item;
+    const tagId = chip.dataset.tag;
+    const item = (window.recientes||[]).find(x=>x.id===itemId) || (window.favoritos||[]).find(x=>x.id===itemId);
+    const tag = (window.tags||[]).find(t=>t.id===tagId);
+    if(!item || !tag) return;
+    const resp = prompt('Renombrar etiqueta (deja vacío para eliminarla de este producto):', tag.name);
+    if(resp===null) return;
+    const val = resp.trim();
+    if(val===''){
+      item.tags = (item.tags||[]).filter(tid => tid !== tag.id);
+      persistItem(item);
+      renderFolders(); renderFavList();
+      return;
+    }
+    if(val !== tag.name){
+      tag.name = val; saveTags(tags);
+      renderFolders(); renderFavList();
+    }
+  });
+  window.__favTagsHandlersInstalled = true;
+})();
+
+</script>
 </body>
 </html>
