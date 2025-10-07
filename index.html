@@ -401,6 +401,7 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
       </div>
       <div class="modal-body">
         <div class="muted">Activa/desactiva etiquetas para este producto. También puedes crear una nueva.</div>
+<div class="row"><label class="muted" for="folderSelect">Carpeta:&nbsp;</label><select id="folderSelect" class="btn"></select></div>
         <div id="tagOptions" class="tag-list"></div>
         <div class="divider"></div>
         <div class="row">
@@ -486,6 +487,30 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
 
   function ensureItemTags(item){ if(!Array.isArray(item.tags)) item.tags = []; }
   favoritos.forEach(ensureItemTags); recientes.forEach(ensureItemTags);
+// Default folders (tags) to appear as "carpetas"
+const DEFAULT_FOLDERS = [
+  { name:'Urgente', color:'purple' },
+  { name:'Casa', color:'green' },
+  { name:'Supermercado', color:'blue' },
+  { name:'Colegio', color:'yellow' },
+  { name:'Cumpleaños', color:'orange' },
+];
+function ensureDefaultTags(){
+  for(const d of DEFAULT_FOLDERS){
+    const exists = (tags||[]).some(t => (t.name||'').toLowerCase() === d.name.toLowerCase());
+    if(!exists){ createTag(d.name, d.color); }
+  }
+}
+function ensurePrimaryTag(it){
+  if(it.primaryTagId==null || it.primaryTagId==='_none'){
+    if(Array.isArray(it.tags) && it.tags.length){ it.primaryTagId = it.tags[0]; }
+    else { it.primaryTagId = '_none'; }
+  }
+}
+ensureDefaultTags();
+favoritos.forEach(ensurePrimaryTag);
+recientes.forEach(ensurePrimaryTag);
+
 
   function vibrate(ms=40){ try{ if(!settings.noVibra && navigator.vibrate) navigator.vibrate(ms); }catch(e){} }
   async function beep(){ if(settings.noSound) return; try{ const ctx = new (window.AudioContext||window.webkitAudioContext)(); const o = ctx.createOscillator(); const g = ctx.createGain(); o.connect(g); g.connect(ctx.destination); o.type='sine'; o.frequency.value=880; g.gain.value=0.02; o.start(); setTimeout(()=>{ o.stop(); ctx.close(); },120); }catch(e){} }
@@ -559,14 +584,20 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
   }
 
   // ===== FAVORITOS: Carpetas =====
-  let selectedTag = 'all'; // 'all' | 'none' | tagId
+  let selectedFolder = 'all'; // 'all' | 'none' | tagId
   function renderFolders(){
     const bar = $('foldersBar');
     const list = favoritos.filter(f=> showComprados ? true : !f.completed);
-    // Construir índice por tagId
-    const byTag = new Map();
-    const untagged = [];
-    for(const it of list){ ensureItemTags(it); if(!it.tags.length){ untagged.push(it); } for(const tId of it.tags){ if(!byTag.has(tId)) byTag.set(tId, []); byTag.get(tId).push(it); } }
+
+    // Índice por carpeta (primaryTagId)
+    const byFolder = new Map();
+    const noFolder = [];
+    for(const it of list){
+      ensurePrimaryTag(it);
+      if(!it.primaryTagId || it.primaryTagId==='_none'){ noFolder.push(it); continue; }
+      if(!byFolder.has(it.primaryTagId)) byFolder.set(it.primaryTagId, []);
+      byFolder.get(it.primaryTagId).push(it);
+    }
 
     const makeThumbs = (items)=>{
       const picks = items.slice(0,4);
@@ -576,14 +607,17 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
     const parts = [];
     // Carpeta TODOS
     parts.push(folderCardHTML({ id:'all', name:'Todos', color:'blue', count:list.length, thumbsHTML: makeThumbs(list) }));
-    // Carpeta SIN ETIQUETA
-    parts.push(folderCardHTML({ id:'none', name:'Sin etiqueta', color:'gray', count:untagged.length, thumbsHTML: makeThumbs(untagged) }));
-    // Carpeta por cada tag
-    for(const t of tags){ const arr = byTag.get(t.id)||[]; parts.push(folderCardHTML({ id:t.id, name:t.name, color:t.color, count:arr.length, thumbsHTML: makeThumbs(arr) })); }
+    // Carpeta SIN CARPETA
+    parts.push(folderCardHTML({ id:'none', name:'Sin carpeta', color:'gray', count:noFolder.length, thumbsHTML: makeThumbs(noFolder) }));
+
+    // Una tarjeta por cada carpeta (tag) que tenga items asignados
+    for(const t of tags){
+      const arr = byFolder.get(t.id)||[];
+      parts.push(folderCardHTML({ id:t.id, name:t.name, color:t.color, count:arr.length, thumbsHTML: makeThumbs(arr) }));
+    }
 
     bar.innerHTML = parts.join('');
-    // Activar selección visual
-    qsa('.folder-card', bar).forEach(el=>{ el.classList.toggle('active', el.dataset.id===selectedTag); });
+    qsa('.folder-card', bar).forEach(el=>{ el.classList.toggle('active', el.dataset.id===selectedFolder); });
   }
 
   function folderCardHTML({id,name,color,count,thumbsHTML}){
@@ -602,8 +636,8 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
     const root = $('miniList');
     const base = favoritos.filter(f=> showComprados ? true : !f.completed);
     let items = base;
-    if(selectedTag==='none') items = base.filter(it=>!it.tags || !it.tags.length);
-    else if(selectedTag!=='all') items = base.filter(it=> (it.tags||[]).includes(selectedTag));
+    if(selectedFolder==='none') items = base.filter(it=>!it.primaryTagId || it.primaryTagId==='_none');
+    else if(selectedFolder!=='all') items = base.filter(it=> it.primaryTagId === selectedFolder);
 
     root.innerHTML = items.map(it=> miniCardHTML(it)).join('');
   }
@@ -660,7 +694,7 @@ function miniCardHTML(item){
 
     // Carpeta seleccionada
     if(btn.classList.contains('folder-card')){
-      selectedTag = btn.dataset.id; renderFolders(); renderFavList(); return;
+      selectedFolder = btn.dataset.id; renderFolders(); renderFavList(); return;
     }
 
     if(action==='open' && id){ const item = recientes.find(x=>x.id===id) || favoritos.find(x=>x.id===id); if(item) openAmazonSmart(item); }
@@ -836,8 +870,10 @@ function miniCardHTML(item){
   function buildTagOptions(itemId){
     const root = $('tagOptions'); const item = favoritos.find(x=>x.id===itemId);
     const assigned = new Set(item?.tags||[]);
-    root.innerHTML = tags.map(t=>`<label class="tag-opt" data-color="${t.color}"><input type="checkbox" value="${t.id}" ${assigned.has(t.id)?'checked':''}/> <span class="tag" data-color="${t.color}">🏷️ ${escapeHtml(t.name)}</span></label>`).join('') || '<span class="muted">No hay etiquetas. Crea una abajo.</span>';
-    // Preseleccionar color por defecto
+    root.innerHTML = tags.map(t=>`<label class="tag-opt" data-color="${t.color}"><input type="checkbox" value="${t.id}" ${assigned.has(t.id)?'checked':''}/> <span class="tag" data-color="${t.color}">${escapeHtml(t.name)}</span></label>`).join('') || '<span class="muted">No hay etiquetas. Crea una abajo.</span>';
+    // Carpeta (select)
+    const sel = $('folderSelect'); if(sel){ sel.innerHTML = '<option value="_none">Sin carpeta</option>' + tags.map(t=>`<option value="${t.id}">${escapeHtml(t.name)}</option>`).join(''); sel.value = item?.primaryTagId || '_none'; }
+    // Preseleccionar color por defecto para creación
     qsa('.swatch').forEach(s=> s.classList.toggle('sel', false));
     qs('.swatch[data-color="blue"]').classList.add('sel');
   }
@@ -860,6 +896,7 @@ function miniCardHTML(item){
     const item = favoritos.find(x=>x.id===modalTargetId); if(!item){ $('tagModal').classList.remove('open'); return; }
     const checks = qsa('#tagOptions input[type="checkbox"]');
     item.tags = checks.filter(c=>c.checked).map(c=>c.value);
+    const folderSel = $('folderSelect'); if(folderSel){ item.primaryTagId = (folderSel.value==='_none') ? '_none' : folderSel.value; }
     persistItem(item); $('tagModal').classList.remove('open'); renderFolders(); renderFavList();
   });
 
@@ -868,80 +905,6 @@ function miniCardHTML(item){
 
   
 
-
-// === Modal de etiquetas (añadir/editar) ===
-(function(){
-  if (window.__prTagModalInstalled) return;
-
-  function openTagModal(item, tag){
-    const backdrop = document.createElement('div'); backdrop.className='pr-modal-backdrop';
-    const modal = document.createElement('div'); modal.className='pr-modal';
-    modal.innerHTML = `
-      <h3>${tag?'Editar etiqueta':'Nueva etiqueta'}</h3>
-      <div class="pr-row"><input class="pr-input" id="pr-tag-name" placeholder="Nombre" value="${tag?escapeHtml(tag.name):''}"></div>
-      <div class="pr-row pr-colors" id="pr-colors"></div>
-      <div class="pr-actions">
-        ${tag?'<button class="pr-btn danger" id="pr-del">Eliminar</button>':''}
-        <button class="pr-btn secondary" id="pr-cancel">Cancelar</button>
-        <button class="pr-btn" id="pr-ok">Guardar</button>
-      </div>`;
-    document.body.append(backdrop, modal);
-
-    const COLORS = ['red','orange','yellow','green','blue','purple','gray'];
-    const colorsEl = modal.querySelector('#pr-colors');
-    let picked = (tag && tag.color) || COLORS[(window.tags||[]).length % COLORS.length];
-    COLORS.forEach(c=>{
-      const b = document.createElement('button');
-      b.type='button'; b.className='pr-color'; b.style.background=c;
-      if (c===picked) b.style.outline='2px solid #fff';
-      b.onclick = ()=>{ picked=c; [...colorsEl.children].forEach(x=>x.style.outline='2px solid transparent'); b.style.outline='2px solid #fff'; };
-      colorsEl.appendChild(b);
-    });
-
-    function close(){ modal.remove(); backdrop.remove(); }
-    modal.querySelector('#pr-cancel').onclick = close;
-    backdrop.onclick = close;
-
-    if (tag){
-      const del = modal.querySelector('#pr-del');
-      if (del) del.onclick = ()=>{
-        item.tags = (item.tags||[]).filter(tid=>tid!==tag.id);
-        persistItem(item); renderFolders(); renderFavList(); close();
-      };
-    }
-
-    modal.querySelector('#pr-ok').onclick = ()=>{
-      const input = modal.querySelector('#pr-tag-name');
-      let name = (input.value||'').trim(); if(!name){ input.focus(); return; }
-      let t = (window.tags||[]).find(tt=>(tt.name||'').toLowerCase()===name.toLowerCase());
-      if(!t){ t = createTag(name, picked); } else { t.color=picked; saveTags(tags); }
-      if (!Array.isArray(item.tags)) item.tags = [];
-      if (!item.tags.includes(t.id)) item.tags.push(t.id);
-      persistItem(item); renderFolders(); renderFavList(); close();
-    };
-  }
-
-  document.addEventListener('click', (e)=>{
-    const add = e.target.closest('[data-action="tag-add"]');
-    if(!add) return;
-    e.preventDefault(); e.stopPropagation();
-    const id = add.dataset.id;
-    const item = (window.recientes||[]).find(x=>x.id===id) || (window.favoritos||[]).find(x=>x.id===id);
-    if(item) openTagModal(item, null);
-  });
-
-  document.addEventListener('click', (e)=>{
-    const chip = e.target.closest('[data-action="tag-edit"]');
-    if(!chip) return;
-    const itemId = chip.dataset.item;
-    const tagId = chip.dataset.tag;
-    const item = (window.recientes||[]).find(x=>x.id===itemId) || (window.favoritos||[]).find(x=>x.id===itemId);
-    const tag = (window.tags||[]).find(t=>t.id===tagId);
-    if(item && tag) openTagModal(item, tag);
-  });
-
-  window.__prTagModalInstalled = true;
-})();
 
 </script>
 </body>
