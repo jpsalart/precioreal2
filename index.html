@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="/manifest.json">
   <link rel="apple-touch-icon" href="/icons/icon-192.png">
-  <link rel="stylesheet" href="./drbit-theme(1).css">
+  <link rel="stylesheet" href="./drbit-theme.css">
   <style>
     :root{ --bg:#0b0f14; --panel:#121824; --text:#e7edf7; --muted:#a8b3c7; --brand:#3aa1ff; --brand2:#1e78d5; --bd:#1a2434; --ok:#9fe29f; --bad:#ffb3b3; }
     *{box-sizing:border-box}
@@ -425,6 +425,8 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
       </div>
     </div>
   </div>
+
+  <script src="./scan-overlay.drbit.js"></script>
   <script src="/api/zxing.js" defer></script>
   <script src="./amazon-api.drbit.v3.1.js"></script>
 <script>
@@ -858,7 +860,6 @@ let item; try{ item = await resolveEAN(code, { allowEnqueueOnFail:false }); } fi
   function isAndroidIntentCapable(){ const ua = navigator.userAgent || ''; return /Android/i.test(ua) && /(Chrome|EdgA|Brave|SamsungBrowser|Chromium)/i.test(ua); }
   function tldFromKeepa(domainIdx){ const map = {1:'com',2:'co.uk',3:'de',4:'fr',5:'co.jp',6:'ca',7:'cn',8:'it',9:'es',10:'in',11:'com.mx',12:'com.br',13:'com.au',14:'nl',15:'se',16:'pl',17:'com.tr',18:'sg',19:'sa',20:'ae'}; return map[String(domainIdx||9)] || 'es'; }
   function openAmazonSmart(item){
-  // Construir primero el enlace web afiliado (por si hay que caer a navegador)
   const webHref = (function(){
     try{
       if (item && (item.affiliateLink || item.webHref || item.url)) {
@@ -872,21 +873,46 @@ let item; try{ item = await resolveEAN(code, { allowEnqueueOnFail:false }); } fi
     }catch(_){ return ''; }
   })();
 
-  // Preferir API: le pasamos asin/tld/query para deep link a la app
-  if (window.AmazonAPI && typeof AmazonAPI.openSmart === 'function'){
-    const tld = (typeof tldFromKeepa==='function') ? tldFromKeepa(item && item.domain) : 'es';
-    try {
-      AmazonAPI.openSmart(webHref, true, {
-        asin: item && item.asin,
-        tld,
-        query: item && item.query
-      });
-      return;
-    } catch(_) {}
+  const tld = (typeof tldFromKeepa==='function') ? tldFromKeepa(item && item.domain) : 'es';
+  const asin = item && item.asin ? String(item.asin) : '';
+  const q    = item && item.query ? String(item.query) : '';
+  const host = `amazon.${tld.replace(/^www\./,'')}`;
+
+  const deepLinks = [];
+  if (asin){
+    deepLinks.push(`com.amazon.mobile.shopping://${host}/products/${encodeURIComponent(asin)}`);
+    deepLinks.push(`com.amazon.mobile.shopping.web://${host}/dp/${encodeURIComponent(asin)}`);
+  } else if (q){
+    deepLinks.push(`com.amazon.mobile.shopping.web://${host}/s?k=${encodeURIComponent(q)}`);
+  }
+  const withoutProto = (webHref || '').replace(/^https?:\/\//i, '');
+  deepLinks.push(`intent://${withoutProto}#Intent;scheme=https;package=com.amazon.mShop.android.shopping;S.browser_fallback_url=${encodeURIComponent(webHref)};end`);
+
+  const isAndroid = /Android/i.test(navigator.userAgent||'');
+  const isStandalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+
+  if (isAndroid && isStandalone){
+    let done = false;
+    const cleanup = (t)=>{ try{ document.removeEventListener('visibilitychange', onVis); clearTimeout(t); a?.remove(); a2?.remove(); }catch(_){ } };
+    const onVis = ()=>{ if (document.hidden && !done){ done=true; cleanup(fallbackTimer); } };
+    document.addEventListener('visibilitychange', onVis, { once:true });
+
+    const a = document.createElement('a'); a.href = deepLinks[0] || ''; a.rel='noopener'; document.body.appendChild(a);
+    const a2 = document.createElement('a'); a2.href = deepLinks[1] || ''; a2.rel='noopener'; document.body.appendChild(a2);
+
+    try{ if (deepLinks[0]) a.click(); }catch(_){}
+    setTimeout(()=>{ try{ if (!done && deepLinks[1]) a2.click(); }catch(_){} }, 120);
+    setTimeout(()=>{ try{ if (!done && deepLinks[2]) location.href = deepLinks[2]; }catch(_){} }, 240);
+
+    const fallbackTimer = setTimeout(()=>{ if (done) return; done = true; cleanup(fallbackTimer); window.open(webHref, '_blank', 'noopener,noreferrer'); }, 900);
+    return;
   }
 
-  // Fallback sin API: abrir web
-  try { window.open(webHref, '_blank', 'noopener,noreferrer'); } catch(_) { location.assign(webHref); }
+  if (window.AmazonAPI && typeof AmazonAPI.openSmart==='function'){
+    try { AmazonAPI.openSmart(webHref, true, { asin, tld, query: q }); return; } catch(_){}
+  }
+
+  try{ window.open(webHref, '_blank', 'noopener,noreferrer'); }catch(_){ location.assign(webHref); }
 }
 
   function escapeHtml(s){ return String(s||'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
@@ -1284,7 +1310,6 @@ let item; try{ item = await resolveEAN(code, { allowEnqueueOnFail:false }); } fi
     }, 400);
   })();
 </script>
-  <script src="./scan-overlay.drbit(1).js"></script>
 </body>
 </html>
 
