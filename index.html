@@ -898,61 +898,66 @@ let item; try{ item = await resolveEAN(code, { allowEnqueueOnFail:false }); } fi
   const isAndroid = /Android/i.test(navigator.userAgent||'');
   const isStandalone = !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
 
-  // 2) PWA Android + preferApp: pre-abrir pestaña controlable (sin noopener) y cerrarla si la app se abre
+  // 2) PWA Android + preferApp: popup controlable y cancelación sólo si seguimos ocultos > 350ms
   if (isAndroid && isStandalone && preferApp){
     let done = false;
     let popup = null;
     let popupNavigated = false;
+    let hiddenAt = 0;
 
     try { popup = window.open('about:blank', '_blank'); } catch(_){ popup = null; }
 
-    const removeListeners = () => {
+    const cleanup = () => {
       document.removeEventListener('visibilitychange', onVis);
-      window.removeEventListener('blur', onBlur);
-      window.removeEventListener('pagehide', onHide);
-      window.removeEventListener('focus', onFocus);
-    };
-    const cancelFallback = () => {
-      if (done) return;
-      done = true;
       clearTimeout(fallbackTimer);
-      removeListeners();
+      clearTimeout(safetyTimer);
       try { if (popup && !popup.closed && !popupNavigated) popup.close(); } catch(_){}
     };
-    const onVis  = () => { if (document.hidden) cancelFallback(); };
-    const onBlur = () => { cancelFallback(); };
-    const onHide = () => { cancelFallback(); };
-    const onFocus= () => { /* si volvemos desde la app y el popup no navegó, ya se cerró */ };
 
+    const confirmOpenIfStillHidden = () => {
+      if (done) return;
+      // si seguimos ocultos al menos 350ms, asumimos que la app se abrió
+      if (document.hidden && hiddenAt && (performance.now() - hiddenAt >= 350)) {
+        done = true;
+        cleanup();
+      }
+    };
+
+    const onVis = () => {
+      if (document.hidden) {
+        hiddenAt = performance.now();
+        setTimeout(confirmOpenIfStillHidden, 380);
+      } else {
+        // hemos vuelto rápido → no confirmamos apertura y dejamos que el fallback navegue
+        hiddenAt = 0;
+      }
+    };
     document.addEventListener('visibilitychange', onVis);
-    window.addEventListener('blur', onBlur, { once:true });
-    window.addEventListener('pagehide', onHide, { once:true });
-    window.addEventListener('focus', onFocus);
 
     // Disparos dentro del mismo gesto
     try{ if (deepLinks[0]) { const a=document.createElement('a'); a.href=deepLinks[0]; a.rel='noopener'; document.body.appendChild(a); a.click(); a.remove(); } }catch(_){}
     setTimeout(()=>{ try{ if (!done && deepLinks[1]) { const a2=document.createElement('a'); a2.href=deepLinks[1]; a2.rel='noopener'; document.body.appendChild(a2); a2.click(); a2.remove(); } }catch(_){} }, 120);
     setTimeout(()=>{ try{ if (!done && deepLinks[2]) location.replace(deepLinks[2]); }catch(_){} }, 240);
 
-    // Fallback a web en la pestaña preabierta
-    const fallbackTimer = setTimeout(()=>{
+    // Fallback: navegar el popup (si existe) o abrir nueva pestaña
+    const navigateWeb = () => {
       if (done) return;
       done = true;
-      removeListeners();
       try {
         if (popup && !popup.closed){
           popupNavigated = true;
           popup.location.href = webHref || 'about:blank';
           popup.focus && popup.focus();
         } else {
-          // Si el popup fue bloqueado o ya no existe, abre nueva pestaña directa
           window.open(webHref, '_blank', 'noopener,noreferrer');
         }
       } catch(_) {
         window.open(webHref, '_blank', 'noopener,noreferrer');
       }
-    }, 900);
+    };
 
+    const fallbackTimer = setTimeout(navigateWeb, 1000);  // 1s
+    const safetyTimer   = setTimeout(navigateWeb, 2500);  // safety por si algo raro
     return;
   }
 
