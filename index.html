@@ -426,7 +426,7 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
     </div>
   </div>
   <script src="/api/zxing.js" defer></script>
-  <script src="./amazon-api.drbit.v3.js"></script>
+  <script src="./amazon-api.drbit.v3.1.js"></script>
 <script>
   const $ = sel => document.getElementById(sel);
   const qs = (s,root=document)=>root.querySelector(s);
@@ -873,7 +873,7 @@ let item; try{ item = await resolveEAN(code, { allowEnqueueOnFail:false }); } fi
 
   // Preferir API externa si existe
   if (window.AmazonAPI && typeof AmazonAPI.openSmart === 'function'){
-    try { AmazonAPI.openSmart(webHref); } catch(_){}
+    try { AmazonAPI.openSmart(webHref, true); } catch(_){}
     return;
   }
 
