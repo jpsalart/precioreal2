@@ -313,16 +313,33 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
   #pr-open-web-snackbar.pr-fade{ opacity:0; transition:opacity .35s ease; }
 </style>
 <style id="drbt-comfy-textscale">
-/* Cómodo por defecto: imágenes un poco más grandes */
-.product-grid{ grid-template-columns: repeat(auto-fill, minmax(184px, 1fr)); }
-.cover img{ max-width:88%; max-height:88%; }
-/* Compacto manual (cuando <html> tiene clase .compact) */
-:root.compact .product-grid{ grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); }
-:root.compact .cover img{ max-width:82%; max-height:82%; }
-/* Tamaño de texto por raíz (afecta rem) */
-:root[data-ts='S']{ font-size:15px; }
-:root[data-ts='M']{ font-size:16.5px; }
-:root[data-ts='L']{ font-size:18px; }
+/* === Layout cómodo por defecto (imágenes más grandes, menos margen) === */
+.product-grid{ grid-template-columns: repeat(auto-fill, minmax(208px, 1fr)); gap:12px; }
+.cover img{ max-width:92%; max-height:92%; }
+.body{ padding:8px; }
+
+/* === Compacto manual (aún más compacto que antes) === */
+:root.compact .product-grid{ grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap:8px; }
+:root.compact .cover img{ max-width:80%; max-height:80%; }
+:root.compact .body{ padding:6px; gap:4px; }
+:root.compact .title{ font-size:.85rem; line-height:1.15rem; -webkit-line-clamp:2; }
+:root.compact .cat{ display:none; }
+:root.compact .row.actions{ gap:6px; }
+:root.compact .btn{ min-height:34px; padding:0 10px; border-radius:10px; }
+:root.compact .price{ font-size:.95rem; }
+
+/* === Tamaño de texto (base rem por raíz) === */
+:root[data-ts='S'] { font-size:15px; }
+:root[data-ts='M'] { font-size:16.5px; }
+:root[data-ts='L'] { font-size:18px; }
+:root[data-ts='XL']{ font-size:20px; }  /* NUEVO XL */
+
+/* === CTA “Ver en Amazon” más grande y legible === */
+.btn.cta, .btn.primary{
+  min-height: 48px;
+  font-size: calc(1em * 1.08); /* sube ~8% sobre la base actual */
+  padding: 0 16px;
+}
 </style>
 </head>
 <body>
@@ -492,7 +509,7 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
     }
     if ($('btnTextSize')){
       $('btnTextSize').addEventListener('click', ()=>{
-        const order = ['S','M','L'];
+        const order = ['S','M','L','XL'];
         let i = order.indexOf(settings.textScale||'M');
         i = (i+1)%order.length;
         settings.textScale = order[i];
