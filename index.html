@@ -860,6 +860,10 @@ let item; try{ item = await resolveEAN(code, { allowEnqueueOnFail:false }); } fi
   function isAndroidIntentCapable(){ const ua = navigator.userAgent || ''; return /Android/i.test(ua) && /(Chrome|EdgA|Brave|SamsungBrowser|Chromium)/i.test(ua); }
   function tldFromKeepa(domainIdx){ const map = {1:'com',2:'co.uk',3:'de',4:'fr',5:'co.jp',6:'ca',7:'cn',8:'it',9:'es',10:'in',11:'com.mx',12:'com.br',13:'com.au',14:'nl',15:'se',16:'pl',17:'com.tr',18:'sg',19:'sa',20:'ae'}; return map[String(domainIdx||9)] || 'es'; }
   function openAmazonSmart(item){
+  // Respetar el toggle "Abrir en app"
+  const preferApp = !!(typeof settings !== 'undefined' && settings.openInApp);
+
+  // 1) URL web afiliada como fallback
   const webHref = (function(){
     try{
       if (item && (item.affiliateLink || item.webHref || item.url)) {
@@ -878,40 +882,84 @@ let item; try{ item = await resolveEAN(code, { allowEnqueueOnFail:false }); } fi
   const q    = item && item.query ? String(item.query) : '';
   const host = `amazon.${tld.replace(/^www\./,'')}`;
 
+  // Deep links (solo si preferApp=true)
   const deepLinks = [];
-  if (asin){
-    deepLinks.push(`com.amazon.mobile.shopping://${host}/products/${encodeURIComponent(asin)}`);
-    deepLinks.push(`com.amazon.mobile.shopping.web://${host}/dp/${encodeURIComponent(asin)}`);
-  } else if (q){
-    deepLinks.push(`com.amazon.mobile.shopping.web://${host}/s?k=${encodeURIComponent(q)}`);
+  if (preferApp){
+    if (asin){
+      deepLinks.push(`com.amazon.mobile.shopping://${host}/products/${encodeURIComponent(asin)}`);
+      deepLinks.push(`com.amazon.mobile.shopping.web://${host}/dp/${encodeURIComponent(asin)}`);
+    } else if (q){
+      deepLinks.push(`com.amazon.mobile.shopping.web://${host}/s?k=${encodeURIComponent(q)}`);
+    }
+    const withoutProto = (webHref || '').replace(/^https?:\/\//i, '');
+    deepLinks.push(`intent://${withoutProto}#Intent;scheme=https;package=com.amazon.mShop.android.shopping;S.browser_fallback_url=${encodeURIComponent(webHref)};end`);
   }
-  const withoutProto = (webHref || '').replace(/^https?:\/\//i, '');
-  deepLinks.push(`intent://${withoutProto}#Intent;scheme=https;package=com.amazon.mShop.android.shopping;S.browser_fallback_url=${encodeURIComponent(webHref)};end`);
 
   const isAndroid = /Android/i.test(navigator.userAgent||'');
-  const isStandalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+  const isStandalone = !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
 
-  if (isAndroid && isStandalone){
+  // 2) PWA Android + preferApp: pre-abrir pestaña controlable (sin noopener) y cerrarla si la app se abre
+  if (isAndroid && isStandalone && preferApp){
     let done = false;
-    const cleanup = (t)=>{ try{ document.removeEventListener('visibilitychange', onVis); clearTimeout(t); a?.remove(); a2?.remove(); }catch(_){ } };
-    const onVis = ()=>{ if (document.hidden && !done){ done=true; cleanup(fallbackTimer); } };
-    document.addEventListener('visibilitychange', onVis, { once:true });
+    let popup = null;
+    let popupNavigated = false;
 
-    const a = document.createElement('a'); a.href = deepLinks[0] || ''; a.rel='noopener'; document.body.appendChild(a);
-    const a2 = document.createElement('a'); a2.href = deepLinks[1] || ''; a2.rel='noopener'; document.body.appendChild(a2);
+    try { popup = window.open('about:blank', '_blank'); } catch(_){ popup = null; }
 
-    try{ if (deepLinks[0]) a.click(); }catch(_){}
-    setTimeout(()=>{ try{ if (!done && deepLinks[1]) a2.click(); }catch(_){} }, 120);
-    setTimeout(()=>{ try{ if (!done && deepLinks[2]) location.href = deepLinks[2]; }catch(_){} }, 240);
+    const removeListeners = () => {
+      document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('blur', onBlur);
+      window.removeEventListener('pagehide', onHide);
+      window.removeEventListener('focus', onFocus);
+    };
+    const cancelFallback = () => {
+      if (done) return;
+      done = true;
+      clearTimeout(fallbackTimer);
+      removeListeners();
+      try { if (popup && !popup.closed && !popupNavigated) popup.close(); } catch(_){}
+    };
+    const onVis  = () => { if (document.hidden) cancelFallback(); };
+    const onBlur = () => { cancelFallback(); };
+    const onHide = () => { cancelFallback(); };
+    const onFocus= () => { /* si volvemos desde la app y el popup no navegó, ya se cerró */ };
 
-    const fallbackTimer = setTimeout(()=>{ if (done) return; done = true; cleanup(fallbackTimer); window.open(webHref, '_blank', 'noopener,noreferrer'); }, 900);
+    document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('blur', onBlur, { once:true });
+    window.addEventListener('pagehide', onHide, { once:true });
+    window.addEventListener('focus', onFocus);
+
+    // Disparos dentro del mismo gesto
+    try{ if (deepLinks[0]) { const a=document.createElement('a'); a.href=deepLinks[0]; a.rel='noopener'; document.body.appendChild(a); a.click(); a.remove(); } }catch(_){}
+    setTimeout(()=>{ try{ if (!done && deepLinks[1]) { const a2=document.createElement('a'); a2.href=deepLinks[1]; a2.rel='noopener'; document.body.appendChild(a2); a2.click(); a2.remove(); } }catch(_){} }, 120);
+    setTimeout(()=>{ try{ if (!done && deepLinks[2]) location.replace(deepLinks[2]); }catch(_){} }, 240);
+
+    // Fallback a web en la pestaña preabierta
+    const fallbackTimer = setTimeout(()=>{
+      if (done) return;
+      done = true;
+      removeListeners();
+      try {
+        if (popup && !popup.closed){
+          popupNavigated = true;
+          popup.location.href = webHref || 'about:blank';
+          popup.focus && popup.focus();
+        } else {
+          // Si el popup fue bloqueado o ya no existe, abre nueva pestaña directa
+          window.open(webHref, '_blank', 'noopener,noreferrer');
+        }
+      } catch(_) {
+        window.open(webHref, '_blank', 'noopener,noreferrer');
+      }
+    }, 900);
+
     return;
   }
 
+  // 3) Casos sin preferencia de app o fuera de PWA Android
   if (window.AmazonAPI && typeof AmazonAPI.openSmart==='function'){
     try { AmazonAPI.openSmart(webHref, true, { asin, tld, query: q }); return; } catch(_){}
   }
-
   try{ window.open(webHref, '_blank', 'noopener,noreferrer'); }catch(_){ location.assign(webHref); }
 }
 
