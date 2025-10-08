@@ -298,6 +298,19 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
 .mini-actions{ grid-area:actions; justify-self:end; align-self:start; display:flex; gap:8px; }
 
 </style>
+<style id="pr-open-web-snackbar-style">
+  #pr-open-web-snackbar{
+    position:fixed; left:50%; bottom:16px; transform:translateX(-50%);
+    background:#111; color:#fff; padding:10px 12px; border-radius:12px;
+    box-shadow:0 8px 24px rgba(0,0,0,.25); z-index:99999;
+    display:flex; gap:12px; align-items:center; font-size:14px;
+  }
+  #pr-open-web-snackbar button{
+    background:#fff; color:#111; border:0; border-radius:8px;
+    padding:6px 10px; font-weight:600; cursor:pointer;
+  }
+  #pr-open-web-snackbar.pr-fade{ opacity:0; transition:opacity .35s ease; }
+</style>
 </head>
 <body>
   <!-- App bar estática -->
@@ -904,7 +917,7 @@ let item; try{ item = await resolveEAN(code, { allowEnqueueOnFail:false }); } fi
     setTimeout(()=>{ try{ if (!done && deepLinks[1]) a2.click(); }catch(_){} }, 120);
     setTimeout(()=>{ try{ if (!done && deepLinks[2]) location.href = deepLinks[2]; }catch(_){} }, 240);
 
-    const fallbackTimer = setTimeout(()=>{ if (done) return; done = true; cleanup(fallbackTimer); window.open(webHref, '_blank', 'noopener,noreferrer'); }, 900);
+    const fallbackTimer = setTimeout(()=>{ if (done) return; done = true; cleanup(fallbackTimer); showOpenInWebPrompt(webHref); }, 1200);
     return;
   }
 
@@ -1309,6 +1322,39 @@ let item; try{ item = await resolveEAN(code, { allowEnqueueOnFail:false }); } fi
       if (document.getElementById('btnAutoOpenAfterScan') && AmazonAPI && AmazonAPI.openSmart && AmazonAPI.openSmart.__wrapped) clearInterval(iv);
     }, 400);
   })();
+</script>
+<script id="pr-open-web-helpers">
+(function(){
+  if (!window.openAmazonWebTab){
+    window.openAmazonWebTab = function(url){
+      try{
+        var reuse = (window.__amazonWin && !window.__amazonWin.closed) ? window.__amazonWin : window.open('', 'amazon-ext');
+        if (reuse) {
+          window.__amazonWin = reuse;
+          reuse.location = url;
+          if (reuse.focus) reuse.focus();
+        } else {
+          window.open(url, '_blank', 'noopener,noreferrer');
+        }
+      }catch(_){
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+    };
+  }
+  if (!window.showOpenInWebPrompt){
+    window.showOpenInWebPrompt = function(url){
+      var id = 'pr-open-web-snackbar';
+      if (document.getElementById(id)) return;
+      var bar = document.createElement('div');
+      bar.id = id;
+      bar.innerHTML = '<span>¿No se abrió la app de Amazon?</span> <button type="button" id="pr-open-web-btn">Abrir en navegador</button>';
+      document.body.appendChild(bar);
+      function closePrompt(){ bar.classList.add('pr-fade'); setTimeout(function(){ try{ bar.remove(); }catch(e){} }, 350); }
+      document.getElementById('pr-open-web-btn').addEventListener('click', function(){ try{ openAmazonWebTab(url); } finally { closePrompt(); } });
+      setTimeout(closePrompt, 4000);
+    };
+  }
+})();
 </script>
 </body>
 </html>
