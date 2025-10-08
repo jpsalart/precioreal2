@@ -904,20 +904,7 @@ let item; try{ item = await resolveEAN(code, { allowEnqueueOnFail:false }); } fi
     setTimeout(()=>{ try{ if (!done && deepLinks[1]) a2.click(); }catch(_){} }, 120);
     setTimeout(()=>{ try{ if (!done && deepLinks[2]) location.href = deepLinks[2]; }catch(_){} }, 240);
 
-    const fallbackTimer = setTimeout(()=>{ if (done) return; done = true; cleanup(fallbackTimer); (function(u){
-  try{
-    const reuse = (window.__amazonWin && !window.__amazonWin.closed) ? window.__amazonWin : window.open('', 'amazon-ext');
-    if (reuse) {
-      reuse.location = u;
-      if (reuse.focus) reuse.focus();
-      window.__amazonWin = reuse;
-    } else {
-      window.open(u, '_blank', 'noopener,noreferrer');
-    }
-  }catch(_){
-    window.open(u, '_blank', 'noopener,noreferrer');
-  }
-})(webHref); }, 900);
+    const fallbackTimer = setTimeout(()=>{ if (done) return; done = true; cleanup(fallbackTimer); window.open(webHref, '_blank', 'noopener,noreferrer'); }, 900);
     return;
   }
 
@@ -925,20 +912,7 @@ let item; try{ item = await resolveEAN(code, { allowEnqueueOnFail:false }); } fi
     try { AmazonAPI.openSmart(webHref, true, { asin, tld, query: q }); return; } catch(_){}
   }
 
-  try{ (function(u){
-  try{
-    const reuse = (window.__amazonWin && !window.__amazonWin.closed) ? window.__amazonWin : window.open('', 'amazon-ext');
-    if (reuse) {
-      reuse.location = u;
-      if (reuse.focus) reuse.focus();
-      window.__amazonWin = reuse;
-    } else {
-      window.open(u, '_blank', 'noopener,noreferrer');
-    }
-  }catch(_){
-    window.open(u, '_blank', 'noopener,noreferrer');
-  }
-})(webHref); }catch(_){ location.assign(webHref); }
+  try{ window.open(webHref, '_blank', 'noopener,noreferrer'); }catch(_){ location.assign(webHref); }
 }
 
   function escapeHtml(s){ return String(s||'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
