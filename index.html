@@ -428,7 +428,7 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
 
   <script src="./scan-overlay.drbit.js"></script>
   <script src="/api/zxing.js" defer></script>
-  <script src="./amazon-api.drbit.v3.1.js"></script>
+  <script src="./amazon-api.drbit.v3.js"></script>
 <script>
   const $ = sel => document.getElementById(sel);
   const qs = (s,root=document)=>root.querySelector(s);
@@ -889,22 +889,59 @@ let item; try{ item = await resolveEAN(code, { allowEnqueueOnFail:false }); } fi
   deepLinks.push(`intent://${withoutProto}#Intent;scheme=https;package=com.amazon.mShop.android.shopping;S.browser_fallback_url=${encodeURIComponent(webHref)};end`);
 
   const isAndroid = /Android/i.test(navigator.userAgent||'');
-  const isStandalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+  const isStandalone = !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
 
   if (isAndroid && isStandalone){
     let done = false;
-    const cleanup = (t)=>{ try{ document.removeEventListener('visibilitychange', onVis); clearTimeout(t); a?.remove(); a2?.remove(); }catch(_){ } };
-    const onVis = ()=>{ if (document.hidden && !done){ done=true; cleanup(fallbackTimer); } };
-    document.addEventListener('visibilitychange', onVis, { once:true });
+    let popup = null;
+    let popupNavigated = false;
 
-    const a = document.createElement('a'); a.href = deepLinks[0] || ''; a.rel='noopener'; document.body.appendChild(a);
-    const a2 = document.createElement('a'); a2.href = deepLinks[1] || ''; a2.rel='noopener'; document.body.appendChild(a2);
+    try { popup = window.open('', '_blank', 'noopener,noreferrer'); } catch(_){ popup = null; }
 
-    try{ if (deepLinks[0]) a.click(); }catch(_){}
-    setTimeout(()=>{ try{ if (!done && deepLinks[1]) a2.click(); }catch(_){} }, 120);
-    setTimeout(()=>{ try{ if (!done && deepLinks[2]) location.href = deepLinks[2]; }catch(_){} }, 240);
+    const removeListeners = () => {
+      document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('blur', onBlur);
+      window.removeEventListener('pagehide', onHide);
+      window.removeEventListener('focus', onFocus);
+    };
+    const cancelFallback = () => {
+      if (done) return;
+      done = true;
+      clearTimeout(fallbackTimer);
+      removeListeners();
+      try { if (popup && !popup.closed && !popupNavigated) popup.close(); } catch(_){}
+    };
+    const onVis  = () => { if (document.hidden) cancelFallback(); };
+    const onBlur = () => { cancelFallback(); };
+    const onHide = () => { cancelFallback(); };
+    const onFocus= () => { /* al volver, no cerramos si el popup ya navegó */ };
 
-    const fallbackTimer = setTimeout(()=>{ if (done) return; done = true; cleanup(fallbackTimer); window.open(webHref, '_blank', 'noopener,noreferrer'); }, 900);
+    document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('blur', onBlur, { once:true });
+    window.addEventListener('pagehide', onHide, { once:true });
+    window.addEventListener('focus', onFocus);
+
+    try{ if (deepLinks[0]) { const a=document.createElement('a'); a.href=deepLinks[0]; a.rel='noopener'; document.body.appendChild(a); a.click(); a.remove(); } }catch(_){}
+    setTimeout(()=>{ try{ if (!done && deepLinks[1]) { const a2=document.createElement('a'); a2.href=deepLinks[1]; a2.rel='noopener'; document.body.appendChild(a2); a2.click(); a2.remove(); } }catch(_){} }, 120);
+    setTimeout(()=>{ try{ if (!done && deepLinks[2]) location.replace(deepLinks[2]); }catch(_){} }, 240);
+
+    const fallbackTimer = setTimeout(()=>{
+      if (done) return;
+      done = true;
+      removeListeners();
+      try {
+        if (popup && !popup.closed){
+          popupNavigated = true;
+          popup.location = webHref || 'about:blank';
+          popup.focus && popup.focus();
+        } else {
+          window.open(webHref, '_blank', 'noopener,noreferrer');
+        }
+      } catch(_) {
+        window.open(webHref, '_blank', 'noopener,noreferrer');
+      }
+    }, 900);
+
     return;
   }
 
