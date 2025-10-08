@@ -705,7 +705,7 @@ function miniCardHTML(item){
       return;
     }
 
-    const btn = e.target.closest('button,span[data-action],input[type="checkbox"][data-action],.folder-card'); if(!btn) return;
+    const btn = e.target.closest('button,a[data-action],span[data-action],input[type="checkbox"][data-action],.folder-card'); if(!btn) return;
     const action = btn.dataset.action; const id = btn.dataset.id;
 
     // Carpeta seleccionada
@@ -713,7 +713,7 @@ function miniCardHTML(item){
       selectedFolder = btn.dataset.id; renderFolders(); renderFavList(); return;
     }
 
-    if(action==='open' && id){ const item = recientes.find(x=>x.id===id) || favoritos.find(x=>x.id===id); if(item) openAmazonSmart(item); }
+    if(action==='open' && id){ e.preventDefault(); e.stopPropagation(); const item = recientes.find(x=>x.id===id) || favoritos.find(x=>x.id===id); if(item) openAmazonSmart(item); }
 
     if(action==='add-price' && id){
       const item = recientes.find(x=>x.id===id) || favoritos.find(x=>x.id===id); if(!item) return;
