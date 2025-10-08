@@ -1356,6 +1356,25 @@ let item; try{ item = await resolveEAN(code, { allowEnqueueOnFail:false }); } fi
   }
 })();
 </script>
+
+<script id="pr-guard-open-anchor-capture">
+(function(){
+  function guard(e){
+    var a = e.target.closest && e.target.closest('a[data-action="open"]');
+    if (!a) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    try{
+      var id = a.getAttribute('data-id') || (a.dataset && a.dataset.id);
+      if (id && typeof openAmazonSmart==='function'){
+        var item = (window.recientes||[]).find(x=>String(x.id)===String(id)) || (window.favoritos||[]).find(x=>String(x.id)===String(id));
+        if (item) openAmazonSmart(item);
+      }
+    }catch(_){}
+  }
+  document.addEventListener('click', guard, { capture: true, passive: false });
+})();
+</script>
+
 </body>
 </html>
 
