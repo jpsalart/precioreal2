@@ -860,18 +860,6 @@ let item; try{ item = await resolveEAN(code, { allowEnqueueOnFail:false }); } fi
   function isAndroidIntentCapable(){ const ua = navigator.userAgent || ''; return /Android/i.test(ua) && /(Chrome|EdgA|Brave|SamsungBrowser|Chromium)/i.test(ua); }
   function tldFromKeepa(domainIdx){ const map = {1:'com',2:'co.uk',3:'de',4:'fr',5:'co.jp',6:'ca',7:'cn',8:'it',9:'es',10:'in',11:'com.mx',12:'com.br',13:'com.au',14:'nl',15:'se',16:'pl',17:'com.tr',18:'sg',19:'sa',20:'ae'}; return map[String(domainIdx||9)] || 'es'; }
   function openAmazonSmart(item){
-  // === Preferencia "Abrir en app" (leer de varias fuentes) ===
-  const preferApp = (function(){
-    try{
-      if (window.settings && typeof settings.openInApp !== 'undefined') return !!settings.openInApp;
-      if (window.SETTINGS && typeof SETTINGS.openInApp !== 'undefined') return !!SETTINGS.openInApp;
-      const ls = localStorage.getItem('pr-setting-openInApp');
-      if (ls != null) return (ls === '1' || ls === 'true');
-    }catch(_){}
-    return true; // por defecto intentar app
-  })();
-
-  // 1) URL web afiliada (fallback)
   const webHref = (function(){
     try{
       if (item && (item.affiliateLink || item.webHref || item.url)) {
@@ -885,69 +873,47 @@ let item; try{ item = await resolveEAN(code, { allowEnqueueOnFail:false }); } fi
     }catch(_){ return ''; }
   })();
 
-  const tld  = (typeof tldFromKeepa==='function') ? tldFromKeepa(item && item.domain) : 'es';
+  const tld = (typeof tldFromKeepa==='function') ? tldFromKeepa(item && item.domain) : 'es';
   const asin = item && item.asin ? String(item.asin) : '';
   const q    = item && item.query ? String(item.query) : '';
   const host = `amazon.${tld.replace(/^www\./,'')}`;
 
-  const isAndroid   = /Android/i.test(navigator.userAgent||'');
-  const isStandalone = !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  const deepLinks = [];
+  if (asin){
+    deepLinks.push(`com.amazon.mobile.shopping://${host}/products/${encodeURIComponent(asin)}`);
+    deepLinks.push(`com.amazon.mobile.shopping.web://${host}/dp/${encodeURIComponent(asin)}`);
+  } else if (q){
+    deepLinks.push(`com.amazon.mobile.shopping.web://${host}/s?k=${encodeURIComponent(q)}`);
+  }
+  const withoutProto = (webHref || '').replace(/^https?:\/\//i, '');
+  deepLinks.push(`intent://${withoutProto}#Intent;scheme=https;package=com.amazon.mShop.android.shopping;S.browser_fallback_url=${encodeURIComponent(webHref)};end`);
 
-  // 2) Intentar APP: directo con location.href (más fiable en PWA) + fallback web (pestaña única)
-  if (preferApp && isAndroid && isStandalone){
-    const targets = [];
-    if (asin){
-      targets.push(`com.amazon.mobile.shopping://${host}/products/${encodeURIComponent(asin)}`);
-      targets.push(`com.amazon.mobile.shopping.web://${host}/dp/${encodeURIComponent(asin)}`);
-    } else if (q){
-      targets.push(`com.amazon.mobile.shopping.web://${host}/s?k=${encodeURIComponent(q)}`);
-    }
-    const withoutProto = (webHref || '').replace(/^https?:\/\//i, '');
-    targets.push(`intent://${withoutProto}#Intent;scheme=https;package=com.amazon.mShop.android.shopping;S.browser_fallback_url=${encodeURIComponent(webHref)};end`);
+  const isAndroid = /Android/i.test(navigator.userAgent||'');
+  const isStandalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
 
-    // Disparos en el mismo gesto del usuario: usamos location.href para evitar bloqueos
-    try{ if (targets[0]) location.href = targets[0]; }catch(_){}
-    setTimeout(()=>{ try{ if (!document.hidden && targets[1]) location.href = targets[1]; }catch(_){} }, 140);
-    setTimeout(()=>{ try{ if (!document.hidden && targets[2]) location.href = targets[2]; }catch(_){} }, 300);
+  if (isAndroid && isStandalone){
+    let done = false;
+    const cleanup = (t)=>{ try{ document.removeEventListener('visibilitychange', onVis); clearTimeout(t); a?.remove(); a2?.remove(); }catch(_){ } };
+    const onVis = ()=>{ if (document.hidden && !done){ done=true; cleanup(fallbackTimer); } };
+    document.addEventListener('visibilitychange', onVis, { once:true });
 
-    // Fallback a web si NO nos fuimos a la app (página sigue visible) tras ~1000 ms
-    setTimeout(()=>{ if (!document.hidden) openAmazonWebTab(webHref); }, 1000);
+    const a = document.createElement('a'); a.href = deepLinks[0] || ''; a.rel='noopener'; document.body.appendChild(a);
+    const a2 = document.createElement('a'); a2.href = deepLinks[1] || ''; a2.rel='noopener'; document.body.appendChild(a2);
+
+    try{ if (deepLinks[0]) a.click(); }catch(_){}
+    setTimeout(()=>{ try{ if (!done && deepLinks[1]) a2.click(); }catch(_){} }, 120);
+    setTimeout(()=>{ try{ if (!done && deepLinks[2]) location.href = deepLinks[2]; }catch(_){} }, 240);
+
+    const fallbackTimer = setTimeout(()=>{ if (done) return; done = true; cleanup(fallbackTimer); window.open(webHref, '_blank', 'noopener,noreferrer'); }, 900);
     return;
   }
 
-  // 3) Otros casos → web con pestaña única reutilizable
-  openAmazonWebTab(webHref);
-}
-
-// Abrir/reusar SIEMPRE la MISMA pestaña/ventana "amazon-ext"
-function openAmazonWebTab(url){
-  try{
-    const reuse = (window.__amazonWin && !window.__amazonWin.closed) ? window.__amazonWin : null;
-    window.__amazonWin = reuse || window.open('', 'amazon-ext'); // pestaña/ventana nombrada
-    if (window.__amazonWin) {
-      window.__amazonWin.location = url;
-      window.__amazonWin.focus && window.__amazonWin.focus();
-      window.__amazonWinOpenedAt = performance.now();
-    } else {
-      // si el navegador bloqueó window.open sin nombre
-      window.open(url, '_blank', 'noopener,noreferrer');
-    }
-  }catch(_){
-    window.open(url, '_blank', 'noopener,noreferrer');
+  if (window.AmazonAPI && typeof AmazonAPI.openSmart==='function'){
+    try { AmazonAPI.openSmart(webHref, true, { asin, tld, query: q }); return; } catch(_){}
   }
+
+  try{ window.open(webHref, '_blank', 'noopener,noreferrer'); }catch(_){ location.assign(webHref); }
 }
-
-// AUTO: cerrar la pestaña Amazon si el usuario vuelve MUY rápido (<= 1500 ms)
-window.addEventListener('focus', ()=>{
-  try{
-    const t = window.__amazonWinOpenedAt || 0;
-    if (t && (performance.now() - t <= 1500) && window.__amazonWin && !window.__amazonWin.closed){
-      window.__amazonWin.close();
-      window.__amazonWinOpenedAt = 0;
-    }
-  }catch(_){}
-});
-
 
   function escapeHtml(s){ return String(s||'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
   async function torchOff(){ try{ if(!stream) return; const track = stream.getVideoTracks()[0]; await track.applyConstraints({ advanced:[{ torch:false }] }); $('btnTorch').textContent = 'Linterna: OFF'; torchOn = false; }catch(e){} }
