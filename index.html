@@ -858,42 +858,35 @@ let item; try{ item = await resolveEAN(code, { allowEnqueueOnFail:false }); } fi
   function isAndroidIntentCapable(){ const ua = navigator.userAgent || ''; return /Android/i.test(ua) && /(Chrome|EdgA|Brave|SamsungBrowser|Chromium)/i.test(ua); }
   function tldFromKeepa(domainIdx){ const map = {1:'com',2:'co.uk',3:'de',4:'fr',5:'co.jp',6:'ca',7:'cn',8:'it',9:'es',10:'in',11:'com.mx',12:'com.br',13:'com.au',14:'nl',15:'se',16:'pl',17:'com.tr',18:'sg',19:'sa',20:'ae'}; return map[String(domainIdx||9)] || 'es'; }
   function openAmazonSmart(item){
-  // Construir primero la URL web segura
+  // Construir primero el enlace web afiliado (por si hay que caer a navegador)
   const webHref = (function(){
     try{
-      if (item && (item.affiliateLink || item.webHref || item.url)){
+      if (item && (item.affiliateLink || item.webHref || item.url)) {
         return new URL(item.affiliateLink || item.webHref || item.url, location.origin).toString();
       }
       const tld = (typeof tldFromKeepa==='function') ? tldFromKeepa(item && item.domain) : 'es';
       const asin = item && item.asin ? String(item.asin) : '';
       if (asin) return `https://www.amazon.${tld}/dp/${encodeURIComponent(asin)}`;
-      return `https://www.amazon.${tld}/s?k=${encodeURIComponent(item && item.query ? item.query : '')}`;
+      const q = item && item.query ? item.query : '';
+      return `https://www.amazon.${tld}/s?k=${encodeURIComponent(q)}`;
     }catch(_){ return ''; }
   })();
 
-  // Preferir API externa si existe
+  // Preferir API: le pasamos asin/tld/query para deep link a la app
   if (window.AmazonAPI && typeof AmazonAPI.openSmart === 'function'){
-    try { AmazonAPI.openSmart(webHref, true); } catch(_){}
-    return;
+    const tld = (typeof tldFromKeepa==='function') ? tldFromKeepa(item && item.domain) : 'es';
+    try {
+      AmazonAPI.openSmart(webHref, true, {
+        asin: item && item.asin,
+        tld,
+        query: item && item.query
+      });
+      return;
+    } catch(_) {}
   }
 
-  // Fallback: intento de intent en Android, si procede
-  try{
-    const isAndroid = /Android/i.test(navigator.userAgent || '');
-    const isChromish = /(Chrome|EdgA|Chromium|SamsungBrowser|Brave)/i.test(navigator.userAgent || '');
-    if (isAndroid && isChromish){
-      const withoutProto = (webHref || '').replace(/^https?:\/\//i, '');
-      const intentUrl = 'intent://' + withoutProto +
-        '#Intent;scheme=https;package=com.amazon.mShop.android.shopping;' +
-        'S.browser_fallback_url=' + encodeURIComponent(webHref) + ';end';
-      location.href = intentUrl;
-      return;
-    }
-    // Web normal
-    location.href = webHref;
-  }catch(e){
-    try{ location.href = webHref; }catch(_){}
-  }
+  // Fallback sin API: abrir web
+  try { window.open(webHref, '_blank', 'noopener,noreferrer'); } catch(_) { location.assign(webHref); }
 }
 
   function escapeHtml(s){ return String(s||'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
