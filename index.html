@@ -860,8 +860,16 @@ let item; try{ item = await resolveEAN(code, { allowEnqueueOnFail:false }); } fi
   function isAndroidIntentCapable(){ const ua = navigator.userAgent || ''; return /Android/i.test(ua) && /(Chrome|EdgA|Brave|SamsungBrowser|Chromium)/i.test(ua); }
   function tldFromKeepa(domainIdx){ const map = {1:'com',2:'co.uk',3:'de',4:'fr',5:'co.jp',6:'ca',7:'cn',8:'it',9:'es',10:'in',11:'com.mx',12:'com.br',13:'com.au',14:'nl',15:'se',16:'pl',17:'com.tr',18:'sg',19:'sa',20:'ae'}; return map[String(domainIdx||9)] || 'es'; }
   function openAmazonSmart(item){
-  // Respeta el toggle existente "Abrir en app"
-  const preferApp = !!(window.settings && settings.openInApp);
+  // === Preferencia "Abrir en app" (leer de varias fuentes) ===
+  const preferApp = (function(){
+    try{
+      if (window.settings && typeof settings.openInApp !== 'undefined') return !!settings.openInApp;
+      if (window.SETTINGS && typeof SETTINGS.openInApp !== 'undefined') return !!SETTINGS.openInApp;
+      const ls = localStorage.getItem('pr-setting-openInApp');
+      if (ls != null) return (ls === '1' || ls === 'true');
+    }catch(_){}
+    return true; // por defecto intentar app
+  })();
 
   // 1) URL web afiliada (fallback)
   const webHref = (function(){
@@ -882,32 +890,32 @@ let item; try{ item = await resolveEAN(code, { allowEnqueueOnFail:false }); } fi
   const q    = item && item.query ? String(item.query) : '';
   const host = `amazon.${tld.replace(/^www\./,'')}`;
 
-  const isAndroid = /Android/i.test(navigator.userAgent||'');
+  const isAndroid   = /Android/i.test(navigator.userAgent||'');
   const isStandalone = !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
 
-  // 2) PWA Android + preferApp: intento app simple (como v1), sin popups
+  // 2) Intentar APP: directo con location.href (más fiable en PWA) + fallback web (pestaña única)
   if (preferApp && isAndroid && isStandalone){
-    const attempts = [];
+    const targets = [];
     if (asin){
-      attempts.push(`com.amazon.mobile.shopping://${host}/products/${encodeURIComponent(asin)}`);
-      attempts.push(`com.amazon.mobile.shopping.web://${host}/dp/${encodeURIComponent(asin)}`);
+      targets.push(`com.amazon.mobile.shopping://${host}/products/${encodeURIComponent(asin)}`);
+      targets.push(`com.amazon.mobile.shopping.web://${host}/dp/${encodeURIComponent(asin)}`);
     } else if (q){
-      attempts.push(`com.amazon.mobile.shopping.web://${host}/s?k=${encodeURIComponent(q)}`);
+      targets.push(`com.amazon.mobile.shopping.web://${host}/s?k=${encodeURIComponent(q)}`);
     }
     const withoutProto = (webHref || '').replace(/^https?:\/\//i, '');
-    attempts.push(`intent://${withoutProto}#Intent;scheme=https;package=com.amazon.mShop.android.shopping;S.browser_fallback_url=${encodeURIComponent(webHref)};end`);
+    targets.push(`intent://${withoutProto}#Intent;scheme=https;package=com.amazon.mShop.android.shopping;S.browser_fallback_url=${encodeURIComponent(webHref)};end`);
 
-    // Disparo dentro del mismo gesto (sin pre-abrir nada)
-    try{ if (attempts[0]) { const a=document.createElement('a'); a.href=attempts[0]; a.rel='noopener'; document.body.appendChild(a); a.click(); a.remove(); } }catch(_){}
-    setTimeout(()=>{ try{ if (attempts[1] && !document.hidden) { const a2=document.createElement('a'); a2.href=attempts[1]; a2.rel='noopener'; document.body.appendChild(a2); a2.click(); a2.remove(); } }catch(_){} }, 120);
-    setTimeout(()=>{ try{ if (attempts[2] && !document.hidden) location.href = attempts[2]; }catch(_){} }, 240);
+    // Disparos en el mismo gesto del usuario: usamos location.href para evitar bloqueos
+    try{ if (targets[0]) location.href = targets[0]; }catch(_){}
+    setTimeout(()=>{ try{ if (!document.hidden && targets[1]) location.href = targets[1]; }catch(_){} }, 140);
+    setTimeout(()=>{ try{ if (!document.hidden && targets[2]) location.href = targets[2]; }catch(_){} }, 300);
 
-    // Fallback a web si NO nos fuimos a la app en ~800ms (página sigue visible)
-    setTimeout(()=>{ if (!document.hidden) openAmazonWebTab(webHref); }, 800);
+    // Fallback a web si NO nos fuimos a la app (página sigue visible) tras ~1000 ms
+    setTimeout(()=>{ if (!document.hidden) openAmazonWebTab(webHref); }, 1000);
     return;
   }
 
-  // 3) Resto de casos: web (tab única reutilizable)
+  // 3) Otros casos → web con pestaña única reutilizable
   openAmazonWebTab(webHref);
 }
 
