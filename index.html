@@ -452,6 +452,16 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
   function loadSettings(){ try { return JSON.parse(localStorage.getItem('pr-settings-v1')||'{}'); } catch(e){ return {}; } }
   function saveSettings(s){ localStorage.setItem('pr-settings-v1', JSON.stringify(s||{})); }
   let settings = Object.assign({ noSound:false, noVibra:false, continuous:true, openInApp:false }, loadSettings());
+  // Lee preferencia 'Abrir en app' de manera robusta (default: OFF)
+  function isOpenInAppEnabled(){
+    try{
+      if (window.settings && typeof settings.openInApp !== 'undefined') return !!settings.openInApp;
+      const s = JSON.parse(localStorage.getItem('pr-settings-v1')||'{}');
+      if (typeof s.openInApp !== 'undefined') return !!s.openInApp;
+    }catch(e){}
+    return false;
+  }
+
   function renderToggles(){
     $('btnToggleSound').textContent = 'Sonido: ' + (settings.noSound ? 'OFF' : 'ON');
     $('btnToggleVibra').textContent = 'Vibración: ' + (settings.noVibra ? 'OFF' : 'ON');
@@ -900,6 +910,15 @@ let item; try{ item = await resolveEAN(code, { allowEnqueueOnFail:false }); } fi
   }
   const withoutProto = (webHref || '').replace(/^https?:\/\//i, '');
   deepLinks.push(`intent://${withoutProto}#Intent;scheme=https;package=com.amazon.mShop.android.shopping;S.browser_fallback_url=${encodeURIComponent(webHref)};end`);
+  const preferApp = isOpenInAppEnabled();
+  if (!preferApp) {
+    try { 
+      if (typeof openAmazonWebTab === 'function') { openAmazonWebTab(webHref); }
+      else { window.open(webHref, '_blank', 'noopener,noreferrer'); }
+    } catch(_) { location.assign(webHref); }
+    return;
+  }
+
 
   const isAndroid = /Android/i.test(navigator.userAgent||'');
   const isStandalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
