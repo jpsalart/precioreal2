@@ -342,6 +342,32 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
   padding: 0 16px;
 }
 </style>
+<style id="drbt-uniform-buttons">
+  /* Igualar altura/legibilidad de Configuración, Comparar, Favoritos al botón Escáner */
+  #btnOpts, .tabs .tab{
+    display: inline-flex; align-items: center; justify-content: center;
+    min-height: 48px; padding: 0 16px;
+    font-size: 1.08em; border-radius: 12px;
+    border: 1px solid var(--drbt-border);
+    background: var(--drbt-bg-elev); color: var(--drbt-text);
+    box-shadow: var(--drbt-shadow-1);
+  }
+  .tabs{ display:flex; gap:10px; align-items:center; }
+  .tabs .tab.active{ background: var(--accent-prim-soft); color: var(--accent-prim); border-color: color-mix(in oklab, var(--accent-prim), var(--drbt-bg) 70%); }
+</style>
+
+<style id="drbt-store-filter-css">
+.banner-filter{
+  margin:8px 0 6px; padding:8px 10px; border:1px solid var(--drbt-border);
+  background: var(--surface-2, var(--drbt-bg-elev)); border-radius:12px;
+  display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:.95em;
+}
+.banner-filter .label{ display:flex; gap:8px; align-items:center; }
+.banner-filter .clear{ border:0; background:transparent; cursor:pointer; font-weight:700; }
+.chip.store{ cursor:pointer; user-select:none; }
+.price-row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+</style>
+
 </head>
 <body>
   <!-- App bar estática -->
@@ -375,15 +401,12 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
             <button class="btn secondary" id="btnToggleSound">Sonido: ON</button>
             <button class="btn secondary" id="btnToggleVibra">Vibración: ON</button>
             <button class="btn secondary" id="btnToggleContinuous">Escáner continuo: ON</button>
-            <button class="btn secondary" id="btnOpenInApp">Abrir en app: OFF</button>
-            <button class="btn secondary" id="btnTorch">Linterna: OFF</button>
+<button class="btn secondary" id="btnTorch">Linterna: OFF</button>
             <button class="btn secondary" id="btnTestCam">Test cámara</button>
-          
-            <button class="btn secondary" id="btnDensity">Densidad: Cómodo</button>
-            <button class="btn secondary" id="btnTextSize">Texto: M</button>
+<button class="btn secondary" id="btnTextSize">Texto: M</button>
 </div>
 
-          <div class="opts-note">Consejo: activa “Escáner continuo” para leer varios códigos seguidos. “Abrir en app” usa el intent de Android si está disponible.</div>
+          <div class="opts-note">Consejo: activa “Escáner continuo” para leer varios códigos seguidos. </div>
         </div>
       </div>
     </div>
@@ -412,6 +435,7 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
         <div class="flex"><span class="counter" id="countComparar">0 ítems</span></div>
         <div class="flex"><button id="btnVaciarLista" class="btn warn">🗑️ Vaciar lista</button></div>
       </div>
+      <div id="storeFilterBarComparar" class="banner-filter" style="display:none"></div>
       <div class="cards" id="cardsComparar"></div>
     </div>
 
@@ -424,6 +448,7 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
           <button id="btnMostrarComprados" class="btn">Ver comprados: OFF</button>
         </div>
       </div>
+      <div id="storeFilterBarLista" class="banner-filter" style="display:none"></div>
       <div id="foldersBar" class="folders-bar" aria-label="Carpetas de etiquetas"></div>
       <div id="miniList" class="mini-list"></div>
     </div>
@@ -485,28 +510,20 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
 
   function loadSettings(){ try { return JSON.parse(localStorage.getItem('pr-settings-v1')||'{}'); } catch(e){ return {}; } }
   function saveSettings(s){ localStorage.setItem('pr-settings-v1', JSON.stringify(s||{})); }
-  let settings = Object.assign({ noSound:false, noVibra:false, continuous:true, openInApp:false, density:'comfortable', textScale:'M' }, loadSettings());
+  let settings = Object.assign({ noSound:false, noVibra:false, continuous:true, textScale:'L' }, loadSettings());
   function renderToggles(){
     // aplicar densidad y tamaño de texto
-    document.documentElement.classList.toggle('compact', settings.density==='compact');
+    
     document.documentElement.setAttribute('data-ts', settings.textScale||'M');
     $('btnToggleSound').textContent = 'Sonido: ' + (settings.noSound ? 'OFF' : 'ON');
     $('btnToggleVibra').textContent = 'Vibración: ' + (settings.noVibra ? 'OFF' : 'ON');
     $('btnToggleContinuous').textContent = 'Escáner continuo: ' + (settings.continuous ? 'ON' : 'OFF');
-    $('btnOpenInApp').textContent = 'Abrir en app: ' + (settings.openInApp ? 'ON' : 'OFF');
-    $('btnDensity') && ($('btnDensity').textContent = 'Densidad: ' + (settings.density==='compact' ? 'Compacto' : 'Cómodo'));
+    $('btnOpenInApp').textContent = ' ' + (settings.openInApp ? 'ON' : 'OFF');
+    
     $('btnTextSize') && ($('btnTextSize').textContent = 'Texto: ' + (settings.textScale||'M'));
   }
   function attachToggleEvents(){
-    if ($('btnDensity')){
-      $('btnDensity').addEventListener('click', ()=>{
-        settings.density = (settings.density==='compact') ? 'comfortable' : 'compact';
-        saveSettings(settings);
-        renderToggles();
-  // aplicar densidad/tipo al cargar
-  document.documentElement.classList.toggle('compact', settings.density==='compact');
-  document.documentElement.setAttribute('data-ts', settings.textScale||'M');
-      });
+    );
     }
     if ($('btnTextSize')){
       $('btnTextSize').addEventListener('click', ()=>{
@@ -532,12 +549,38 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
     const open = optsPanel.classList.toggle('open');
     btnOpts.setAttribute('aria-expanded', open ? 'true' : 'false');
   });
-  document.addEventListener('click', (e)=>{
+  
+// ===== Filtro por tienda (manual) =====
+let storeFilter = '';
+function setStoreFilter(name){
+  storeFilter = String(name||'').trim();
+  const bars = [ $('storeFilterBarComparar'), $('storeFilterBarLista') ];
+  bars.forEach(b=>{
+    if(!b) return;
+    if(storeFilter){
+      b.innerHTML = `<div class="label">Filtro tienda:</div>
+        <button class="chip store" data-action="filter-store" data-store="${escapeHtml(storeFilter)}">${escapeHtml(storeFilter)}</button>
+        <button class="clear" data-action="clear-store-filter" aria-label="Quitar filtro">×</button>`;
+      b.style.display = 'flex';
+    }else{
+      b.style.display = 'none'; b.innerHTML='';
+    }
+  });
+  renderAll();
+  if($('viewLista').style.display!=='none'){ renderFavList(); }
+}
+document.addEventListener('click', (e)=>{
     if(!optsPanel.classList.contains('open')) return;
     const within = e.target.closest('.opts-anchor, .opts-panel');
     if(!within){ optsPanel.classList.remove('open'); btnOpts.setAttribute('aria-expanded','false'); }
+  
+    if(action==='filter-store'){
+      const name = btn.getAttribute('data-store') || (btn.textContent||'').trim();
+      if(name){ setStoreFilter(storeFilter===name ? '' : name); }
+      return;
+    }
+    if(action==='clear-store-filter'){ setStoreFilter(''); return; }
   });
-
   renderToggles(); attachToggleEvents();
 
   let scanning = false, stream = null, lastScanAt = 0, torchOn = false, wakeLock = null, currentTrack = null;
@@ -621,7 +664,11 @@ recientes.forEach(ensurePrimaryTag);
   function itemCardHTML(item, inList=false){
     const img = item.image ? `<img src="${item.image}" alt="">` : '';
     const favPressed = isFav(item.id) ? 'true' : 'false';
-    const price = item.userPrice!=null ? `<div class="price">PvP Tienda: ${item.userPrice.toFixed(2)} €</div>` : '';
+    const price = (item.userPrice!=null) ? (`<div class="price-row">`
+  + `<span class="price">Precio manual: ${item.userPrice.toFixed(2)} €</span>`
+  + (item.userStore ? ` <button class="chip store" data-action="filter-store" data-store="${escapeHtml(item.userStore)}">${escapeHtml(item.userStore)}</button>` : '')
+  + `</div>`)
+  : '';
     const bought = inList ? `<span class="chip">Comprado: <input type="checkbox" ${item.completed?'checked':''} data-action="toggle-comprado" data-id="${item.id}"></span>` : '';
     return `
       <div class="card" data-id="${item.id}">
@@ -641,10 +688,10 @@ recientes.forEach(ensurePrimaryTag);
   }
 
   function renderAll(){
-    $('cardsComparar').innerHTML = recientes.map(it=>itemCardHTML(it,false)).join('');
-    $('countComparar').textContent = `${recientes.length} ítems`;
+    $('cardsComparar').innerHTML = (storeFilter ? recientes.filter(it => (it.userStore||'').toLowerCase()===storeFilter.toLowerCase()) : recientes).map(it=>itemCardHTML(it,false)).join('');
+    $('countComparar').textContent = `${(storeFilter ? recientes.filter(it => (it.userStore||'').toLowerCase()===storeFilter.toLowerCase()) : recientes).length} ítems`;
     const list = favoritos.filter(f=> showComprados ? true : !f.completed);
-    $('countLista').textContent = `${list.length} ítems`;
+    $('countLista').textContent = `${(storeFilter ? list.filter(it => (it.userStore||'').toLowerCase()===storeFilter.toLowerCase()) : list).length} ítems`;
     tuneCardImages();
   }
 
@@ -712,6 +759,7 @@ recientes.forEach(ensurePrimaryTag);
     const root = $('miniList');
     const base = favoritos.filter(f=> showComprados ? true : !f.completed);
     let items = base;
+    if(storeFilter){ items = items.filter(it => (it.userStore||'').toLowerCase()===storeFilter.toLowerCase()); }
     if(selectedFolder==='none') items = base.filter(it=>!it.primaryTagId || it.primaryTagId==='_none');
     else if(selectedFolder!=='all') items = base.filter(it=> it.primaryTagId === selectedFolder);
 
@@ -775,10 +823,37 @@ function miniCardHTML(item){
 
     if(action==='open' && id){ e.preventDefault(); e.stopPropagation(); const item = recientes.find(x=>x.id===id) || favoritos.find(x=>x.id===id); if(item) openAmazonSmart(item); }
 
+    
     if(action==='add-price' && id){
       const item = recientes.find(x=>x.id===id) || favoritos.find(x=>x.id===id); if(!item) return;
-      const val = prompt('Precio manual (€, usa punto o coma):', item.userPrice!=null? String(item.userPrice):'');
-      if(val!=null){ const n = Number(String(val).replace(',','.')); if(!isNaN(n)){ item.userPrice = Math.round(n*100)/100; item.userPriceAt = now(); persistItem(item); renderAll(); if($('viewLista').style.display!=='none'){ renderFavList(); } } }
+      const seed = (item.userStore ? (item.userStore + ', ') : '') + (item.userPrice!=null ? String(item.userPrice).replace('.',',') : '');
+      const val = prompt('Precio manual: puedes escribir "Tienda, 12,95" o solo "12,95" (usa coma o punto).', seed);
+      if(val!=null){
+        const parsed = (function parseStorePriceInput(v){
+          try{
+            let s = String(v).trim();
+            if(!s) return null;
+            const parts = s.split(',').map(x=>x.trim()).filter(Boolean);
+            let store = '', amount = '';
+            if(parts.length===1){ amount = parts[0]; }
+            else { amount = parts.pop(); store = parts.join(' '); }
+            amount = amount.replace(/[€$]/g,'').replace(/\s/g,'').replace(',', '.');
+            const num = Number(amount);
+            if(!isFinite(num)) return null;
+            return { store: (store && /[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/.test(store) ? store : ''), price: +(num.toFixed(2)) };
+          }catch(_){ return null; }
+        })(val);
+        if(!parsed){ alert('Formato no válido. Escribe "Tienda, 12,95" o "12,95".'); }
+        else{
+          item.userPrice = parsed.price;
+          if(parsed.store) item.userStore = parsed.store; else delete item.userStore;
+          persistItem(item);
+          if($('viewComparar').style.display!=='none'){ renderAll(); }
+          if($('viewLista').style.display!=='none'){ renderFavList(); }
+        }
+      }
+    }
+    } }
     }
 
     if(action==='toggle-comprado' && id){
