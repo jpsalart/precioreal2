@@ -342,6 +342,27 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
   padding: 0 16px;
 }
 </style>
+
+<style id="drbt-overrides">
+  /* Unificar alturas y tipografías */
+  #btnOpts{ min-height:48px; padding:10px 14px; font-weight:800; }
+  .tabs .tab{ min-height:48px; padding:10px 14px; display:flex; align-items:center; font-weight:700; }
+
+  /* CTA fuerte ya definido; reforzamos secundarios a tonal suave */
+  .btn.secondary{
+    background: var(--surface-2, #10192b);
+    color: var(--muted, #a8b3c7);
+    border-color: var(--bd, #1a2434);
+  }
+  .btn.secondary:hover{ filter:brightness(1.06); }
+
+  /* Chips con borde suave compatible con paleta tonal */
+  .chip{ background: var(--surface-2, #10192b); color: var(--muted, #a8b3c7); }
+
+  /* Cards: asegurar fondo blanco detrás de imagen */
+  .cover{ background:#ffffff; }
+</style>
+
 </head>
 <body>
   <!-- App bar estática -->
@@ -380,7 +401,7 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
             <button class="btn secondary" id="btnTestCam">Test cámara</button>
           
             <button class="btn secondary" id="btnDensity">Densidad: Cómodo</button>
-            <button class="btn secondary" id="btnTextSize">Texto: M</button>
+            <button class="btn secondary" id="btnTextSize">Texto: XL</button>
 </div>
 
           <div class="opts-note">Consejo: activa “Escáner continuo” para leer varios códigos seguidos. “Abrir en app” usa el intent de Android si está disponible.</div>
@@ -485,7 +506,7 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
 
   function loadSettings(){ try { return JSON.parse(localStorage.getItem('pr-settings-v1')||'{}'); } catch(e){ return {}; } }
   function saveSettings(s){ localStorage.setItem('pr-settings-v1', JSON.stringify(s||{})); }
-  let settings = Object.assign({ noSound:false, noVibra:false, continuous:true, openInApp:false, density:'comfortable', textScale:'M' }, loadSettings());
+  let settings = Object.assign({ noSound:false, noVibra:false, continuous:true, openInApp:false, density:'comfortable', textScale:'XL' }, loadSettings());
   function renderToggles(){
     // aplicar densidad y tamaño de texto
     document.documentElement.classList.toggle('compact', settings.density==='compact');
