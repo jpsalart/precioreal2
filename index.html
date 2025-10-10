@@ -410,9 +410,7 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
             <button class="btn secondary" id="btnOpenInApp">Abrir en app: OFF</button>
             <button class="btn secondary" id="btnTorch">Linterna: OFF</button>
             <button class="btn secondary" id="btnTestCam">Test cámara</button>
-          
-            <button class="btn secondary" id="btnDensity">Densidad: Cómodo</button>
-            <button class="btn secondary" id="btnTextSize">Texto: M</button>
+<button class="btn secondary" id="btnTextSize">Texto: M</button>
 </div>
 
           <div class="opts-note">Consejo: activa “Escáner continuo” para leer varios códigos seguidos. “Abrir en app” usa el intent de Android si está disponible.</div>
@@ -517,28 +515,18 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
 
   function loadSettings(){ try { return JSON.parse(localStorage.getItem('pr-settings-v1')||'{}'); } catch(e){ return {}; } }
   function saveSettings(s){ localStorage.setItem('pr-settings-v1', JSON.stringify(s||{})); }
-  let settings = Object.assign({ noSound:false, noVibra:false, continuous:true, openInApp:false, density:'comfortable', textScale:'M' }, loadSettings());
+  let settings = Object.assign({ noSound:false, noVibra:false, continuous:true, openInApp:false, textScale:'M' }, loadSettings());
   function renderToggles(){
-    // aplicar densidad y tamaño de texto
-    document.documentElement.classList.toggle('compact', settings.density==='compact');
-    document.documentElement.setAttribute('data-ts', settings.textScale||'M');
+    // aplicar densidad y tamaño de textodocument.documentElement.setAttribute('data-ts', settings.textScale||'M');
     $('btnToggleSound').textContent = 'Sonido: ' + (settings.noSound ? 'OFF' : 'ON');
     $('btnToggleVibra').textContent = 'Vibración: ' + (settings.noVibra ? 'OFF' : 'ON');
     $('btnToggleContinuous').textContent = 'Escáner continuo: ' + (settings.continuous ? 'ON' : 'OFF');
     $('btnOpenInApp').textContent = 'Abrir en app: ' + (settings.openInApp ? 'ON' : 'OFF');
-    $('btnDensity') && ($('btnDensity').textContent = 'Densidad: ' + (settings.density==='compact' ? 'Compacto' : 'Cómodo'));
+    $('btnDensity') && ($('btnDensity').textContent = 'Densidad: ' + (/*density-removed*/null==='compact' ? 'Compacto' : 'Cómodo'));
     $('btnTextSize') && ($('btnTextSize').textContent = 'Texto: ' + (settings.textScale||'M'));
   }
   function attachToggleEvents(){
-    if ($('btnDensity')){
-      $('btnDensity').addEventListener('click', ()=>{
-        settings.density = (settings.density==='compact') ? 'comfortable' : 'compact';
-        saveSettings(settings);
-        renderToggles();
-  // aplicar densidad/tipo al cargar
-  document.documentElement.classList.toggle('compact', settings.density==='compact');
-  document.documentElement.setAttribute('data-ts', settings.textScale||'M');
-      });
+    );
     }
     if ($('btnTextSize')){
       $('btnTextSize').addEventListener('click', ()=>{
