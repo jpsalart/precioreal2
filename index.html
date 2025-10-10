@@ -363,6 +363,16 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
   }
   .tabs{ display:flex; gap:10px; align-items:center; }
   .tabs .tab.active{ background: var(--accent-prim-soft); color: var(--accent-prim); border-color: color-mix(in oklab, var(--accent-prim), var(--drbt-bg) 70%); }
+
+  /* Make “Configuración” look like the Favoritos tab (no bold, muted) */
+  #btnOpts{
+    font-weight: 400;
+    color: var(--muted);
+    background: var(--surface-2, #10192b);
+    border-color: var(--bd);
+  }
+  #btnOpts:hover{ filter: brightness(1.05); }
+
 </style>
 </head>
 <body>
