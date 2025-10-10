@@ -355,6 +355,19 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
   .tabs{ display:flex; gap:10px; align-items:center; }
   .tabs .tab.active{ background: var(--accent-prim-soft); color: var(--accent-prim); border-color: color-mix(in oklab, var(--accent-prim), var(--drbt-bg) 70%); }
 </style>
+
+<style id="drbt-store-filter-css">
+.banner-filter{
+  margin:8px 0 6px; padding:8px 10px; border:1px solid var(--drbt-border);
+  background: var(--surface-2, var(--drbt-bg-elev)); border-radius:12px;
+  display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:.95em;
+}
+.banner-filter .label{ display:flex; gap:8px; align-items:center; }
+.banner-filter .clear{ border:0; background:transparent; cursor:pointer; font-weight:700; }
+.chip.store{ cursor:pointer; user-select:none; }
+.price-row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+</style>
+
 </head>
 <body>
   <!-- App bar estática -->
@@ -422,6 +435,7 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
         <div class="flex"><span class="counter" id="countComparar">0 ítems</span></div>
         <div class="flex"><button id="btnVaciarLista" class="btn warn">🗑️ Vaciar lista</button></div>
       </div>
+      <div id="storeFilterBarComparar" class="banner-filter" style="display:none"></div>
       <div class="cards" id="cardsComparar"></div>
     </div>
 
@@ -434,6 +448,7 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
           <button id="btnMostrarComprados" class="btn">Ver comprados: OFF</button>
         </div>
       </div>
+      <div id="storeFilterBarLista" class="banner-filter" style="display:none"></div>
       <div id="foldersBar" class="folders-bar" aria-label="Carpetas de etiquetas"></div>
       <div id="miniList" class="mini-list"></div>
     </div>
@@ -495,7 +510,7 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
 
   function loadSettings(){ try { return JSON.parse(localStorage.getItem('pr-settings-v1')||'{}'); } catch(e){ return {}; } }
   function saveSettings(s){ localStorage.setItem('pr-settings-v1', JSON.stringify(s||{})); }
-  let settings = Object.assign({ noSound:false, noVibra:false, continuous:true, textScale:'M' }, loadSettings());
+  let settings = Object.assign({ noSound:false, noVibra:false, continuous:true, textScale:'L' }, loadSettings());
   function renderToggles(){
     // aplicar densidad y tamaño de texto
     
@@ -534,13 +549,97 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
     const open = optsPanel.classList.toggle('open');
     btnOpts.setAttribute('aria-expanded', open ? 'true' : 'false');
   });
-  document.addEventListener('click', (e)=>{
+  
+// ===== Filtro por tienda (manual) =====
+let storeFilter = '';
+function setStoreFilter(name){
+  storeFilter = String(name||'').trim();
+  const bars = [ $('storeFilterBarComparar'), $('storeFilterBarLista') ];
+  bars.forEach(b=>{
+    if(!b) return;
+    if(storeFilter){
+      b.innerHTML = `<div class="label">Filtro tienda:</div>
+        <button class="chip store" data-action="filter-store" data-store="${escapeHtml(storeFilter)}">${escapeHtml(storeFilter)}</button>
+        <button class="clear" data-action="clear-store-filter" aria-label="Quitar filtro">×</button>`;
+      b.style.display = 'flex';
+    }else{
+      b.style.display = 'none'; b.innerHTML='';
+    }
+  });
+  renderAll();
+  if($('viewLista').style.display!=='none'){ renderFavList(); }
+}
+
+
+// ===== Store names memory & Price Sheet controller =====
+let __psItemId = null;
+function loadStoreNames(){ try{ return JSON.parse(localStorage.getItem('pr-stores-v1')||'[]'); }catch(_){ return []; } }
+function saveStoreNames(arr){ try{ localStorage.setItem('pr-stores-v1', JSON.stringify(Array.from(new Set(arr)).slice(0,50))); }catch(_){} }
+function collectKnownStores(){
+  const names = new Set(loadStoreNames());
+  [...(recientes||[]), ...(favoritos||[])].forEach(it=>{ if(it && it.userStore){ names.add(it.userStore); } });
+  return Array.from(names);
+}
+function openPriceSheet(id){
+  __psItemId = id;
+  const item = (recientes.find(x=>x.id===id) || favoritos.find(x=>x.id===id)) || {};
+  const ip = $('psPrice'), is = $('psStore'), dl = $('psStoreList'), chips = $('psStoreChips');
+  ip.value = (item.userPrice!=null) ? String(item.userPrice).replace('.',',') : '';
+  is.value = item.userStore || '';
+  dl.innerHTML = ''; chips.innerHTML = '';
+  const stores = collectKnownStores().slice(0,12);
+  stores.forEach(name => {
+    const opt = document.createElement('option'); opt.value = name; dl.appendChild(opt);
+    const c = document.createElement('button'); c.className = 'chip store'; c.type='button';
+    c.textContent = name; c.setAttribute('data-action','pick-store'); c.setAttribute('data-store', name);
+    chips.appendChild(c);
+  });
+  $('priceSheet').classList.add('open'); $('priceSheet').setAttribute('aria-hidden','false');
+  $('priceBackdrop').classList.add('open');
+  setTimeout(()=>{ ip.focus(); ip.select(); }, 0);
+}
+function closePriceSheet(){
+  $('priceSheet').classList.remove('open'); $('priceSheet').setAttribute('aria-hidden','true');
+  $('priceBackdrop').classList.remove('open'); __psItemId = null;
+}
+function parseEUPrice(s){
+  if(!s) return null;
+  let t = String(s).trim().replace(/[€$]/g,'').replace(/\s/g,'');
+  t = t.replace(',', '.'); const n = Number(t);
+  return isFinite(n) ? +(n.toFixed(2)) : null;
+}
+document.addEventListener('click', (e)=>{
     if(!optsPanel.classList.contains('open')) return;
     const within = e.target.closest('.opts-anchor, .opts-panel');
     if(!within){ optsPanel.classList.remove('open'); btnOpts.setAttribute('aria-expanded','false'); }
-  });
-
-  renderToggles(); attachToggleEvents();
+  
+    if(action==='filter-store'){
+      const name = btn.getAttribute('data-store') || (btn.textContent||'').trim();
+      if(name){ setStoreFilter(storeFilter===name ? '' : name); }
+      return;
+    }
+    if(action==='clear-store-filter'){ setStoreFilter(''); return; }
+  
+  // bottom sheet actions
+  if(action==='open-price-sheet' && id){ openPriceSheet(id); return; }
+  if(action==='price-cancel'){ closePriceSheet(); return; }
+  if(action==='pick-store'){ const n = btn.getAttribute('data-store')||btn.textContent; if(n){ $('psStore').value = n; } return; }
+  if(action==='price-save'){
+    if(!__psItemId) { closePriceSheet(); return; }
+    const item = recientes.find(x=>x.id===__psItemId) || favoritos.find(x=>x.id===__psItemId);
+    if(!item){ closePriceSheet(); return; }
+    const price = parseEUPrice($('psPrice').value);
+    const store = String(($('psStore').value||'').trim());
+    if(price==null){ alert('Introduce un precio válido (ej. 12,95).'); return; }
+    item.userPrice = price;
+    if(store && /[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/.test(store)){ item.userStore = store; } else { delete item.userStore; }
+    persistItem(item);
+    if(item.userStore){ const ss = collectKnownStores(); ss.unshift(item.userStore); saveStoreNames(ss); }
+    if ($('viewComparar').style.display!=='none') renderAll();
+    if ($('viewLista').style.display!=='none') renderFavList();
+    closePriceSheet(); return;
+  }
+});renderToggles(); attachToggleEvents();
 
   let scanning = false, stream = null, lastScanAt = 0, torchOn = false, wakeLock = null, currentTrack = null;
   let detector = ('BarcodeDetector' in window) ? new BarcodeDetector({ formats:['ean_13','ean_8','upc_a','upc_e','code_128'] }) : null;
@@ -623,7 +722,11 @@ recientes.forEach(ensurePrimaryTag);
   function itemCardHTML(item, inList=false){
     const img = item.image ? `<img src="${item.image}" alt="">` : '';
     const favPressed = isFav(item.id) ? 'true' : 'false';
-    const price = item.userPrice!=null ? `<div class="price">PvP Tienda: ${item.userPrice.toFixed(2)} €</div>` : '';
+    const price = (item.userPrice!=null) ? (`<div class="price-row">`
+  + `<span class="price">Precio manual: ${item.userPrice.toFixed(2)} €</span>`
+  + (item.userStore ? ` <button class="chip store" data-action="filter-store" data-store="${escapeHtml(item.userStore)}">${escapeHtml(item.userStore)}</button>` : '')
+  + `</div>`)
+  : '';
     const bought = inList ? `<span class="chip">Comprado: <input type="checkbox" ${item.completed?'checked':''} data-action="toggle-comprado" data-id="${item.id}"></span>` : '';
     return `
       <div class="card" data-id="${item.id}">
@@ -634,7 +737,7 @@ recientes.forEach(ensurePrimaryTag);
           <div class="cat">${escapeHtml(item.category||'')}</div>
           ${price}
           <div class="row actions">
-            <button class="btn" data-action="add-price" data-id="${item.id}">€ Precio</button>
+            <button class="btn" data-action="open-price-sheet" data-id="${item.id}">€ Precio</button>
             ${bought}
             <button class="btn primary cta" data-action="open" data-id="${item.id}">🛒 Ver en Amazon</button>
           </div>
@@ -643,10 +746,10 @@ recientes.forEach(ensurePrimaryTag);
   }
 
   function renderAll(){
-    $('cardsComparar').innerHTML = recientes.map(it=>itemCardHTML(it,false)).join('');
-    $('countComparar').textContent = `${recientes.length} ítems`;
+    $('cardsComparar').innerHTML = (storeFilter ? recientes.filter(it => (it.userStore||'').toLowerCase()===storeFilter.toLowerCase()) : recientes).map(it=>itemCardHTML(it,false)).join('');
+    $('countComparar').textContent = `${(storeFilter ? recientes.filter(it => (it.userStore||'').toLowerCase()===storeFilter.toLowerCase()) : recientes).length} ítems`;
     const list = favoritos.filter(f=> showComprados ? true : !f.completed);
-    $('countLista').textContent = `${list.length} ítems`;
+    $('countLista').textContent = `${(storeFilter ? list.filter(it => (it.userStore||'').toLowerCase()===storeFilter.toLowerCase()) : list).length} ítems`;
     tuneCardImages();
   }
 
@@ -714,6 +817,7 @@ recientes.forEach(ensurePrimaryTag);
     const root = $('miniList');
     const base = favoritos.filter(f=> showComprados ? true : !f.completed);
     let items = base;
+    if(storeFilter){ items = items.filter(it => (it.userStore||'').toLowerCase()===storeFilter.toLowerCase()); }
     if(selectedFolder==='none') items = base.filter(it=>!it.primaryTagId || it.primaryTagId==='_none');
     else if(selectedFolder!=='all') items = base.filter(it=> it.primaryTagId === selectedFolder);
 
@@ -777,10 +881,37 @@ function miniCardHTML(item){
 
     if(action==='open' && id){ e.preventDefault(); e.stopPropagation(); const item = recientes.find(x=>x.id===id) || favoritos.find(x=>x.id===id); if(item) openAmazonSmart(item); }
 
+    
     if(action==='add-price' && id){
       const item = recientes.find(x=>x.id===id) || favoritos.find(x=>x.id===id); if(!item) return;
-      const val = prompt('Precio manual (€, usa punto o coma):', item.userPrice!=null? String(item.userPrice):'');
-      if(val!=null){ const n = Number(String(val).replace(',','.')); if(!isNaN(n)){ item.userPrice = Math.round(n*100)/100; item.userPriceAt = now(); persistItem(item); renderAll(); if($('viewLista').style.display!=='none'){ renderFavList(); } } }
+      const seed = (item.userStore ? (item.userStore + ', ') : '') + (item.userPrice!=null ? String(item.userPrice).replace('.',',') : '');
+      const val = prompt('Precio manual: puedes escribir "Tienda, 12,95" o solo "12,95" (usa coma o punto).', seed);
+      if(val!=null){
+        const parsed = (function parseStorePriceInput(v){
+          try{
+            let s = String(v).trim();
+            if(!s) return null;
+            const parts = s.split(',').map(x=>x.trim()).filter(Boolean);
+            let store = '', amount = '';
+            if(parts.length===1){ amount = parts[0]; }
+            else { amount = parts.pop(); store = parts.join(' '); }
+            amount = amount.replace(/[€$]/g,'').replace(/\s/g,'').replace(',', '.');
+            const num = Number(amount);
+            if(!isFinite(num)) return null;
+            return { store: (store && /[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/.test(store) ? store : ''), price: +(num.toFixed(2)) };
+          }catch(_){ return null; }
+        })(val);
+        if(!parsed){ alert('Formato no válido. Escribe "Tienda, 12,95" o "12,95".'); }
+        else{
+          item.userPrice = parsed.price;
+          if(parsed.store) item.userStore = parsed.store; else delete item.userStore;
+          persistItem(item);
+          if($('viewComparar').style.display!=='none'){ renderAll(); }
+          if($('viewLista').style.display!=='none'){ renderFavList(); }
+        }
+      }
+    }
+    } }
     }
 
     if(action==='toggle-comprado' && id){
@@ -1436,6 +1567,36 @@ let item; try{ item = await resolveEAN(code, { allowEnqueueOnFail:false }); } fi
   document.addEventListener('click', guard, { capture: true, passive: false });
 })();
 </script>
+
+
+<!-- ===== Price Bottom Sheet ===== -->
+<div id="priceBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:2000;"></div>
+<section id="priceSheet" aria-hidden="true" aria-modal="true" role="dialog"
+  style="position:fixed;left:0;right:0;bottom:0;transform:translateY(100%);transition:transform .25s ease;z-index:2001;
+  background:var(--surface-2, var(--drbt-bg));border-top-left-radius:18px;border-top-right-radius:18px;
+  border:1px solid var(--border-2, var(--drbt-border));padding:14px 14px 18px;box-shadow:0 -12px 32px rgba(0,0,0,.25);">
+  <h3 style="margin:0 0 8px;">Guardar precio</h3>
+  <p id="psHint" class="muted" style="margin:0 0 8px;">Introduce el precio (ej. 12,95). La tienda es opcional.</p>
+  <div class="row" style="display:grid;gap:8px;margin-bottom:10px;">
+    <label>Precio (€)
+      <input id="psPrice" type="text" inputmode="decimal" placeholder="12,95" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--drbt-border)">
+    </label>
+    <label>Tienda (opcional)
+      <input id="psStore" list="psStoreList" placeholder="Ej. Mary" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--drbt-border)">
+      <datalist id="psStoreList"></datalist>
+    </label>
+    <div id="psStoreChips" class="chips" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+  </div>
+  <div style="display:flex;gap:10px;justify-content:flex-end;">
+    <button class="btn" data-action="price-cancel">Cancelar</button>
+    <button class="btn primary" data-action="price-save">Guardar</button>
+  </div>
+</section>
+<style id="priceSheetStyles">
+  #priceSheet.open{ transform:translateY(0); }
+  #priceBackdrop.open{ display:block; }
+  #psStoreChips .chip{ cursor:pointer; user-select:none; }
+</style>
 
 </body>
 </html>
