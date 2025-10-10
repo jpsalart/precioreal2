@@ -362,6 +362,20 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
 .price-row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 </style>
 
+
+<style id="drbt-tonal-overrides">
+  .btn.secondary, .btn.tonal{{
+    background: var(--accent-prim-soft, #102033);
+    color: var(--accent-prim, #9ecbff);
+    border-color: color-mix(in oklab, var(--accent-prim, #9ecbff), #000 70%);
+  }}
+  .btn.secondary:hover, .btn.tonal:hover{{ filter:brightness(1.05); }}
+  .chip{{ background: var(--accent-prim-soft, #102033); border-color: color-mix(in oklab, var(--accent-prim, #9ecbff), #000 70%); color: var(--accent-prim, #9ecbff); }}
+  .banner-filter{{ background: var(--surface-2, #10192b); border-color: var(--border-2, #1e2a3e); }}
+  .banner-filter .clear{{ color: var(--accent-prim, #9ecbff); }}
+  .tabs .tab{{ background: var(--surface-2, #10192b); color: var(--muted); }}
+  .tabs .tab.active{{ color: #001225; }}
+</style>
 </head>
 <body>
   <!-- App bar estática -->
@@ -515,41 +529,30 @@ function renderToggles(){
 }
 
   
-function attachToggleEvents(){
-  if ($('btnTextSize')){
-    $('btnTextSize').addEventListener('click', ()=>{
+
+function attachToggleEvents(){{
+  if ($('btnTextSize')){{
+    $('btnTextSize').addEventListener('click', ()=>{{
       const order = ['S','M','L','XL'];
       let i = order.indexOf(settings.textScale||'M');
       i = (i + 1) % order.length;
       settings.textScale = order[i];
       saveSettings(settings);
       renderToggles();
-    });
+    }});
+  }}
+  if ($('btnToggleSound')) $('btnToggleSound').addEventListener('click', ()=>{{ settings.noSound=!settings.noSound; saveSettings(settings); renderToggles(); }});
+  if ($('btnToggleVibra')) $('btnToggleVibra').addEventListener('click', ()=>{{ settings.noVibra=!settings.noVibra; saveSettings(settings); renderToggles(); }});
+  if ($('btnToggleContinuous')) $('btnToggleContinuous').addEventListener('click', ()=>{{ settings.continuous=!settings.continuous; saveSettings(settings); renderToggles(); }});
+}}
+);
   }
   if ($('btnToggleSound')) $('btnToggleSound').addEventListener('click', ()=>{ settings.noSound=!settings.noSound; saveSettings(settings); renderToggles(); });
   if ($('btnToggleVibra')) $('btnToggleVibra').addEventListener('click', ()=>{ settings.noVibra=!settings.noVibra; saveSettings(settings); renderToggles(); });
   if ($('btnToggleContinuous')) $('btnToggleContinuous').addEventListener('click', ()=>{ settings.continuous=!settings.continuous; saveSettings(settings); renderToggles(); });
 }
-);
-    }
-    if ($('btnTextSize')){
-      $('btnTextSize').addEventListener('click', ()=>{
-        const order = ['S','M','L','XL'];
-        let i = order.indexOf(settings.textScale||'M');
-        i = (i+1)%order.length;
-        settings.textScale = order[i];
-        saveSettings(settings);
-        renderToggles();
-      });
-    }
 
-    $('btnToggleSound').addEventListener('click', ()=>{ settings.noSound=!settings.noSound; saveSettings(settings); renderToggles(); });
-    $('btnToggleVibra').addEventListener('click', ()=>{ settings.noVibra=!settings.noVibra; saveSettings(settings); renderToggles(); });
-    $('btnToggleContinuous').addEventListener('click', ()=>{ settings.continuous=!settings.continuous; saveSettings(settings); renderToggles(); });
-    $('btnOpenInApp').addEventListener('click', ()=>{ settings.openInApp=!settings.openInApp; saveSettings(settings); renderToggles(); });
-  }
-
-  // Panel de configuración
+// Panel de configuración
   const btnOpts = $('btnOpts');
   const optsPanel = $('optsPanel');
   btnOpts.addEventListener('click', ()=>{
@@ -613,37 +616,41 @@ function parseEUPrice(s){
   t = t.replace(',', '.'); const n = Number(t);
   return isFinite(n) ? +(n.toFixed(2)) : null;
 }
-document.addEventListener('click', (e)=>{
-    if(!optsPanel.classList.contains('open')) return;
-    const within = e.target.closest('.opts-anchor, .opts-panel');
-    if(!within){ optsPanel.classList.remove('open'); btnOpts.setAttribute('aria-expanded','false'); }
-  
-  if(action==='filter-store'){
-    const name = btn.getAttribute('data-store') || (btn.textContent||'').trim();
-    if(name){ setStoreFilter(storeFilter===name ? '' : name); }
-    return;
-  }
-  if(action==='clear-store-filter'){ setStoreFilter(''); return; }
 
-  if(action==='open-price-sheet' && id){ openPriceSheet(id); return; }
-  if(action==='price-cancel'){ closePriceSheet(); return; }
-  if(action==='pick-store'){ const n = btn.getAttribute('data-store')||btn.textContent; if(n){ $('psStore').value = n; } return; }
-  if(action==='price-save'){
-    if(!__psItemId) { closePriceSheet(); return; }
+document.addEventListener('click', (e)=>{{
+  if (!optsPanel.classList.contains('open')) return;
+  const within = e.target.closest('.opts-anchor, #optsPanel');
+  if (!within){{
+    optsPanel.classList.remove('open');
+    btnOpts.setAttribute('aria-expanded','false');
+  }}
+}
+  // Sheet & store-filter extras
+  if(action==='price-cancel'){{ closePriceSheet(); return; }}
+  if(action==='pick-store'){{ const n = btn.getAttribute('data-store')||btn.textContent; if(n){{ $('psStore').value = n; }} return; }}
+  if(action==='price-save'){{
+    if(!__psItemId) {{ closePriceSheet(); return; }}
     const item = recientes.find(x=>x.id===__psItemId) || favoritos.find(x=>x.id===__psItemId);
-    if(!item){ closePriceSheet(); return; }
+    if(!item){{ closePriceSheet(); return; }}
     const price = parseEUPrice($('psPrice').value);
     const store = String(($('psStore').value||'').trim());
-    if(price==null){ alert('Introduce un precio válido (ej. 12,95).'); return; }
+    if(price==null){{ alert('Introduce un precio válido (ej. 12,95).'); return; }}
     item.userPrice = price;
-    if(store && /[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/.test(store)){ item.userStore = store; } else { delete item.userStore; }
+    if(store && /[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/.test(store)){{ item.userStore = store; }} else {{ delete item.userStore; }}
     persistItem(item);
-    if(item.userStore){ try{ const prev = JSON.parse(localStorage.getItem('pr-stores-v1')||'[]'); prev.unshift(item.userStore); localStorage.setItem('pr-stores-v1', JSON.stringify(Array.from(new Set(prev)).slice(0,50))); }catch(_){} }
+    try{{ if(item.userStore){{ const prev = JSON.parse(localStorage.getItem('pr-stores-v1')||'[]'); prev.unshift(item.userStore); localStorage.setItem('pr-stores-v1', JSON.stringify(Array.from(new Set(prev)).slice(0,50))); }} }}catch(_){{}}
     if ($('viewComparar').style.display!=='none') renderAll();
     if ($('viewLista').style.display!=='none') renderFavList();
     closePriceSheet(); return;
-  }
-});renderToggles(); attachToggleEvents();
+  }}
+  if(action==='filter-store'){{
+    const name = btn.getAttribute('data-store') || (btn.textContent||'').trim();
+    if(name){{ setStoreFilter(storeFilter===name ? '' : name); }}
+    return;
+  }}
+  if(action==='clear-store-filter'){{ setStoreFilter(''); return; }}
+});
+renderToggles(); attachToggleEvents();
 
   let scanning = false, stream = null, lastScanAt = 0, torchOn = false, wakeLock = null, currentTrack = null;
   let detector = ('BarcodeDetector' in window) ? new BarcodeDetector({ formats:['ean_13','ean_8','upc_a','upc_e','code_128'] }) : null;
@@ -740,7 +747,7 @@ recientes.forEach(ensurePrimaryTag);
           <div class="cat">${escapeHtml(item.category||'')}</div>
           ${price}
           <div class="row actions">
-            <button class="btn" data-action="open-price-sheet" data-id="${item.id}">€ Precio</button>
+            <button class="btn" tonal" data-action="open-price-sheet" data-id="${item.id}">€ Precio</button>
             ${bought}
             <button class="btn primary cta" data-action="open" data-id="${item.id}">🛒 Ver en Amazon</button>
           </div>
@@ -883,11 +890,7 @@ function miniCardHTML(item){
 
     if(action==='open' && id){ e.preventDefault(); e.stopPropagation(); const item = recientes.find(x=>x.id===id) || favoritos.find(x=>x.id===id); if(item) openAmazonSmart(item); }
 
-    if(action==='add-price' && id){
-      const item = recientes.find(x=>x.id===id) || favoritos.find(x=>x.id===id); if(!item) return;
-      const val = prompt('Precio manual (€, usa punto o coma):', item.userPrice!=null? String(item.userPrice):'');
-      if(val!=null){ const n = Number(String(val).replace(',','.')); if(!isNaN(n)){ item.userPrice = Math.round(n*100)/100; item.userPriceAt = now(); persistItem(item); renderAll(); if($('viewLista').style.display!=='none'){ renderFavList(); } } }
-    }
+    if(action==='open-price-sheet' && id){{ openPriceSheet(id); return; }}
 
     if(action==='toggle-comprado' && id){
       const item = favoritos.find(x=>x.id===id); if(!item) return;
