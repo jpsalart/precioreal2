@@ -372,7 +372,14 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
     border-color: var(--bd);
   }
   #btnOpts:hover{ filter: brightness(1.05); }
-
+  /* Smaller gear icon for Configuración */
+  #btnOpts .ico{
+    font-size: .95em;
+    margin-right: 6px;
+    line-height: 1;
+    display:inline-block;
+    transform: translateY(1px);
+  }
 </style>
 </head>
 <body>
@@ -392,7 +399,7 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
   <main>
     <!-- Controles superiores: Configuración + Escáner a la derecha -->
     <div class="row opts-anchor" style="margin-top:12px">
-      <button id="btnOpts" class="btn secondary" aria-expanded="false" aria-controls="optsPanel" aria-label="Abrir configuración">⚙️ Configuración</button>
+      <button id="btnOpts" class="btn secondary" aria-expanded="false" aria-controls="optsPanel" aria-label="Abrir configuración"><span class="ico" aria-hidden="true">⚙️</span> Configuración</button>
       <button id="btnScan" class="btn primary">📷 Escáner</button>
 
       <!-- Panel de configuración -->
