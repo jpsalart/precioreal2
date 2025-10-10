@@ -443,7 +443,7 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
         <div class="flex"><span class="counter" id="countComparar">0 ítems</span></div>
         <div class="flex"><button id="btnVaciarLista" class="btn warn">🗑️ Vaciar lista</button></div>
       </div>
-      <div id="storeFilterBarComparar" class="banner-filter" style="display:none"></div>
+      
       <div class="cards" id="cardsComparar"></div>
     </div>
 
@@ -456,7 +456,7 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
           <button id="btnMostrarComprados" class="btn">Ver comprados: OFF</button>
         </div>
       </div>
-      <div id="storeFilterBarLista" class="banner-filter" style="display:none"></div>
+      
       <div id="foldersBar" class="folders-bar" aria-label="Carpetas de etiquetas"></div>
       <div id="miniList" class="mini-list"></div>
     </div>
@@ -530,6 +530,7 @@ function renderToggles(){
 
   
 
+
 function attachToggleEvents(){
   if ($('btnTextSize')){
     $('btnTextSize').addEventListener('click', ()=>{
@@ -540,6 +541,12 @@ function attachToggleEvents(){
       saveSettings(settings);
       renderToggles();
     });
+  }
+  if ($('btnToggleSound')) $('btnToggleSound').addEventListener('click', ()=>{ settings.noSound=!settings.noSound; saveSettings(settings); renderToggles(); });
+  if ($('btnToggleVibra')) $('btnToggleVibra').addEventListener('click', ()=>{ settings.noVibra=!settings.noVibra; saveSettings(settings); renderToggles(); });
+  if ($('btnToggleContinuous')) $('btnToggleContinuous').addEventListener('click', ()=>{ settings.continuous=!settings.continuous; saveSettings(settings); renderToggles(); });
+}
+);
   }
   if ($('btnToggleSound')) $('btnToggleSound').addEventListener('click', ()=>{ settings.noSound=!settings.noSound; saveSettings(settings); renderToggles(); });
   if ($('btnToggleVibra')) $('btnToggleVibra').addEventListener('click', ()=>{ settings.noVibra=!settings.noVibra; saveSettings(settings); renderToggles(); });
@@ -581,26 +588,13 @@ function setStoreFilter(name){
 
 
 // ===== Price Sheet controller =====
+
 let __psItemId = null;
-function collectKnownStores(){
-  const set = new Set();
-  try{ (JSON.parse(localStorage.getItem('pr-stores-v1')||'[]')||[]).forEach(n=>set.add(n)); }catch(_){}
-  (recientes||[]).forEach(it=>{ if(it && it.userStore) set.add(it.userStore); });
-  (favoritos||[]).forEach(it=>{ if(it && it.userStore) set.add(it.userStore); });
-  return Array.from(set);
-}
 function openPriceSheet(id){
   __psItemId = id;
   const item = (recientes.find(x=>x.id===id) || favoritos.find(x=>x.id===id)) || {};
-  const ip = $('psPrice'), is = $('psStore'), dl = $('psStoreList'), chips = $('psStoreChips');
+  const ip = $('psPrice');
   ip.value = (item.userPrice!=null) ? String(item.userPrice).replace('.',',') : '';
-  is.value = item.userStore || '';
-  dl.innerHTML = ''; chips.innerHTML = '';
-  collectKnownStores().slice(0,12).forEach(name=>{
-    const opt=document.createElement('option'); opt.value=name; dl.appendChild(opt);
-    const c=document.createElement('button'); c.className='chip store'; c.type='button';
-    c.textContent=name; c.dataset.action='pick-store'; c.dataset.store=name; chips.appendChild(c);
-  });
   $('priceSheet').classList.add('open'); $('priceSheet').setAttribute('aria-hidden','false');
   const bd = $('priceBackdrop'); if (bd) bd.classList.add('open');
   setTimeout(()=>{ ip.focus(); ip.select(); }, 0);
@@ -610,6 +604,7 @@ function closePriceSheet(){
   const bd = $('priceBackdrop'); if (bd) bd.classList.remove('open');
   __psItemId = null;
 }
+
 function parseEUPrice(s){
   if(!s) return null;
   let t = String(s).trim().replace(/[€$]/g,'').replace(/\s/g,'');
@@ -754,8 +749,21 @@ function miniCardHTML(item){
   if (action === 'open-price-sheet' && id){ openPriceSheet(id); return; }
   if (action === 'price-cancel'){ closePriceSheet(); return; }
   if (action === 'pick-store'){ const n = btn.getAttribute('data-store')||btn.textContent; if(n){ $('psStore').value = n; } return; }
-  if (action === 'price-save'){
-    if(!__psItemId) { closePriceSheet(); return; }
+  
+if (action === 'price-save'){
+  if(!__psItemId) { closePriceSheet(); return; }
+  const item = recientes.find(x=>x.id===__psItemId) || favoritos.find(x=>x.id===__psItemId);
+  if(!item){ closePriceSheet(); return; }
+  const price = parseEUPrice($('psPrice').value);
+  if(price==null){ alert('Introduce un precio válido (ej. 12,95).'); return; }
+  item.userPrice = price;
+  delete item.userStore;
+  persistItem(item);
+  if ($('viewComparar').style.display!=='none') renderAll();
+  if ($('viewLista').style.display!=='none') renderFavList();
+  closePriceSheet(); return;
+}
+
     const item = recientes.find(x=>x.id===__psItemId) || favoritos.find(x=>x.id===__psItemId);
     if(!item){ closePriceSheet(); return; }
     const price = parseEUPrice($('psPrice').value);
@@ -806,12 +814,6 @@ function miniCardHTML(item){
     return;
   }
 
-  if (action === 'filter-store'){
-    const name = btn.getAttribute('data-store') || (btn.textContent||'').trim();
-    if(name){ setStoreFilter(storeFilter===name ? '' : name); }
-    return;
-  }
-  if (action === 'clear-store-filter'){ setStoreFilter(''); return; }
 });
 
   // Botones de Favoritos
@@ -848,9 +850,7 @@ function miniCardHTML(item){
   $('btnScan').addEventListener('click', ()=> scanning ? stopScan() : startScan() );
 
   function scheduleAutostop(){ clearAutostop(); autostopTimer = setTimeout(()=>{ if(scanning) stopScan(); }, 10*60*1000); }
-  function clearAutostop(){ if(autostopTimer){ clearTimeout(autostopTimer); autostopTimer=null; }
-
-  async function scanLoopBarcodeDetector(){
+  function clearAutostop(){ if(autostopTimer){ clearTimeout(autostopTimer); autostopTimer=null; } }async function scanLoopBarcodeDetector(){
     while(scanning){
       try{
         const barcodes = await detector.detect(video);
@@ -1449,23 +1449,19 @@ let item; try{ item = await resolveEAN(code, { allowEnqueueOnFail:false }); } fi
 </script>
 
 
-<!-- ===== Price Bottom Sheet ===== -->
+
+<!-- ===== Price Bottom Sheet (MIN, solo precio) ===== -->
 <div id="priceBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:2000;"></div>
 <section id="priceSheet" aria-hidden="true" aria-modal="true" role="dialog"
   style="position:fixed;left:0;right:0;bottom:0;transform:translateY(100%);transition:transform .25s ease;z-index:2001;
   background:var(--surface-2, var(--drbt-bg));border-top-left-radius:18px;border-top-right-radius:18px;
   border:1px solid var(--border-2, var(--drbt-border));padding:14px 14px 18px;box-shadow:0 -12px 32px rgba(0,0,0,.25);">
   <h3 style="margin:0 0 8px;">Guardar precio</h3>
-  <p class="muted" style="margin:0 0 8px;">Introduce el precio (ej. 12,95). La tienda es opcional.</p>
+  <p class="muted" style="margin:0 0 8px;">Introduce el precio (ej. 12,95). Se guardará en el producto.</p>
   <div class="row" style="display:grid;gap:8px;margin-bottom:10px;">
     <label>Precio (€)
       <input id="psPrice" type="text" inputmode="decimal" placeholder="12,95" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--drbt-border)">
     </label>
-    <label>Tienda (opcional)
-      <input id="psStore" list="psStoreList" placeholder="Ej. Mary" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--drbt-border)">
-      <datalist id="psStoreList"></datalist>
-    </label>
-    <div id="psStoreChips" class="chips" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
   </div>
   <div style="display:flex;gap:10px;justify-content:flex-end;">
     <button class="btn" data-action="price-cancel">Cancelar</button>
@@ -1475,8 +1471,8 @@ let item; try{ item = await resolveEAN(code, { allowEnqueueOnFail:false }); } fi
 <style id="priceSheetStyles">
   #priceSheet.open{ transform:translateY(0); }
   #priceBackdrop.open{ display:block; }
-  #psStoreChips .chip{ cursor:pointer; user-select:none; }
 </style>
+
 
 </body>
 </html>
