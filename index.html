@@ -515,9 +515,12 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
 
   function loadSettings(){ try { return JSON.parse(localStorage.getItem('pr-settings-v1')||'{}'); } catch(e){ return {}; } }
   function saveSettings(s){ localStorage.setItem('pr-settings-v1', JSON.stringify(s||{})); }
-  let settings = Object.assign({ noSound:false, noVibra:false, continuous:true, openInApp:false, textScale:'M' }, loadSettings());
+  let settings = Object.assign({ noSound:false, noVibra:false, continuous:true, openInApp:false, density:'comfortable', textScale:'M' }, loadSettings());
   function renderToggles(){
-    // aplicar densidad y tamaño de textodocument.documentElement.setAttribute('data-ts', settings.textScale||'M');
+
+    // aplicar densidad y tamaño de texto
+    document.documentElement.classList.remove('compact');
+document.documentElement.setAttribute('data-ts', settings.textScale||'M');
     $('btnToggleSound').textContent = 'Sonido: ' + (settings.noSound ? 'OFF' : 'ON');
     $('btnToggleVibra').textContent = 'Vibración: ' + (settings.noVibra ? 'OFF' : 'ON');
     $('btnToggleContinuous').textContent = 'Escáner continuo: ' + (settings.continuous ? 'ON' : 'OFF');
@@ -526,7 +529,15 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
     $('btnTextSize') && ($('btnTextSize').textContent = 'Texto: ' + (settings.textScale||'M'));
   }
   function attachToggleEvents(){
-);
+    if ($('btnDensity')){
+      $('btnDensity').addEventListener('click', ()=>{
+        settings.density = (settings.density==='compact') ? 'comfortable' : 'compact';
+        saveSettings(settings);
+        renderToggles();
+  // aplicar densidad/tipo al cargar
+  document.documentElement.classList.toggle('compact', settings.density==='compact');
+  document.documentElement.setAttribute('data-ts', settings.textScale||'M');
+      });
     }
     if ($('btnTextSize')){
       $('btnTextSize').addEventListener('click', ()=>{
