@@ -504,17 +504,29 @@ body.mode-fav .opts-anchor{ display:none !important; } /* ocultar Escanear/Confi
   function saveSettings(s){ localStorage.setItem('pr-settings-v1', JSON.stringify(s||{})); }
   let settings = Object.assign({ noSound:false, noVibra:false, continuous:true, openInApp:false, textScale:'M' }, loadSettings());
   function renderToggles(){
-    // aplicar densidad y tamaño de textodocument.documentElement.setAttribute('data-ts', settings.textScale||'M');
-    $('btnToggleSound').textContent = 'Sonido: ' + (settings.noSound ? 'OFF' : 'ON');
-    $('btnToggleVibra').textContent = 'Vibración: ' + (settings.noVibra ? 'OFF' : 'ON');
-    $('btnToggleContinuous').textContent = 'Escáner continuo: ' + (settings.continuous ? 'ON' : 'OFF');
-    $('btnOpenInApp').textContent = 'Abrir en app: ' + (settings.openInApp ? 'ON' : 'OFF');
-    $('btnDensity') && ($('btnDensity').textContent = 'Densidad: ' + (/*density-removed*/null==='compact' ? 'Compacto' : 'Cómodo'));
-    $('btnTextSize') && ($('btnTextSize').textContent = 'Texto: ' + (settings.textScale||'M'));
-  }
+  document.documentElement.setAttribute('data-ts', settings.textScale||'M');
+  $('btnToggleSound').textContent = 'Sonido: ' + (settings.noSound ? 'OFF' : 'ON');
+  $('btnToggleVibra').textContent = 'Vibración: ' + (settings.noVibra ? 'OFF' : 'ON');
+  $('btnToggleContinuous').textContent = 'Escáner continuo: ' + (settings.continuous ? 'ON' : 'OFF');
+  $('btnOpenInApp').textContent = 'Abrir en app: ' + (settings.openInApp ? 'ON' : 'OFF');
+  $('btnTextSize') && ($('btnTextSize').textContent = 'Texto: ' + (settings.textScale||'M'));
+}
   function attachToggleEvents(){
-    );
-    }
+  if ($('btnTextSize')){
+    $('btnTextSize').addEventListener('click', ()=>{
+      const order = ['S','M','L','XL'];
+      let i = order.indexOf(settings.textScale||'M');
+      i = (i + 1) % order.length;
+      settings.textScale = order[i];
+      saveSettings(settings);
+      renderToggles();
+    });
+  }
+  $('btnToggleSound').addEventListener('click', ()=>{ settings.noSound = !settings.noSound; saveSettings(settings); renderToggles(); });
+  $('btnToggleVibra').addEventListener('click', ()=>{ settings.noVibra = !settings.noVibra; saveSettings(settings); renderToggles(); });
+  $('btnToggleContinuous').addEventListener('click', ()=>{ settings.continuous = !settings.continuous; saveSettings(settings); renderToggles(); });
+  $('btnOpenInApp').addEventListener('click', ()=>{ settings.openInApp = !settings.openInApp; saveSettings(settings); renderToggles(); });
+}
     if ($('btnTextSize')){
       $('btnTextSize').addEventListener('click', ()=>{
         const order = ['S','M','L','XL'];
